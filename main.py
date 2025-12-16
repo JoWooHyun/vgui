@@ -3,8 +3,10 @@
 VERICOM DLP 3D Printer GUI System
 메인 진입점 및 윈도우 관리
 
-Version: 2.0
+Version: 2.1
 Design: Navy + Cyan Theme
+Resolution: 1024x600 (7inch Touch LCD)
+Mode: Kiosk/Fullscreen
 """
 
 import sys
@@ -14,7 +16,8 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from PySide6.QtWidgets import QApplication, QMainWindow, QStackedWidget
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QCursor
 
 from styles.stylesheets import GLOBAL_STYLE
 from pages.main_page import MainPage
@@ -30,10 +33,32 @@ from pages.service_page import ServicePage
 from pages.file_preview_page import FilePreviewPage
 from pages.print_progress_page import PrintProgressPage
 
+# 하드웨어 컨트롤러
+from controllers.motor_controller import MotorController
+from controllers.dlp_controller import DLPController
+from controllers.gcode_parser import extract_print_parameters
+
+# 워커
+from workers.print_worker import PrintWorker, PrintStatus
+
+# 프로젝터 윈도우
+from windows.projector_window import ProjectorWindow
+
+# 화면 설정
+SCREEN_WIDTH = 1024
+SCREEN_HEIGHT = 600
+KIOSK_MODE = False  # 개발 중에는 False, 실제 배포 시 True
+
+# Moonraker 설정
+MOONRAKER_URL = "http://localhost:7125"
+
+# 시뮬레이션 모드 (하드웨어 없이 테스트)
+SIMULATION_MODE = True
+
 
 class MainWindow(QMainWindow):
-    """메인 윈도우"""
-    
+    """메인 윈도우 - 키오스크 모드 지원"""
+
     # 페이지 인덱스
     PAGE_MAIN = 0
     PAGE_TOOL = 1
@@ -47,18 +72,46 @@ class MainWindow(QMainWindow):
     PAGE_SERVICE = 9
     PAGE_FILE_PREVIEW = 10
     PAGE_PRINT_PROGRESS = 11
-    
-    def __init__(self):
+
+    def __init__(self, kiosk_mode: bool = False, simulation: bool = True):
         super().__init__()
-        
-        self.setWindowTitle("VERICOM DLP 3D Printer v2.0")
-        self.setFixedSize(800, 480)
-        
-        # 풀스크린 모드 (라즈베리파이용)
-        # self.setWindowFlags(Qt.FramelessWindowHint)
-        
+
+        self.setWindowTitle("VERICOM DLP 3D Printer v2.1")
+        self.setFixedSize(SCREEN_WIDTH, SCREEN_HEIGHT)
+
+        # 키오스크 모드 설정
+        if kiosk_mode:
+            self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+            self.setCursor(Qt.BlankCursor)  # 터치 전용이므로 커서 숨김
+
+        # 시뮬레이션 모드
+        self.simulation = simulation
+
+        # 하드웨어 컨트롤러 초기화
+        self._init_hardware()
+
+        # 페이지 설정
         self._setup_pages()
         self._connect_signals()
+
+        # 프린트 워커
+        self.print_worker = None
+
+        # 프로젝터 윈도우 (두 번째 모니터)
+        self.projector_window = None
+
+    def _init_hardware(self):
+        """하드웨어 컨트롤러 초기화"""
+        # 모터 컨트롤러
+        self.motor = MotorController(MOONRAKER_URL)
+        if not self.simulation:
+            self.motor.connect()
+
+        # DLP 컨트롤러
+        self.dlp = DLPController(simulation=self.simulation)
+        self.dlp.initialize()
+
+        print(f"[System] 하드웨어 초기화 완료 (시뮬레이션: {self.simulation})")
     
     def _setup_pages(self):
         """페이지 설정"""
@@ -161,33 +214,38 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentIndex(page_index)
     
     # ==================== 하드웨어 제어 ====================
-    
+
     def _move_z(self, distance: float):
         """Z축 이동"""
         print(f"[Motor] Z축 이동: {distance}mm")
-        # TODO: 실제 모터 제어 구현
-        # self._send_gcode(f"G91\nG1 Z{distance} F300\nG90")
-    
+        self.motor.z_move_relative(distance)
+
     def _home_z(self):
         """Z축 홈"""
         print("[Motor] Z축 홈으로 이동")
-        # TODO: 실제 모터 제어 구현
-        # self._send_gcode("G28 Z")
-    
+        self.motor.z_home()
+
     def _move_x(self, distance: float):
         """X축(블레이드) 이동"""
         print(f"[Motor] X축 이동: {distance}mm")
-        # TODO: 실제 모터 제어 구현
-    
+        self.motor.x_move_relative(distance)
+
     def _home_x(self):
         """X축 홈"""
         print("[Motor] X축 홈으로 이동")
-        # TODO: 실제 모터 제어 구현
-    
+        self.motor.x_home()
+
     def _emergency_stop(self):
         """비상 정지"""
         print("[EMERGENCY] 모든 동작 정지!")
-        # TODO: 모든 모터/LED 정지
+        # 모터 비상 정지
+        self.motor.emergency_stop()
+        # LED 끄기
+        self.dlp.led_off()
+        self.dlp.projector_off()
+        # 프린트 워커 정지
+        if self.print_worker and self.print_worker.isRunning():
+            self.print_worker.stop()
     
     def _on_file_selected(self, file_path: str):
         """파일 선택됨 -> File Preview로 이동"""
@@ -199,19 +257,20 @@ class MainWindow(QMainWindow):
         """프린트 시작"""
         print(f"[Print] 프린트 시작: {file_path}")
         print(f"  - 파라미터: {params}")
-        
+
         # 썸네일 가져오기
         thumbnail = None
         if hasattr(self.file_preview_page, 'lbl_thumbnail'):
             pixmap = self.file_preview_page.lbl_thumbnail.pixmap()
             if pixmap:
                 thumbnail = pixmap
-        
-        # 총 레이어 수 (파라미터에서 또는 기본값)
+
+        # 파라미터 추출
         total_layers = params.get('totalLayer', 100)
         blade_speed = params.get('bladeSpeed', 1500)
-        led_power = params.get('ledPower', 100)
-        
+        led_power = params.get('ledPower', 440)
+        leveling_cycles = params.get('levelingCycles', 1)
+
         # Print Progress 페이지로 정보 전달 및 이동
         self.print_progress_page.set_print_info(
             file_path=file_path,
@@ -221,24 +280,87 @@ class MainWindow(QMainWindow):
             led_power=led_power
         )
         self._go_to_page(self.PAGE_PRINT_PROGRESS)
-        
-        # TODO: PrintWorker 스레드 시작
-    
+
+        # 프로젝터 윈도우 생성 및 표시
+        if self.projector_window is None:
+            self.projector_window = ProjectorWindow(screen_index=1)
+        screens = QApplication.screens()
+        if len(screens) > 1:
+            self.projector_window.show_on_screen(1)
+        else:
+            print("[Projector] 두 번째 모니터 없음, 프로젝터 윈도우 생략")
+
+        # PrintWorker 생성 및 시작
+        self.print_worker = PrintWorker(
+            motor=self.motor,
+            dlp=self.dlp,
+            parent=self
+        )
+        self.print_worker.simulation = self.simulation
+
+        # 워커 시그널 연결
+        self.print_worker.progress_updated.connect(self._on_progress_updated)
+        self.print_worker.print_completed.connect(self._on_print_completed)
+        self.print_worker.print_stopped.connect(self._on_print_stopped_by_worker)
+        self.print_worker.error_occurred.connect(self._on_print_error)
+
+        # 프로젝터 윈도우에 이미지 표시 연결
+        if self.projector_window:
+            self.print_worker.show_image.connect(self.projector_window.show_image)
+            self.print_worker.clear_image.connect(self.projector_window.clear_screen)
+
+        # 프린트 시작
+        self.print_worker.start_print(
+            file_path=file_path,
+            params=params,
+            blade_speed=blade_speed,
+            led_power=led_power,
+            leveling_cycles=leveling_cycles
+        )
+
+    def _on_progress_updated(self, current: int, total: int):
+        """프린트 진행률 업데이트"""
+        self.print_progress_page.update_progress(current, total)
+
+    def _on_print_completed(self):
+        """프린트 완료"""
+        print("[Print] 프린트 완료!")
+        if self.projector_window:
+            self.projector_window.close()
+        self.print_progress_page.show_completed()
+
+    def _on_print_stopped_by_worker(self):
+        """워커에 의한 프린트 정지"""
+        print("[Print] 프린트 정지됨")
+        if self.projector_window:
+            self.projector_window.close()
+        self.print_progress_page.show_stopped()
+
+    def _on_print_error(self, message: str):
+        """프린트 오류"""
+        print(f"[Print] 오류: {message}")
+        if self.projector_window:
+            self.projector_window.close()
+
     def _on_print_pause(self):
         """프린트 일시정지"""
         print("[Print] 일시정지 요청")
-        # TODO: Worker에 일시정지 신호
-    
+        if self.print_worker and self.print_worker.isRunning():
+            self.print_worker.pause()
+
     def _on_print_resume(self):
         """프린트 재개"""
         print("[Print] 재개 요청")
-        # TODO: Worker에 재개 신호
-    
+        if self.print_worker and self.print_worker.isRunning():
+            self.print_worker.resume()
+
     def _on_print_stop(self):
         """프린트 정지"""
         print("[Print] 정지 요청")
-        # TODO: Worker 정지 및 정리
-        self.print_progress_page.show_stopped()
+        if self.print_worker and self.print_worker.isRunning():
+            self.print_worker.stop()
+        else:
+            self.print_progress_page.show_stopped()
     
     def _on_file_deleted(self, file_path: str):
         """파일 삭제됨"""
@@ -248,32 +370,52 @@ class MainWindow(QMainWindow):
         """노출 테스트 시작"""
         flip_value = self.exposure_page.get_flip_value()
         pattern_value = self.exposure_page.get_pattern_value()
-        
+
         print(f"[NVR] 노출 테스트 시작")
         print(f"  - 패턴: {pattern} (0x{pattern_value:02X})")
         print(f"  - 반전: H={h_flip}, V={v_flip} (0x{flip_value:02X})")
         print(f"  - 시간: {time}초")
-        
-        # TODO: NVR2+ 제어 구현
-        # 1. 패턴 설정 (Command 0x05, 0x0b)
-        # 2. 반전 설정 (Command 0x14)
-        # 3. LED 켜기 (Command 0x07)
-    
+
+        # DLP 제어
+        self.dlp.start_exposure_test(
+            pattern=pattern_value,
+            h_flip=h_flip,
+            v_flip=v_flip,
+            brightness=440
+        )
+
     def _stop_exposure(self):
         """노출 테스트 정지"""
         print("[NVR] 노출 테스트 정지")
-        # TODO: LED 끄기 (Command 0x00)
-    
+        self.dlp.stop_exposure_test()
+
     def _start_clean(self, time: float):
         """클리닝 시작"""
         print(f"[NVR] 클리닝 시작")
         print(f"  - 시간: {time}초")
-        # TODO: 전체 화면 흰색 + LED 켜기
-    
+
+        # 프로젝터 윈도우에 흰색 화면 표시
+        if self.projector_window is None:
+            self.projector_window = ProjectorWindow(screen_index=1)
+
+        screens = QApplication.screens()
+        if len(screens) > 1:
+            self.projector_window.show_on_screen(1)
+            self.projector_window.show_white_screen()
+
+        # 프로젝터 ON + LED ON
+        self.dlp.projector_on()
+        self.dlp.led_on(440)
+
     def _stop_clean(self):
         """클리닝 정지"""
         print("[NVR] 클리닝 정지")
-        # TODO: LED 끄기
+        self.dlp.led_off()
+        self.dlp.projector_off()
+
+        if self.projector_window:
+            self.projector_window.clear_screen()
+            self.projector_window.close()
     
     # ==================== 시스템 메뉴 ====================
     
@@ -290,28 +432,71 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         """앱 종료 시"""
         print("[System] VERICOM DLP Printer GUI 종료")
-        # TODO: 정리 작업
+
+        # 프린트 워커 정지
+        if self.print_worker and self.print_worker.isRunning():
+            self.print_worker.stop()
+            self.print_worker.wait(3000)  # 최대 3초 대기
+
+        # 프로젝터 윈도우 닫기
+        if self.projector_window:
+            self.projector_window.close()
+
+        # 하드웨어 정리
+        if not self.simulation:
+            self.dlp.led_off()
+            self.dlp.projector_off()
+
         event.accept()
 
 
 def main():
     """메인 함수"""
+    import argparse
+
+    parser = argparse.ArgumentParser(description='VERICOM DLP 3D Printer GUI')
+    parser.add_argument('--kiosk', action='store_true', help='키오스크 모드로 실행')
+    parser.add_argument('--windowed', action='store_true', help='윈도우 모드로 실행 (개발용)')
+    parser.add_argument('--no-sim', action='store_true', help='실제 하드웨어 모드 (시뮬레이션 비활성화)')
+    parser.add_argument('--sim', action='store_true', help='시뮬레이션 모드 (기본값)')
+    args = parser.parse_args()
+
+    # 키오스크 모드 결정 (기본값: KIOSK_MODE 상수)
+    kiosk = KIOSK_MODE
+    if args.windowed:
+        kiosk = False
+    elif args.kiosk:
+        kiosk = True
+
+    # 시뮬레이션 모드 결정 (기본값: SIMULATION_MODE 상수)
+    simulation = SIMULATION_MODE
+    if args.no_sim:
+        simulation = False
+    elif args.sim:
+        simulation = True
+
     print("=" * 50)
-    print("VERICOM DLP 3D Printer GUI v2.0")
-    print("Design: Navy + Cyan Theme")
+    print("VERICOM DLP 3D Printer GUI v2.1")
+    print(f"Resolution: {SCREEN_WIDTH}x{SCREEN_HEIGHT}")
+    print(f"Mode: {'Kiosk' if kiosk else 'Windowed'}")
+    print(f"Hardware: {'Simulation' if simulation else 'Real'}")
     print("=" * 50)
-    
+
     app = QApplication(sys.argv)
-    
+
     # 글로벌 스타일 적용
     app.setStyleSheet(GLOBAL_STYLE)
-    
+
     # 메인 윈도우 생성 및 표시
-    window = MainWindow()
-    window.show()
-    
+    window = MainWindow(kiosk_mode=kiosk, simulation=simulation)
+
+    if kiosk:
+        window.showFullScreen()
+    else:
+        window.show()
+
     print("[System] GUI 시작됨")
-    
+
     sys.exit(app.exec())
 
 
