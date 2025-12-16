@@ -1,12 +1,37 @@
 """
 VERICOM DLP 3D Printer - DLP Controller
 NVR2+ 프로젝터 및 LED 제어 (CyUSBSerial I2C)
+
+실제 하드웨어 동작 코드 (dlp_simple_slideshow.py 기반)
 """
 
+import ctypes
 import time
 from typing import Optional, List
 from dataclasses import dataclass
 from enum import IntEnum
+
+
+# ======================= Cypress USB 라이브러리 구조체 =======================
+class CY_I2C_DATA_CONFIG(ctypes.Structure):
+    """Cypress I2C 데이터 설정 구조체"""
+    _fields_ = [
+        ("slaveAddress", ctypes.c_ubyte),
+        ("isStopBit", ctypes.c_bool),
+        ("isNakBit", ctypes.c_bool)
+    ]
+
+
+class CY_DATA_BUFFER(ctypes.Structure):
+    """Cypress 데이터 버퍼 구조체"""
+    _fields_ = [
+        ("buffer", ctypes.POINTER(ctypes.c_ubyte)),
+        ("length", ctypes.c_uint32),
+        ("transferCount", ctypes.c_uint32)
+    ]
+
+
+CY_HANDLE = ctypes.c_void_p
 
 
 class NVRCommand(IntEnum):
@@ -78,31 +103,52 @@ class DLPController:
 
         try:
             # CyUSBSerial 라이브러리 로드 (라즈베리파이)
-            import ctypes
-            self.cy_lib = ctypes.CDLL("/usr/local/lib/libcyusbserial.so")
+            self.cy_lib = ctypes.CDLL("libcyusbserial.so")
+            print("[DLP] CyUSBSerial 라이브러리 로드 성공")
 
-            # 장치 열기
-            device_count = ctypes.c_int()
-            self.cy_lib.CyGetListofDevices(ctypes.byref(device_count))
+            # 라이브러리 초기화
+            self.cy_lib.CyLibraryInit.restype = ctypes.c_int
+            result = self.cy_lib.CyLibraryInit()
+            print(f"[DLP] 라이브러리 초기화 결과: {result}")
 
-            if device_count.value > 0:
-                self.handle = ctypes.c_void_p()
-                result = self.cy_lib.CyOpen(0, 0, ctypes.byref(self.handle))
+            if result != 0:
+                print("[DLP] CyUSBSerial 라이브러리 초기화 실패")
+                return False
 
-                if result == 0:
-                    self._is_initialized = True
-                    print("[DLP] NVR2+ 초기화 성공")
-                    return True
+            # 장치 개수 확인
+            num_devices = ctypes.c_ubyte(0)
+            self.cy_lib.CyGetListofDevices.argtypes = [ctypes.POINTER(ctypes.c_ubyte)]
+            self.cy_lib.CyGetListofDevices.restype = ctypes.c_int
+            result = self.cy_lib.CyGetListofDevices(ctypes.byref(num_devices))
+            print(f"[DLP] 장치 개수 확인 결과: {result}, 장치 수: {num_devices.value}")
 
-            print("[DLP] 장치를 찾을 수 없음")
-            return False
+            if result != 0 or num_devices.value == 0:
+                print("[DLP] NVR2+ 장치를 찾을 수 없습니다")
+                return False
+
+            # 장치 연결 (device_index=1, interface_num=0)
+            device_index = 1
+            interface_num = 0
+
+            print(f"[DLP] 장치 {device_index}, 인터페이스 {interface_num} 연결 시도")
+            handle = CY_HANDLE()
+            self.cy_lib.CyOpen.argtypes = [ctypes.c_ubyte, ctypes.c_ubyte, ctypes.POINTER(CY_HANDLE)]
+            self.cy_lib.CyOpen.restype = ctypes.c_int
+            result = self.cy_lib.CyOpen(device_index, interface_num, ctypes.byref(handle))
+            print(f"[DLP] 장치 연결 결과: {result}")
+
+            if result != 0:
+                print(f"[DLP] NVR2+ 장치 연결 실패: {result}")
+                return False
+
+            self.handle = handle
+            self._is_initialized = True
+            print("[DLP] NVR2+ 초기화 성공")
+            return True
 
         except Exception as e:
             print(f"[DLP] 초기화 실패: {e}")
-            print("[DLP] 시뮬레이션 모드로 전환")
-            self.simulation = True
-            self._is_initialized = True
-            return True
+            return False
 
     def close(self):
         """리소스 정리"""
@@ -112,7 +158,17 @@ class DLPController:
             self.projector_off()
 
         if self.handle and self.cy_lib:
-            self.cy_lib.CyClose(self.handle)
+            try:
+                self.cy_lib.CyClose.argtypes = [CY_HANDLE]
+                self.cy_lib.CyClose.restype = ctypes.c_int
+                self.cy_lib.CyClose(self.handle)
+                print("[DLP] 장치 연결 해제")
+
+                self.cy_lib.CyLibraryExit()
+                print("[DLP] 라이브러리 정리 완료")
+            except Exception as e:
+                print(f"[DLP] 정리 중 오류: {e}")
+
             self.handle = None
 
         self._is_initialized = False
@@ -137,32 +193,50 @@ class DLPController:
             return True
 
         if not self.handle or not self.cy_lib:
+            print("[DLP] 장치가 초기화되지 않음")
             return False
 
         try:
-            import ctypes
-
             # I2C 설정
-            config = (ctypes.c_uint8 * 16)()
-            config[0] = self.config.i2c_address
-            config[1] = 0  # 7-bit address
-            config[2] = 100  # 100kHz
+            i2c_config = CY_I2C_DATA_CONFIG()
+            i2c_config.slaveAddress = self.config.i2c_address
+            i2c_config.isStopBit = True
+            i2c_config.isNakBit = False
 
-            self.cy_lib.CySetI2cConfig(self.handle, ctypes.byref(config))
+            # 데이터 버퍼 준비 (command + data)
+            buffer_size = len(data) + 1
+            buffer = (ctypes.c_ubyte * buffer_size)()
+            buffer[0] = command
+            for i, d in enumerate(data):
+                buffer[i + 1] = d
 
-            # 데이터 준비
-            write_data = [command] + data
-            buffer = (ctypes.c_uint8 * len(write_data))(*write_data)
+            # CY_DATA_BUFFER 설정
+            data_buffer = CY_DATA_BUFFER()
+            data_buffer.buffer = ctypes.cast(buffer, ctypes.POINTER(ctypes.c_ubyte))
+            data_buffer.length = buffer_size
+            data_buffer.transferCount = 0
 
             # I2C 쓰기
+            self.cy_lib.CyI2cWrite.argtypes = [
+                CY_HANDLE,
+                ctypes.POINTER(CY_I2C_DATA_CONFIG),
+                ctypes.POINTER(CY_DATA_BUFFER),
+                ctypes.c_uint32
+            ]
+            self.cy_lib.CyI2cWrite.restype = ctypes.c_int
+
             result = self.cy_lib.CyI2cWrite(
                 self.handle,
-                ctypes.byref(buffer),
-                len(write_data),
+                ctypes.byref(i2c_config),
+                ctypes.byref(data_buffer),
                 1000  # timeout ms
             )
 
-            return result == 0
+            if result == 0:
+                return True
+            else:
+                print(f"[DLP] I2C 쓰기 실패: {result}")
+                return False
 
         except Exception as e:
             print(f"[DLP] I2C 전송 오류: {e}")
@@ -175,11 +249,19 @@ class DLPController:
             return True
 
         if not self.handle or not self.cy_lib:
+            print("[DLP] 장치가 초기화되지 않음")
             return False
 
         try:
+            self.cy_lib.CySetGpioValue.argtypes = [CY_HANDLE, ctypes.c_ubyte, ctypes.c_ubyte]
+            self.cy_lib.CySetGpioValue.restype = ctypes.c_int
             result = self.cy_lib.CySetGpioValue(self.handle, pin, value)
-            return result == 0
+
+            if result == 0:
+                return True
+            else:
+                print(f"[DLP] GPIO 설정 실패: {result}")
+                return False
         except Exception as e:
             print(f"[DLP] GPIO 설정 오류: {e}")
             return False
@@ -188,19 +270,24 @@ class DLPController:
 
     def projector_on(self) -> bool:
         """프로젝터 켜기"""
+        print("[DLP] 프로젝터 켜기 시도...")
         if self._set_gpio(self.config.gpio_projector, 1):
             self._projector_on = True
-            print("[DLP] 프로젝터 ON")
-            time.sleep(0.1)  # 안정화 대기
+            print("[DLP] ✅ 프로젝터 ON 성공")
+            time.sleep(1.0)  # 프로젝터 안정화 대기
+            print("[DLP] 프로젝터 안정화 완료")
             return True
+        print("[DLP] ❌ 프로젝터 ON 실패")
         return False
 
     def projector_off(self) -> bool:
         """프로젝터 끄기"""
+        print("[DLP] 프로젝터 끄기 시도...")
         if self._set_gpio(self.config.gpio_projector, 0):
             self._projector_on = False
-            print("[DLP] 프로젝터 OFF")
+            print("[DLP] ✅ 프로젝터 OFF 성공")
             return True
+        print("[DLP] ❌ 프로젝터 OFF 실패")
         return False
 
     @property
@@ -211,26 +298,34 @@ class DLPController:
 
     def led_on(self, brightness: Optional[int] = None) -> bool:
         """
-        LED 켜기
+        LED 켜기 (UV 조사 시작)
 
         Args:
             brightness: 밝기 (91~1023), None이면 현재 설정값 사용
         """
+        print("[DLP] UV LED 켜기 시도...")
+
+        # 1단계: LED 밝기 설정 (0x54 명령)
         if brightness is not None:
             self.set_brightness(brightness)
 
+        # 2단계: LED 켜기 (0x52 명령, 0x07 = ON)
         if self._send_i2c(NVRCommand.LED_CONTROL, [LEDState.ON]):
             self._led_on = True
-            print(f"[DLP] LED ON (brightness={self._current_brightness})")
+            print(f"[DLP] ✅ UV LED ON 성공 (brightness={self._current_brightness})")
             return True
+
+        print("[DLP] ❌ UV LED ON 실패")
         return False
 
     def led_off(self) -> bool:
-        """LED 끄기"""
+        """LED 끄기 (UV 조사 중지)"""
+        print("[DLP] UV LED 끄기 시도...")
         if self._send_i2c(NVRCommand.LED_CONTROL, [LEDState.OFF]):
             self._led_on = False
-            print("[DLP] LED OFF")
+            print("[DLP] ✅ UV LED OFF 성공")
             return True
+        print("[DLP] ❌ UV LED OFF 실패")
         return False
 
     @property
@@ -247,6 +342,8 @@ class DLPController:
         brightness = max(self.config.min_brightness,
                         min(brightness, self.config.max_brightness))
 
+        print(f"[DLP] LED 밝기를 {brightness}(으)로 설정 중...")
+
         # NVR2+ 밝기 데이터 형식: [LSB, MSB] x 3 (RGB)
         lsb = brightness & 0xFF
         msb = (brightness >> 8) & 0xFF
@@ -254,8 +351,10 @@ class DLPController:
 
         if self._send_i2c(NVRCommand.LED_BRIGHTNESS, data):
             self._current_brightness = brightness
-            print(f"[DLP] LED 밝기 설정: {brightness}")
+            print(f"[DLP] ✅ LED 밝기 {brightness} 설정 성공")
             return True
+
+        print(f"[DLP] ❌ LED 밝기 설정 실패")
         return False
 
     @property
@@ -272,17 +371,16 @@ class DLPController:
             horizontal: 좌우 반전
             vertical: 상하 반전
         """
-        mode = FlipMode.NONE
-        if horizontal and vertical:
-            mode = FlipMode.BOTH
-        elif horizontal:
-            mode = FlipMode.HORIZONTAL
-        elif vertical:
-            mode = FlipMode.VERTICAL
+        # 반전 모드 계산 (비트 플래그)
+        mode = 0x00
+        if horizontal:
+            mode |= 0x02
+        if vertical:
+            mode |= 0x04
 
         if self._send_i2c(NVRCommand.FLIP_CONTROL, [mode]):
             self._flip_mode = mode
-            print(f"[DLP] 반전 설정: H={horizontal}, V={vertical}")
+            print(f"[DLP] 반전 설정: H={horizontal}, V={vertical} (0x{mode:02X})")
             return True
         return False
 
@@ -297,7 +395,7 @@ class DLPController:
         테스트 패턴 설정
 
         Args:
-            pattern: 패턴 코드 (0: Ramp, 1: Checker 등)
+            pattern: 패턴 코드 (0x01: Ramp, 0x07: Checker 등)
         """
         # 패턴 선택
         if not self._send_i2c(NVRCommand.PATTERN_SELECT, [pattern]):
@@ -307,7 +405,7 @@ class DLPController:
         if not self._send_i2c(NVRCommand.PATTERN_SET, [0x01]):
             return False
 
-        print(f"[DLP] 테스트 패턴 설정: {pattern}")
+        print(f"[DLP] 테스트 패턴 설정: 0x{pattern:02X}")
         return True
 
     def clear_test_pattern(self) -> bool:
@@ -340,7 +438,7 @@ class DLPController:
         노출 테스트 시작
 
         Args:
-            pattern: 테스트 패턴 (0: Ramp, 1: Checker)
+            pattern: 테스트 패턴 (0x01: Ramp, 0x07: Checker)
             h_flip: 좌우 반전
             v_flip: 상하 반전
             brightness: LED 밝기
@@ -368,7 +466,12 @@ class DLPController:
 
 # 테스트용
 if __name__ == "__main__":
-    dlp = DLPController(simulation=True)
+    import sys
+
+    # 시뮬레이션 모드로 테스트
+    simulation = "--sim" in sys.argv
+
+    dlp = DLPController(simulation=simulation)
 
     if dlp.initialize():
         print("초기화 성공!")
@@ -382,3 +485,5 @@ if __name__ == "__main__":
         dlp.projector_off()
 
         dlp.close()
+    else:
+        print("초기화 실패")

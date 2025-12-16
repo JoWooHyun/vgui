@@ -1,6 +1,8 @@
 """
 VERICOM DLP 3D Printer - Motor Controller
 Moonraker API를 통한 Z축/X축 모터 제어
+
+실제 하드웨어 동작 코드 (dlp_simple_slideshow.py 기반)
 """
 
 import requests
@@ -18,6 +20,7 @@ class MotorConfig:
     x_home_speed: int = 4500    # X축 홈 속도
     x_max: float = 125.0        # X축 최대 위치 (mm)
     z_max: float = 150.0        # Z축 최대 위치 (mm)
+    drop_speed: int = 150       # Z축 하강 속도 (mm/min)
 
 
 class MotorController:
@@ -36,6 +39,10 @@ class MotorController:
         # 현재 위치 캐시
         self._z_position: float = 0.0
         self._x_position: float = 0.0
+
+        # 홈잉 상태
+        self._z_is_homed = False
+        self._x_is_homed = False
 
     # ==================== 연결 관리 ====================
 
@@ -62,17 +69,30 @@ class MotorController:
 
     # ==================== G-code 전송 ====================
 
-    def send_gcode(self, gcode: str, timeout: int = 5) -> bool:
+    def send_gcode(self, gcode: str, timeout: Optional[int] = None) -> bool:
         """
         G-code 명령 전송
 
         Args:
             gcode: G-code 문자열 (여러 줄 가능)
-            timeout: 타임아웃 (초)
+            timeout: 타임아웃 (초), None이면 명령에 따라 자동 결정
 
         Returns:
             성공 여부
         """
+        # 타임아웃 자동 결정
+        if timeout is None:
+            if "G0" in gcode and "X" in gcode:
+                timeout = 300  # X축 이동: 5분
+            elif "G1" in gcode and "X" in gcode:
+                timeout = 300
+            elif "G28" in gcode:
+                timeout = 120  # 홈잉: 2분
+            elif "M400" in gcode:
+                timeout = 300  # M400 대기: 5분
+            else:
+                timeout = 60   # 기본: 1분
+
         try:
             url = f"{self.moonraker_url}/printer/gcode/script"
             response = requests.post(
@@ -82,7 +102,7 @@ class MotorController:
             )
 
             if response.status_code == 200:
-                print(f"[Motor] G-code 전송: {gcode.replace(chr(10), ' | ')}")
+                print(f"[Motor] G-code 전송: {gcode.replace(chr(10), ' | ')} (timeout={timeout}s)")
                 return True
             else:
                 print(f"[Motor] G-code 실패: {response.status_code}")
@@ -92,12 +112,44 @@ class MotorController:
             print(f"[Motor] G-code 전송 오류: {e}")
             return False
 
+    def wait_for_movement_complete(self, timeout: int = 300) -> bool:
+        """모든 모터 움직임 완료 대기 (M400)"""
+        print("[Motor] 모터 움직임 완료 대기 중...")
+
+        for attempt in range(3):
+            print(f"[Motor] M400 시도 {attempt + 1}/3")
+            success = self.send_gcode("M400", timeout=timeout)
+            if success:
+                print("[Motor] M400 명령 전송 완료")
+                time.sleep(0.5)
+                print("[Motor] 모터 움직임 완전 완료")
+                return True
+            else:
+                print(f"[Motor] M400 시도 {attempt + 1} 실패")
+                time.sleep(1.0)
+
+        print("[Motor] M400 명령 모든 시도 실패 - 고정 대기시간 사용")
+        time.sleep(2.0)
+        return False
+
+    def wait_for_settle(self, wait_time_ms: int = 500) -> bool:
+        """안정화 대기 (G4)"""
+        if wait_time_ms > 0:
+            return self.send_gcode(f"G4 P{wait_time_ms}", timeout=60)
+        return True
+
     # ==================== Z축 제어 ====================
 
     def z_home(self) -> bool:
         """Z축 홈으로 이동"""
-        print("[Motor] Z축 홈 이동")
-        return self.send_gcode("G28 Z", timeout=60)
+        print("[Motor] Z축 홈 이동 시작")
+        success = self.send_gcode("G28 Z", timeout=120)
+        if success:
+            self._z_position = 0.0
+            self._z_is_homed = True
+            self.wait_for_movement_complete(timeout=120)
+            print("[Motor] Z축 홈 이동 완료")
+        return success
 
     def z_move_relative(self, distance: float, speed: Optional[int] = None) -> bool:
         """
@@ -110,7 +162,11 @@ class MotorController:
         speed = speed or self.config.z_speed
         gcode = f"G91\nG1 Z{distance} F{speed}\nG90"
         print(f"[Motor] Z축 상대 이동: {distance}mm @ {speed}mm/min")
-        return self.send_gcode(gcode)
+        success = self.send_gcode(gcode)
+        if success:
+            self._z_position += distance
+            self.wait_for_movement_complete(timeout=120)
+        return success
 
     def z_move_absolute(self, position: float, speed: Optional[int] = None) -> bool:
         """
@@ -121,9 +177,14 @@ class MotorController:
             speed: 이동 속도 (mm/min)
         """
         speed = speed or self.config.z_speed
-        gcode = f"G90\nG0 Z{position} F{speed}"
-        print(f"[Motor] Z축 절대 이동: {position}mm @ {speed}mm/min")
-        return self.send_gcode(gcode)
+        gcode = f"G90\nG0 Z{position:.3f} F{speed}"
+        print(f"[Motor] Z축 절대 이동: {position:.3f}mm @ {speed}mm/min")
+        success = self.send_gcode(gcode)
+        if success:
+            self._z_position = position
+            self.wait_for_movement_complete(timeout=120)
+            print(f"[Motor] Z축 절대 이동 완료: 현재 위치 {self._z_position:.3f}mm")
+        return success
 
     def z_up(self, distance: float) -> bool:
         """Z축 위로 이동 (빌드 플레이트 상승)"""
@@ -137,8 +198,18 @@ class MotorController:
 
     def x_home(self) -> bool:
         """X축 홈으로 이동 (블레이드 원점)"""
-        print("[Motor] X축 홈 이동")
-        return self.send_gcode("G28 X", timeout=60)
+        if self._x_is_homed and self._x_position == 0.0:
+            print("[Motor] X축 이미 홈 위치에 있음 - 홈잉 생략")
+            return True
+
+        print("[Motor] X축 홈 이동 시작")
+        success = self.send_gcode("G28 X", timeout=120)
+        if success:
+            self._x_position = 0.0
+            self._x_is_homed = True
+            self.wait_for_movement_complete(timeout=120)
+            print("[Motor] X축 홈 이동 완료")
+        return success
 
     def x_move_relative(self, distance: float, speed: Optional[int] = None) -> bool:
         """
@@ -151,7 +222,11 @@ class MotorController:
         speed = speed or self.config.x_speed
         gcode = f"G91\nG0 X{distance} F{speed}\nG90"
         print(f"[Motor] X축 상대 이동: {distance}mm @ {speed}mm/min")
-        return self.send_gcode(gcode, timeout=300)  # X축은 긴 타임아웃
+        success = self.send_gcode(gcode, timeout=300)
+        if success:
+            self._x_position += distance
+            self.wait_for_movement_complete(timeout=300)
+        return success
 
     def x_move_absolute(self, position: float, speed: Optional[int] = None) -> bool:
         """
@@ -163,16 +238,43 @@ class MotorController:
         """
         speed = speed or self.config.x_speed
         position = max(0, min(position, self.config.x_max))
-        gcode = f"G90\nG0 X{position} F{speed}"
-        print(f"[Motor] X축 절대 이동: {position}mm @ {speed}mm/min")
-        return self.send_gcode(gcode, timeout=300)
+
+        # 예상 시간 계산
+        distance = abs(position - self._x_position)
+        expected_time = (distance / speed) * 60
+
+        print(f"[Motor] X축 {position:.1f}mm 위치로 이동 시작")
+        print(f"[Motor] 이동 거리: {distance:.1f}mm, 예상 소요시간: {expected_time:.1f}초")
+
+        gcode = f"G90\nG0 X{position:.1f} F{speed}"
+        success = self.send_gcode(gcode, timeout=300)
+
+        if success:
+            self._x_position = position
+            print(f"[Motor] X축 이동 명령 전송 성공: {self._x_position:.1f}mm")
+
+            # 움직임 완료까지 대기
+            print("[Motor] X축 이동 완료 대기 중...")
+            move_complete = self.wait_for_movement_complete(timeout=300)
+
+            if move_complete:
+                print(f"[Motor] ✅ X축 {position:.1f}mm 이동 완전 완료!")
+                return True
+            else:
+                print("[Motor] ⚠️ X축 이동 완료 신호 실패, 추가 대기")
+                time.sleep(expected_time)
+                print("[Motor] X축 이동 강제 완료 처리")
+                return True
+        else:
+            print("[Motor] ❌ X축 이동 명령 전송 실패")
+            return False
 
     def x_to_end(self, speed: Optional[int] = None) -> bool:
         """X축 끝점(125mm)으로 이동"""
         return self.x_move_absolute(self.config.x_max, speed)
 
     def x_to_home(self, speed: Optional[int] = None) -> bool:
-        """X축 홈(0mm)으로 이동"""
+        """X축 홈(0mm)으로 이동 (G0 이동, G28 아님)"""
         return self.x_move_absolute(0, speed)
 
     # ==================== 복합 동작 ====================
@@ -211,25 +313,52 @@ class MotorController:
             return True
 
         speed = speed or self.config.x_speed
-        print(f"[Motor] 레진 평탄화 시작 ({cycles}회)")
+        print("=" * 40)
+        print(f"[Motor] 레진 평탄화 작업 시작 (왕복 {cycles}회)")
+        print("=" * 40)
 
-        # Z축 약간 상승
-        if not self.z_move_absolute(0.1):
+        # 1. Z축을 0.1mm 위치로 이동
+        print("\n[Motor] 1단계: Z축 0.1mm 위치로 이동")
+        if not self.z_move_absolute(0.1, self.config.drop_speed):
+            print("[Motor] ⚠️ Z축 0.1mm 이동 실패 - 평탄화 건너뛰기")
             return False
+        print("[Motor] ✅ Z축 0.1mm 위치 완료")
 
-        # X축 왕복
-        for i in range(cycles):
-            print(f"[Motor] 평탄화 {i+1}/{cycles}")
+        # 2. X축 블레이드 왕복 동작
+        for cycle in range(cycles):
+            print(f"\n[Motor] --- 평탄화 {cycle + 1}/{cycles}회 ---")
+
+            # 2-1. 0mm → 125mm 이동
+            print("[Motor] X축 0mm → 125mm 이동")
             if not self.x_to_end(speed):
+                print("[Motor] ❌ X축 125mm 이동 실패 - 평탄화 중단")
                 return False
+            print("[Motor] ✅ X축 125mm 도착")
+
+            # 안정화 대기
+            time.sleep(0.2)
+
+            # 2-2. 125mm → 0mm 이동 (일반 이동 명령)
+            print("[Motor] X축 125mm → 0mm 이동")
             if not self.x_to_home(speed):
+                print("[Motor] ❌ X축 0mm 이동 실패 - 평탄화 중단")
                 return False
+            print("[Motor] ✅ X축 0mm 도착")
 
-        # Z축 홈 복귀
+            # 안정화 대기
+            time.sleep(0.2)
+            print(f"[Motor] ✅ 평탄화 {cycle + 1}회 완료")
+
+        # 3. Z축 홈으로 복귀
+        print("\n[Motor] 3단계: Z축 홈으로 복귀")
         if not self.z_home():
+            print("[Motor] ⚠️ Z축 홈 복귀 실패")
             return False
+        print("[Motor] ✅ Z축 홈 복귀 완료")
 
-        print("[Motor] 레진 평탄화 완료")
+        print("=" * 40)
+        print("[Motor] 레진 평탄화 작업 완료")
+        print("=" * 40)
         return True
 
     # ==================== 상태 조회 ====================
