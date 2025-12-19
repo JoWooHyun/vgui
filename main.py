@@ -53,7 +53,7 @@ KIOSK_MODE = False  # 개발 중에는 False, 실제 배포 시 True
 MOONRAKER_URL = "http://localhost:7125"
 
 # 시뮬레이션 모드 (하드웨어 없이 테스트)
-SIMULATION_MODE = True
+SIMULATION_MODE = False  # 실제 하드웨어 사용
 
 
 class MainWindow(QMainWindow):
