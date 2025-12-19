@@ -18,6 +18,7 @@ from components.numeric_keypad import NumericKeypad
 from styles.colors import Colors
 from styles.fonts import Fonts
 from styles.icons import Icons
+from controllers.gcode_parser import extract_print_parameters
 
 
 class InfoRow(QFrame):
@@ -440,7 +441,7 @@ class FilePreviewPage(BasePage):
                 # 썸네일 로드
                 preview_names = ['preview_cropping.png', 'preview.png', 'thumbnail.png']
                 thumbnail_loaded = False
-                
+
                 for name in preview_names:
                     if name in z.namelist():
                         data = z.read(name)
@@ -450,18 +451,15 @@ class FilePreviewPage(BasePage):
                         self.lbl_thumbnail.setPixmap(scaled)
                         thumbnail_loaded = True
                         break
-                
+
                 if not thumbnail_loaded:
                     self.lbl_thumbnail.setPixmap(Icons.get_pixmap(Icons.FILE, 64, Colors.TEXT_DISABLED))
-                
-                # run.gcode에서 파라미터 추출
-                if 'run.gcode' in z.namelist():
-                    gcode_content = z.read('run.gcode').decode('utf-8', errors='ignore')
-                    self._print_params = self._parse_gcode_params(gcode_content)
-                    self._update_info_display()
-                else:
-                    self._clear_info()
-                    
+
+            # gcode_parser를 사용하여 전체 파라미터 추출 (totalLayer 포함)
+            self._print_params = extract_print_parameters(file_path)
+            print(f"[FilePreview] 파라미터 추출 완료: totalLayer={self._print_params.get('totalLayer', 0)}")
+            self._update_info_display()
+
         except Exception as e:
             print(f"ZIP 파일 로드 오류: {e}")
             self._clear_info()
