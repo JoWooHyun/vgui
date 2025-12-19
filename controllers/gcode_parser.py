@@ -113,16 +113,37 @@ class GCodeParser:
 
         try:
             with zipfile.ZipFile(zip_path, 'r') as z:
+                namelist = z.namelist()
+
+                # PNG 파일 개수 카운트 (레이어 수)
+                png_files = []
+                for name in namelist:
+                    # 숫자로만 된 PNG 파일 (예: 0001.png, 1.png)
+                    basename = name.replace('.png', '').replace('.PNG', '')
+                    if name.lower().endswith('.png') and basename.isdigit():
+                        png_files.append(name)
+
+                if png_files:
+                    params.totalLayer = len(png_files)
+                    print(f"[Parser] PNG 파일 발견: {len(png_files)}개")
+
                 # run.gcode 파일 찾기
                 gcode_file = None
-                for name in z.namelist():
+                for name in namelist:
                     if name.lower() == 'run.gcode':
                         gcode_file = name
                         break
 
                 if gcode_file:
                     content = z.read(gcode_file).decode('utf-8', errors='ignore')
-                    params = GCodeParser.parse_gcode_content(content)
+                    gcode_params = GCodeParser.parse_gcode_content(content)
+
+                    # run.gcode에서 추출한 값으로 업데이트 (totalLayer는 PNG 카운트 우선)
+                    png_count = params.totalLayer
+                    params = gcode_params
+                    if png_count > 0:
+                        params.totalLayer = png_count  # PNG 카운트 우선
+
                     print(f"[Parser] run.gcode 파싱 완료: {zip_path}")
                 else:
                     print(f"[Parser] run.gcode 파일 없음: {zip_path}")
@@ -132,6 +153,7 @@ class GCodeParser:
         except Exception as e:
             print(f"[Parser] 파싱 오류: {e}")
 
+        print(f"[Parser] 최종 totalLayer: {params.totalLayer}")
         return params
 
     @staticmethod

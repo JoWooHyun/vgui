@@ -208,10 +208,10 @@ class PrintWorker(QThread):
         print(f"  - 블레이드 속도: {job.blade_speed} mm/min")
         print(f"  - LED 파워: {job.led_power}")
 
-        # 컨트롤러 초기화 (시뮬레이션 모드가 아닐 때)
+        # 컨트롤러 설정 (시뮬레이션 모드가 아닐 때)
+        # 주의: DLP는 main.py에서 이미 초기화됨, 다시 초기화하면 안됨
         if not self.simulation:
-            if self.dlp:
-                self.dlp.initialize()
+            if self.dlp and self.dlp.is_initialized:
                 self.dlp.set_brightness(job.led_power)
 
             if self.motor:
