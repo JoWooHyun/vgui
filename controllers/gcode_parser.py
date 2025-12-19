@@ -117,21 +117,26 @@ class GCodeParser:
                 namelist = z.namelist()
 
                 # PNG 파일 개수 카운트 (레이어 수)
+                # 썸네일 제외, 숫자 포함된 PNG만 카운트
                 png_files = []
+                thumbnail_names = ['preview_cropping.png', 'preview.png', 'thumbnail.png']
+
                 for name in namelist:
                     if not name.lower().endswith('.png'):
                         continue
 
-                    # 파일명만 추출 (폴더 경로 제거)
                     filename = os.path.basename(name)
-                    basename = filename.replace('.png', '').replace('.PNG', '')
 
-                    # 숫자로만 된 PNG 파일 (예: 0001.png, 1.png)
-                    # preview 등 제외
-                    if basename.isdigit():
+                    # 썸네일 제외
+                    if filename.lower() in [t.lower() for t in thumbnail_names]:
+                        continue
+
+                    # 숫자가 포함된 PNG 파일 (1.png, 001.png, layer_1.png 등)
+                    if re.search(r'\d+', filename):
                         png_files.append(name)
 
-                print(f"[Parser] ZIP 내 파일 목록: {namelist[:10]}...")  # 디버그
+                print(f"[Parser] ZIP 내 파일 목록: {namelist[:10]}...")
+                print(f"[Parser] 레이어 이미지 후보: {png_files[:5]}...")
 
                 if png_files:
                     params.totalLayer = len(png_files)
@@ -166,6 +171,9 @@ class GCodeParser:
         print(f"[Parser] 최종 totalLayer: {params.totalLayer}")
         return params
 
+    # 썸네일 파일명 (제외 대상)
+    THUMBNAIL_NAMES = ['preview_cropping.png', 'preview.png', 'thumbnail.png']
+
     @staticmethod
     def get_layer_images(zip_path: str) -> list:
         """
@@ -187,16 +195,25 @@ class GCodeParser:
 
                     # 파일명만 추출
                     filename = os.path.basename(name)
-                    basename = filename.replace('.png', '').replace('.PNG', '')
 
-                    # 숫자로만 된 PNG 파일
-                    if basename.isdigit():
+                    # 썸네일 제외
+                    if filename.lower() in [t.lower() for t in GCodeParser.THUMBNAIL_NAMES]:
+                        continue
+
+                    # 파일명에 숫자가 포함되어 있으면 레이어 이미지
+                    if re.search(r'\d+', filename):
                         images.append(name)
+
         except Exception as e:
             print(f"[Parser] 이미지 목록 추출 오류: {e}")
 
-        # 숫자 순으로 정렬 (파일명 기준)
-        images.sort(key=lambda x: int(os.path.basename(x).replace('.png', '').replace('.PNG', '')))
+        # 숫자 기준 정렬 (파일명에서 숫자 추출)
+        def sort_key(name):
+            filename = os.path.basename(name)
+            match = re.search(r'(\d+)', filename)
+            return int(match.group(1)) if match else 0
+
+        images.sort(key=sort_key)
         return images
 
     @staticmethod
@@ -244,27 +261,15 @@ class GCodeParser:
         """
         try:
             with zipfile.ZipFile(zip_path, 'r') as z:
-                namelist = z.namelist()
+                # 이미지 목록 가져와서 인덱스로 접근 (참고 파일 방식)
+                images = GCodeParser.get_layer_images(zip_path)
 
-                # 다양한 파일명 형식 시도
-                patterns = [
-                    f"{layer_index:04d}.png",  # 0001.png
-                    f"{layer_index:05d}.png",  # 00001.png
-                    f"{layer_index}.png",       # 1.png
-                ]
-
-                # 직접 매칭 시도
-                for pattern in patterns:
-                    if pattern in namelist:
-                        return z.read(pattern)
-
-                # 폴더 내 파일도 검색
-                for name in namelist:
-                    if not name.lower().endswith('.png'):
-                        continue
-                    filename = os.path.basename(name)
-                    if filename in patterns:
-                        return z.read(name)
+                if 0 <= layer_index < len(images):
+                    image_name = images[layer_index]
+                    print(f"[Parser] 레이어 {layer_index} 이미지: {image_name}")
+                    return z.read(image_name)
+                else:
+                    print(f"[Parser] 레이어 인덱스 범위 초과: {layer_index} (총 {len(images)}개)")
 
         except Exception as e:
             print(f"[Parser] 레이어 이미지 추출 오류: {e}")
