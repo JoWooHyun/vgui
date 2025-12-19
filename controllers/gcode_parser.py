@@ -3,6 +3,7 @@ VERICOM DLP 3D Printer - G-code Parser
 ZIP 파일 내 run.gcode에서 프린트 파라미터 추출
 """
 
+import os
 import re
 import zipfile
 from typing import Dict, Any, Optional
@@ -118,10 +119,19 @@ class GCodeParser:
                 # PNG 파일 개수 카운트 (레이어 수)
                 png_files = []
                 for name in namelist:
+                    if not name.lower().endswith('.png'):
+                        continue
+
+                    # 파일명만 추출 (폴더 경로 제거)
+                    filename = os.path.basename(name)
+                    basename = filename.replace('.png', '').replace('.PNG', '')
+
                     # 숫자로만 된 PNG 파일 (예: 0001.png, 1.png)
-                    basename = name.replace('.png', '').replace('.PNG', '')
-                    if name.lower().endswith('.png') and basename.isdigit():
+                    # preview 등 제외
+                    if basename.isdigit():
                         png_files.append(name)
+
+                print(f"[Parser] ZIP 내 파일 목록: {namelist[:10]}...")  # 디버그
 
                 if png_files:
                     params.totalLayer = len(png_files)
@@ -172,14 +182,21 @@ class GCodeParser:
         try:
             with zipfile.ZipFile(zip_path, 'r') as z:
                 for name in z.namelist():
-                    # 레이어 이미지 패턴: 숫자.png (예: 0001.png, 0002.png)
-                    if re.match(r'^\d+\.png$', name):
+                    if not name.lower().endswith('.png'):
+                        continue
+
+                    # 파일명만 추출
+                    filename = os.path.basename(name)
+                    basename = filename.replace('.png', '').replace('.PNG', '')
+
+                    # 숫자로만 된 PNG 파일
+                    if basename.isdigit():
                         images.append(name)
         except Exception as e:
             print(f"[Parser] 이미지 목록 추출 오류: {e}")
 
-        # 숫자 순으로 정렬
-        images.sort(key=lambda x: int(x.replace('.png', '')))
+        # 숫자 순으로 정렬 (파일명 기준)
+        images.sort(key=lambda x: int(os.path.basename(x).replace('.png', '').replace('.PNG', '')))
         return images
 
     @staticmethod
@@ -227,6 +244,8 @@ class GCodeParser:
         """
         try:
             with zipfile.ZipFile(zip_path, 'r') as z:
+                namelist = z.namelist()
+
                 # 다양한 파일명 형식 시도
                 patterns = [
                     f"{layer_index:04d}.png",  # 0001.png
@@ -234,10 +253,18 @@ class GCodeParser:
                     f"{layer_index}.png",       # 1.png
                 ]
 
-                namelist = z.namelist()
+                # 직접 매칭 시도
                 for pattern in patterns:
                     if pattern in namelist:
                         return z.read(pattern)
+
+                # 폴더 내 파일도 검색
+                for name in namelist:
+                    if not name.lower().endswith('.png'):
+                        continue
+                    filename = os.path.basename(name)
+                    if filename in patterns:
+                        return z.read(name)
 
         except Exception as e:
             print(f"[Parser] 레이어 이미지 추출 오류: {e}")
