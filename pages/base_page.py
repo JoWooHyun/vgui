@@ -54,7 +54,7 @@ class BasePage(QWidget):
 
         # 우측 하단 로고
         footer_widget = QWidget()
-        footer_widget.setFixedHeight(40)
+        footer_widget.setFixedHeight(44)
         footer_widget.setStyleSheet(f"background-color: {Colors.BG_PRIMARY};")
 
         footer_layout = QHBoxLayout(footer_widget)
@@ -66,7 +66,7 @@ class BasePage(QWidget):
         small_logo_label = QLabel()
         if os.path.exists(LOGO_PATH):
             pixmap = QPixmap(LOGO_PATH)
-            scaled_pixmap = pixmap.scaledToWidth(80, Qt.SmoothTransformation)
+            scaled_pixmap = pixmap.scaledToWidth(88, Qt.SmoothTransformation)
             small_logo_label.setPixmap(scaled_pixmap)
         small_logo_label.setStyleSheet(f"background-color: {Colors.BG_PRIMARY};")
 

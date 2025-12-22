@@ -36,30 +36,21 @@ class MainPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         
-        # 상단 로고 영역
-        logo_widget = QWidget()
-        logo_widget.setFixedHeight(100)
-        logo_widget.setStyleSheet(f"background-color: {Colors.BG_PRIMARY};")
+        # 상단 타이틀 영역
+        title_widget = QWidget()
+        title_widget.setFixedHeight(80)
+        title_widget.setStyleSheet(f"background-color: {Colors.BG_SECONDARY};")
 
-        logo_layout = QVBoxLayout(logo_widget)
-        logo_layout.setAlignment(Qt.AlignCenter)
+        title_layout = QVBoxLayout(title_widget)
+        title_layout.setAlignment(Qt.AlignCenter)
 
-        # 로고 이미지
-        logo_label = QLabel()
-        logo_label.setAlignment(Qt.AlignCenter)
-        if os.path.exists(LOGO_PATH):
-            pixmap = QPixmap(LOGO_PATH)
-            # 너비 280px 기준으로 비율 유지하며 스케일
-            scaled_pixmap = pixmap.scaledToWidth(280, Qt.SmoothTransformation)
-            logo_label.setPixmap(scaled_pixmap)
-        else:
-            # 로고 파일 없으면 텍스트 표시
-            logo_label.setText("VERICOM DLP Printer")
-            logo_label.setFont(Fonts.h3())
-            logo_label.setStyleSheet(f"color: {Colors.NAVY};")
+        title_label = QLabel("MAZIC CERA")
+        title_label.setFont(Fonts.h3())
+        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setStyleSheet(f"color: {Colors.NAVY};")
 
-        logo_layout.addWidget(logo_label)
-        layout.addWidget(logo_widget)
+        title_layout.addWidget(title_label)
+        layout.addWidget(title_widget)
         
         # 메인 콘텐츠 영역
         content = QWidget()
@@ -82,5 +73,27 @@ class MainPage(QWidget):
         content_layout.addWidget(self.btn_tool)
         content_layout.addWidget(self.btn_system)
         content_layout.addWidget(self.btn_print)
-        
+
         layout.addWidget(content, 1)
+
+        # 우측 하단 로고
+        footer_widget = QWidget()
+        footer_widget.setFixedHeight(44)
+        footer_widget.setStyleSheet(f"background-color: {Colors.BG_PRIMARY};")
+
+        footer_layout = QHBoxLayout(footer_widget)
+        footer_layout.setContentsMargins(0, 0, 16, 8)
+
+        footer_layout.addStretch()
+
+        # 소형 로고
+        small_logo_label = QLabel()
+        if os.path.exists(LOGO_PATH):
+            pixmap = QPixmap(LOGO_PATH)
+            scaled_pixmap = pixmap.scaledToWidth(88, Qt.SmoothTransformation)
+            small_logo_label.setPixmap(scaled_pixmap)
+        small_logo_label.setStyleSheet(f"background-color: {Colors.BG_PRIMARY};")
+
+        footer_layout.addWidget(small_logo_label)
+
+        layout.addWidget(footer_widget)
