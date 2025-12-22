@@ -15,9 +15,9 @@ class ProjectorWindow(QMainWindow):
     두 번째 모니터에 레이어 이미지를 투영
     """
 
-    # 프로젝터 해상도 (NVR2+)
-    PROJECTOR_WIDTH = 1440
-    PROJECTOR_HEIGHT = 2560
+    # 프로젝터 해상도
+    PROJECTOR_WIDTH = 1920
+    PROJECTOR_HEIGHT = 1080
 
     def __init__(self, screen_index: int = 1, parent=None):
         """

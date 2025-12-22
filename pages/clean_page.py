@@ -25,7 +25,7 @@ class CleanPage(BasePage):
     def __init__(self, parent=None):
         super().__init__("Clean", show_back=True, parent=parent)
         
-        self._clean_time = 10.0  # 기본 10초
+        self._clean_time = 10  # 기본 10초
         self._is_running = False
         
         # 타이머 (자동 정지용)
@@ -67,7 +67,7 @@ class CleanPage(BasePage):
             border: none;
         """)
         
-        self.btn_time = QPushButton(f"{self._clean_time:.1f} sec")
+        self.btn_time = QPushButton(f"{self._clean_time} sec")
         self.btn_time.setFixedSize(140, 50)
         self.btn_time.setCursor(Qt.PointingHandCursor)
         self.btn_time.setFont(Fonts.h2())
@@ -149,16 +149,16 @@ class CleanPage(BasePage):
             title="Exposure Time",
             initial_value=self._clean_time,
             unit="sec",
-            min_value=1.0,
-            max_value=120.0,
-            step=1.0,
-            decimals=1,
+            min_value=1,
+            max_value=120,
+            step=1,
+            decimals=0,
             parent=self
         )
-        
+
         if dial.exec():
-            self._clean_time = dial.get_value()
-            self.btn_time.setText(f"{self._clean_time:.1f} sec")
+            self._clean_time = int(dial.get_value())
+            self.btn_time.setText(f"{self._clean_time} sec")
     
     def _on_start(self):
         """클리닝 시작"""
