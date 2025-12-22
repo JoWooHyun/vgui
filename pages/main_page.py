@@ -2,13 +2,18 @@
 VERICOM DLP 3D Printer GUI - Main Page
 """
 
+import os
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
 from PySide6.QtCore import Signal, Qt
+from PySide6.QtGui import QPixmap
 
 from styles.colors import Colors
 from styles.fonts import Fonts
 from styles.icons import Icons
 from components.icon_button import MainMenuButton
+
+# 로고 경로
+LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "VERICOM_LOGO.png")
 
 
 class MainPage(QWidget):
@@ -31,21 +36,30 @@ class MainPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         
-        # 상단 타이틀 영역
-        title_widget = QWidget()
-        title_widget.setFixedHeight(80)
-        title_widget.setStyleSheet(f"background-color: {Colors.BG_SECONDARY};")
-        
-        title_layout = QVBoxLayout(title_widget)
-        title_layout.setAlignment(Qt.AlignCenter)
-        
-        title_label = QLabel("VERICOM DLP Printer")
-        title_label.setFont(Fonts.h3())
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet(f"color: {Colors.NAVY};")
-        
-        title_layout.addWidget(title_label)
-        layout.addWidget(title_widget)
+        # 상단 로고 영역
+        logo_widget = QWidget()
+        logo_widget.setFixedHeight(100)
+        logo_widget.setStyleSheet(f"background-color: {Colors.BG_PRIMARY};")
+
+        logo_layout = QVBoxLayout(logo_widget)
+        logo_layout.setAlignment(Qt.AlignCenter)
+
+        # 로고 이미지
+        logo_label = QLabel()
+        logo_label.setAlignment(Qt.AlignCenter)
+        if os.path.exists(LOGO_PATH):
+            pixmap = QPixmap(LOGO_PATH)
+            # 너비 280px 기준으로 비율 유지하며 스케일
+            scaled_pixmap = pixmap.scaledToWidth(280, Qt.SmoothTransformation)
+            logo_label.setPixmap(scaled_pixmap)
+        else:
+            # 로고 파일 없으면 텍스트 표시
+            logo_label.setText("VERICOM DLP Printer")
+            logo_label.setFont(Fonts.h3())
+            logo_label.setStyleSheet(f"color: {Colors.NAVY};")
+
+        logo_layout.addWidget(logo_label)
+        layout.addWidget(logo_widget)
         
         # 메인 콘텐츠 영역
         content = QWidget()

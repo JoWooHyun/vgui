@@ -2,11 +2,16 @@
 VERICOM DLP 3D Printer GUI - Base Page Class
 """
 
-from PySide6.QtWidgets import QWidget, QVBoxLayout
-from PySide6.QtCore import Signal
+import os
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
+from PySide6.QtCore import Signal, Qt
+from PySide6.QtGui import QPixmap
 
 from components.header import Header
 from styles.colors import Colors
+
+# 로고 경로
+LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "VERICOM_LOGO.png")
 
 
 class BasePage(QWidget):
@@ -44,8 +49,30 @@ class BasePage(QWidget):
         self.content_layout = QVBoxLayout(self.content)
         self.content_layout.setContentsMargins(20, 20, 20, 20)
         self.content_layout.setSpacing(16)
-        
+
         self.main_layout.addWidget(self.content, 1)
+
+        # 우측 하단 로고
+        footer_widget = QWidget()
+        footer_widget.setFixedHeight(40)
+        footer_widget.setStyleSheet(f"background-color: {Colors.BG_PRIMARY};")
+
+        footer_layout = QHBoxLayout(footer_widget)
+        footer_layout.setContentsMargins(0, 0, 16, 8)
+
+        footer_layout.addStretch()  # 좌측 여백
+
+        # 소형 로고
+        small_logo_label = QLabel()
+        if os.path.exists(LOGO_PATH):
+            pixmap = QPixmap(LOGO_PATH)
+            scaled_pixmap = pixmap.scaledToWidth(80, Qt.SmoothTransformation)
+            small_logo_label.setPixmap(scaled_pixmap)
+        small_logo_label.setStyleSheet(f"background-color: {Colors.BG_PRIMARY};")
+
+        footer_layout.addWidget(small_logo_label)
+
+        self.main_layout.addWidget(footer_widget)
     
     def _on_back_clicked(self):
         """뒤로가기 처리"""
