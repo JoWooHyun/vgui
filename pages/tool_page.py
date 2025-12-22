@@ -73,11 +73,12 @@ class SimpleAlert(QDialog):
 
 class ToolPage(BasePage):
     """도구 메뉴 페이지"""
-    
+
     # 페이지 전환 시그널
     go_manual = Signal()
     go_exposure = Signal()
     go_clean = Signal()
+    go_calibration = Signal()
     stop_all = Signal()
     
     def __init__(self, parent=None):
@@ -107,9 +108,9 @@ class ToolPage(BasePage):
         self.btn_stop = ToolButton("STOP", Icons.STOP_CIRCLE, is_danger=False)
         self.btn_stop.clicked.connect(self.stop_all.emit)
         
-        # Set Z=0 버튼
-        self.btn_set_z = ToolButton("Set Z=0", Icons.BAR_CHART)
-        self.btn_set_z.clicked.connect(self._on_set_z)
+        # Calibration 버튼
+        self.btn_calibration = ToolButton("Calibration", Icons.CALIBRATION)
+        self.btn_calibration.clicked.connect(self._on_calibration)
         
         # Back 버튼
         self.btn_back = ToolButton("Back", Icons.ARROW_LEFT)
@@ -120,7 +121,7 @@ class ToolPage(BasePage):
         grid.addWidget(self.btn_exposure, 0, 1)
         grid.addWidget(self.btn_clean, 0, 2)
         grid.addWidget(self.btn_stop, 1, 0)
-        grid.addWidget(self.btn_set_z, 1, 1)
+        grid.addWidget(self.btn_calibration, 1, 1)
         grid.addWidget(self.btn_back, 1, 2)
         
         # 모든 버튼 크기 동일하게
@@ -131,8 +132,9 @@ class ToolPage(BasePage):
         
         self.content_layout.addLayout(grid)
     
-    def _on_set_z(self):
-        """Z축 영점 설정"""
+    def _on_calibration(self):
+        """캘리브레이션 페이지로 이동 (임시 알림)"""
         alert = SimpleAlert("아직 구현중", self)
         alert.exec()
+        # 향후: self.go_calibration.emit()
 

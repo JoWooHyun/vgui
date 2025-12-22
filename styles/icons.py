@@ -362,7 +362,7 @@ class Icons:
     """
     
     WIFI = """
-    <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" 
+    <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2"
          stroke-linecap="round" stroke-linejoin="round">
         <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
         <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
@@ -370,7 +370,24 @@ class Icons:
         <circle cx="12" cy="20" r="1"/>
     </svg>
     """
-    
+
+    # ========== Calibration Icon ==========
+
+    CALIBRATION = """
+    <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 2v4"/>
+        <path d="M12 18v4"/>
+        <path d="M2 12h4"/>
+        <path d="M18 12h4"/>
+        <path d="M4.93 4.93l2.83 2.83"/>
+        <path d="M16.24 16.24l2.83 2.83"/>
+        <path d="M4.93 19.07l2.83-2.83"/>
+        <path d="M16.24 7.76l2.83-2.83"/>
+    </svg>
+    """
+
     @staticmethod
     def get_pixmap(svg_template: str, size: int = 24, 
                    color: str = None) -> QPixmap:
