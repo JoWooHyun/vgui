@@ -268,7 +268,8 @@ class MainWindow(QMainWindow):
         # 파라미터 추출
         total_layers = params.get('totalLayer', 100)
         blade_speed = params.get('bladeSpeed', 1500)
-        led_power = params.get('ledPower', 440)
+        led_power_percent = params.get('ledPower', 100)  # 퍼센트 (100% = 440)
+        led_power = int(440 * led_power_percent / 100)   # 실제 LED 값으로 변환
         leveling_cycles = params.get('levelingCycles', 1)
 
         # Print Progress 페이지로 정보 전달 및 이동
