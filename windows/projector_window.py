@@ -11,7 +11,7 @@ from PySide6.QtGui import QPixmap, QImage, QPainter, QColor
 # 로고 이미지 경로
 LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "VERICOM_LOGO.png")
 # 테스트 이미지 경로 (1.png)
-TEST_IMAGE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "icons", "1.png")
+TEST_IMAGE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "1.png")
 
 
 class ProjectorWindow(QMainWindow):
