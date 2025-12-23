@@ -82,42 +82,57 @@ class SystemPage(BasePage):
     
     def _setup_content(self):
         """콘텐츠 구성"""
-        # 그리드 레이아웃 (2×2)
+        # 그리드 레이아웃 (3×2) - tool_page.py와 동일
         grid = QGridLayout()
-        grid.setSpacing(20)
-        grid.setContentsMargins(60, 20, 60, 20)
-        
+        grid.setSpacing(16)
+        grid.setContentsMargins(40, 10, 40, 10)
+
         # Device Info 버튼
         self.btn_device = ToolButton("Device Info", Icons.INFO)
         self.btn_device.clicked.connect(self.go_device_info.emit)
-        
+
         # Language 버튼
         self.btn_language = ToolButton("Language", Icons.GLOBE)
         self.btn_language.clicked.connect(self.go_language.emit)
-        
+
         # Service 버튼
         self.btn_service = ToolButton("Service", Icons.MAIL)
         self.btn_service.clicked.connect(self.go_service.emit)
-        
+
         # Network 버튼 (알림창)
         self.btn_network = ToolButton("Network", Icons.WIFI)
         self.btn_network.clicked.connect(self._on_network)
-        
-        # 그리드에 배치 (2×2)
+
+        # Theme 버튼
+        self.btn_theme = ToolButton("Theme", Icons.SUN)
+        self.btn_theme.clicked.connect(self._on_theme)
+
+        # Back 버튼
+        self.btn_back = ToolButton("Back", Icons.ARROW_LEFT)
+        self.btn_back.clicked.connect(self.go_back.emit)
+
+        # 그리드에 배치 (3×2) - tool_page.py와 동일 배치
         grid.addWidget(self.btn_device, 0, 0)
         grid.addWidget(self.btn_language, 0, 1)
-        grid.addWidget(self.btn_service, 1, 0)
-        grid.addWidget(self.btn_network, 1, 1)
-        
-        # 모든 버튼 크기 동일하게
+        grid.addWidget(self.btn_service, 0, 2)
+        grid.addWidget(self.btn_network, 1, 0)
+        grid.addWidget(self.btn_theme, 1, 1)
+        grid.addWidget(self.btn_back, 1, 2)
+
+        # 모든 버튼 크기 동일하게 (tool_page.py와 동일: 140)
         for i in range(grid.count()):
             widget = grid.itemAt(i).widget()
             if widget:
-                widget.setMinimumHeight(160)
-        
+                widget.setMinimumHeight(140)
+
         self.content_layout.addLayout(grid)
     
     def _on_network(self):
         """Network 버튼 클릭 - 알림창"""
+        alert = SimpleAlert("구현중입니다", self)
+        alert.exec()
+
+    def _on_theme(self):
+        """Theme 버튼 클릭 - 알림창"""
         alert = SimpleAlert("구현중입니다", self)
         alert.exec()
