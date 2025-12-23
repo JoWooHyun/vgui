@@ -367,28 +367,36 @@ class MainWindow(QMainWindow):
         """파일 삭제됨"""
         print(f"[Print] 파일 삭제됨: {file_path}")
     
-    def _start_exposure(self, pattern: str, h_flip: bool, v_flip: bool, time: float):
+    def _start_exposure(self, pattern: str, time: float):
         """노출 테스트 시작"""
-        flip_value = self.exposure_page.get_flip_value()
         pattern_value = self.exposure_page.get_pattern_value()
 
         print(f"[NVR] 노출 테스트 시작")
         print(f"  - 패턴: {pattern} (0x{pattern_value:02X})")
-        print(f"  - 반전: H={h_flip}, V={v_flip} (0x{flip_value:02X})")
         print(f"  - 시간: {time}초")
 
-        # DLP 제어
-        self.dlp.start_exposure_test(
-            pattern=pattern_value,
-            h_flip=h_flip,
-            v_flip=v_flip,
-            brightness=440
-        )
+        # 프로젝터 윈도우에 패턴 표시
+        if self.projector_window is None:
+            self.projector_window = ProjectorWindow(screen_index=1)
+
+        screens = QApplication.screens()
+        if len(screens) > 1:
+            self.projector_window.show_on_screen(1)
+            self.projector_window.show_test_pattern(pattern)
+
+        # 프로젝터 ON + LED ON
+        self.dlp.projector_on()
+        self.dlp.led_on(440)
 
     def _stop_exposure(self):
         """노출 테스트 정지"""
         print("[NVR] 노출 테스트 정지")
-        self.dlp.stop_exposure_test()
+        self.dlp.led_off()
+        self.dlp.projector_off()
+
+        if self.projector_window:
+            self.projector_window.clear_screen()
+            self.projector_window.close()
 
     def _start_clean(self, time: float):
         """클리닝 시작"""

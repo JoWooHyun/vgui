@@ -3,9 +3,13 @@ VERICOM DLP 3D Printer - Projector Window
 두 번째 모니터(프로젝터)에 이미지를 표시하는 전체화면 윈도우
 """
 
+import os
 from PySide6.QtWidgets import QMainWindow, QLabel, QApplication
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QPixmap, QImage, QPainter, QColor
+
+# 로고 이미지 경로
+LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "VERICOM_LOGO.png")
 
 
 class ProjectorWindow(QMainWindow):
@@ -135,7 +139,7 @@ class ProjectorWindow(QMainWindow):
         테스트 패턴 표시
 
         Args:
-            pattern_type: "checker", "ramp", "grid"
+            pattern_type: "checker", "ramp", "grid", "logo"
         """
         pixmap = self._create_test_pattern(pattern_type)
         self.show_image(pixmap)
@@ -159,11 +163,11 @@ class ProjectorWindow(QMainWindow):
                         painter.fillRect(x, y, cell_size, cell_size, QColor(0, 0, 0))
 
         elif pattern_type == "ramp":
-            # 그라데이션 패턴 (위에서 아래로)
-            for y in range(height):
-                gray = int((y / height) * 255)
+            # 그라데이션 패턴 (좌측에서 우측으로 어두워짐)
+            for x in range(width):
+                gray = 255 - int((x / width) * 255)  # 왼쪽 밝음 → 오른쪽 어두움
                 painter.setPen(QColor(gray, gray, gray))
-                painter.drawLine(0, y, width, y)
+                painter.drawLine(x, 0, x, height)
 
         elif pattern_type == "grid":
             # 그리드 패턴
@@ -174,6 +178,23 @@ class ProjectorWindow(QMainWindow):
                 painter.drawLine(x, 0, x, height)
             for y in range(0, height, grid_size):
                 painter.drawLine(0, y, width, y)
+
+        elif pattern_type == "logo":
+            # 로고 패턴 (검은 배경 + 로고 200% 크기)
+            pixmap.fill(QColor(0, 0, 0))
+            if os.path.exists(LOGO_PATH):
+                logo = QPixmap(LOGO_PATH)
+                # 200% 크기로 스케일
+                scaled_logo = logo.scaled(
+                    logo.width() * 2,
+                    logo.height() * 2,
+                    Qt.KeepAspectRatio,
+                    Qt.SmoothTransformation
+                )
+                # 중앙 배치
+                x = (width - scaled_logo.width()) // 2
+                y = (height - scaled_logo.height()) // 2
+                painter.drawPixmap(x, y, scaled_logo)
 
         else:
             # 기본: 흰색
