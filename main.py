@@ -394,7 +394,7 @@ class MainWindow(QMainWindow):
         print(f"[NVR] 클리닝 시작")
         print(f"  - 시간: {time}초")
 
-        # 프로젝터 윈도우에 흰색 화면 표시
+        # 1. 프로젝터 윈도우에 흰색 화면 표시
         if self.projector_window is None:
             self.projector_window = ProjectorWindow(screen_index=1)
 
@@ -403,8 +403,11 @@ class MainWindow(QMainWindow):
             self.projector_window.show_on_screen(1)
             self.projector_window.show_white_screen()
 
-        # 프로젝터 ON + LED ON
+        # 2. 프로젝터 ON
         self.dlp.projector_on()
+
+        # 3. LED 파워 440 설정 + LED ON
+        print(f"  - LED Power: 440")
         self.dlp.led_on(440)
 
     def _stop_clean(self):
