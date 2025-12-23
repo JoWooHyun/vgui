@@ -59,15 +59,17 @@
 ### GUI 페이지 추가
 
 - [ ] **Network 설정 페이지** - WiFi 연결, IP 확인
+- [ ] **Theme 페이지** - Light/Dark/High Contrast 테마 선택 (진행중)
 - [ ] **Calibration 페이지** - LED Test, Blade Test, Z=0 설정
 - [ ] **프린트 이력 페이지** - 과거 프린트 기록 조회
-- [ ] **설정 페이지** - 기본값 설정 (노출시간, 리프트 높이 등)
+- [x] **Setting 페이지** - LED Power/Blade Speed 설정
 
 ### 시스템 기능
 
 - [ ] **자동 시작** - 부팅 시 자동 실행 (systemd 서비스)
-- [ ] **설정 저장/로드** - JSON 파일로 설정 유지
+- [x] **설정 저장/로드** - JSON 파일로 설정 유지 (SettingsManager)
 - [ ] **다국어 지원** - 한국어/영어 전환 실제 구현
+- [ ] **테마 기능** - Light/Dark/High Contrast 3가지 테마 (진행중)
 - [ ] **OTA 업데이트** - 원격 펌웨어/소프트웨어 업데이트
 - [ ] **로그 저장** - 프린트 로그 파일 저장
 
@@ -115,6 +117,13 @@
 - [x] Clean 페이지 시간 표시 수정 (10.0 sec → 10 sec)
 - [x] 프로젝터 해상도 수정 (1440x2560 → 1920x1080)
 - [x] LED Power 퍼센트→실제값 변환 수정 (100%=440, 120%=528)
+- [x] Setting 페이지 구현 (LED Power + Blade 설정) (2025-12)
+- [x] LED ON/OFF 토글 버튼 구현 (1.png 테스트 이미지 표시)
+- [x] Blade HOME/MOVE 버튼 구현
+- [x] 설정 저장/로드 구현 (JSON, SettingsManager)
+- [x] Setting ↔ File Preview 페이지 설정 동기화
+- [x] System 페이지 레이아웃 개선 (3×2 그리드, 6버튼)
+- [x] Theme 버튼 추가 (SUN 아이콘)
 
 ---
 
