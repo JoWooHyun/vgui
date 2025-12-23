@@ -61,13 +61,13 @@ class DeviceInfoPage(BasePage):
     def __init__(self, parent=None):
         super().__init__("Device Info", show_back=True, parent=parent)
         
-        # 장치 정보 (나중에 실제 값으로 교체)
+        # 장치 정보
         self._info = {
-            "Print Size": "192.0 × 108.0 × 200.0 mm",
-            "Resolution": "3840 × 2160 (4K)",
-            "Pixel Size": "50 µm",
-            "FW Version": "v1.0.0",
-            "Model": "VERICOM DLP-001"
+            "모델명": "MAZIC CERA",
+            "해상도": "1920 x 1080",
+            "출력 영역": "124.8 x 70.2 x 80 mm",
+            "픽셀": "65 μm",
+            "펌웨어 ver": "V 2.0.0",
         }
         
         self._setup_content()
@@ -118,17 +118,7 @@ class DeviceInfoPage(BasePage):
             font-weight: 600;
         """)
         
-        lbl_value = QLabel("값")
-        lbl_value.setFont(Fonts.body())
-        lbl_value.setStyleSheet(f"""
-            color: {Colors.TEXT_PRIMARY};
-            background-color: {Colors.BG_TERTIARY};
-            border: none;
-            font-weight: 600;
-        """)
-        
         header_layout.addWidget(lbl_item)
-        header_layout.addWidget(lbl_value)
         header_layout.addStretch()
         
         table_layout.addWidget(header)
