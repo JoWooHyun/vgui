@@ -15,6 +15,7 @@ from .language_page import LanguagePage
 from .service_page import ServicePage
 from .file_preview_page import FilePreviewPage
 from .print_progress_page import PrintProgressPage
+from .setting_page import SettingPage
 
 __all__ = [
     'BasePage',
@@ -29,5 +30,6 @@ __all__ = [
     'LanguagePage',
     'ServicePage',
     'FilePreviewPage',
-    'PrintProgressPage'
+    'PrintProgressPage',
+    'SettingPage'
 ]

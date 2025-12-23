@@ -32,6 +32,7 @@ from pages.language_page import LanguagePage
 from pages.service_page import ServicePage
 from pages.file_preview_page import FilePreviewPage
 from pages.print_progress_page import PrintProgressPage
+from pages.setting_page import SettingPage
 
 # 하드웨어 컨트롤러
 from controllers.motor_controller import MotorController
@@ -72,6 +73,7 @@ class MainWindow(QMainWindow):
     PAGE_SERVICE = 9
     PAGE_FILE_PREVIEW = 10
     PAGE_PRINT_PROGRESS = 11
+    PAGE_SETTING = 12
 
     def __init__(self, kiosk_mode: bool = False, simulation: bool = True):
         super().__init__()
@@ -130,7 +132,8 @@ class MainWindow(QMainWindow):
         self.service_page = ServicePage()
         self.file_preview_page = FilePreviewPage()
         self.print_progress_page = PrintProgressPage()
-        
+        self.setting_page = SettingPage()
+
         # 스택에 추가
         self.stack.addWidget(self.main_page)         # 0
         self.stack.addWidget(self.tool_page)         # 1
@@ -144,7 +147,8 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.service_page)      # 9
         self.stack.addWidget(self.file_preview_page) # 10
         self.stack.addWidget(self.print_progress_page) # 11
-        
+        self.stack.addWidget(self.setting_page)      # 12
+
         self.setCentralWidget(self.stack)
     
     def _connect_signals(self):
@@ -159,7 +163,11 @@ class MainWindow(QMainWindow):
         self.tool_page.go_manual.connect(lambda: self._go_to_page(self.PAGE_MANUAL))
         self.tool_page.go_exposure.connect(lambda: self._go_to_page(self.PAGE_EXPOSURE))
         self.tool_page.go_clean.connect(lambda: self._go_to_page(self.PAGE_CLEAN))
+        self.tool_page.go_setting.connect(lambda: self._go_to_page(self.PAGE_SETTING))
         self.tool_page.stop_all.connect(self._emergency_stop)
+
+        # 설정 페이지
+        self.setting_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TOOL))
         
         # 매뉴얼 페이지
         self.manual_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TOOL))

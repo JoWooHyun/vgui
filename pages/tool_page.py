@@ -78,7 +78,7 @@ class ToolPage(BasePage):
     go_manual = Signal()
     go_exposure = Signal()
     go_clean = Signal()
-    go_calibration = Signal()
+    go_setting = Signal()
     stop_all = Signal()
     
     def __init__(self, parent=None):
@@ -108,9 +108,9 @@ class ToolPage(BasePage):
         self.btn_stop = ToolButton("STOP", Icons.STOP_CIRCLE, is_danger=False)
         self.btn_stop.clicked.connect(self.stop_all.emit)
         
-        # Calibration 버튼
-        self.btn_calibration = ToolButton("Calibration", Icons.CALIBRATION)
-        self.btn_calibration.clicked.connect(self._on_calibration)
+        # Setting 버튼
+        self.btn_setting = ToolButton("Setting", Icons.CALIBRATION)
+        self.btn_setting.clicked.connect(self.go_setting.emit)
         
         # Back 버튼
         self.btn_back = ToolButton("Back", Icons.ARROW_LEFT)
@@ -121,7 +121,7 @@ class ToolPage(BasePage):
         grid.addWidget(self.btn_exposure, 0, 1)
         grid.addWidget(self.btn_clean, 0, 2)
         grid.addWidget(self.btn_stop, 1, 0)
-        grid.addWidget(self.btn_calibration, 1, 1)
+        grid.addWidget(self.btn_setting, 1, 1)
         grid.addWidget(self.btn_back, 1, 2)
         
         # 모든 버튼 크기 동일하게
@@ -131,10 +131,4 @@ class ToolPage(BasePage):
                 widget.setMinimumHeight(140)
         
         self.content_layout.addLayout(grid)
-    
-    def _on_calibration(self):
-        """캘리브레이션 페이지로 이동 (임시 알림)"""
-        alert = SimpleAlert("아직 구현중", self)
-        alert.exec()
-        # 향후: self.go_calibration.emit()
 

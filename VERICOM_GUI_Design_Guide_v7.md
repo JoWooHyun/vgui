@@ -1,9 +1,9 @@
 # VERICOM DLP 3D Printer GUI 디자인 가이드
 
-> **Version:** 6.0  
-> **Last Updated:** 2024-12-08  
-> **Target Device:** 7인치 터치 LCD (800×480)  
-> **Framework:** PySide6  
+> **Version:** 7.0
+> **Last Updated:** 2024-12-23
+> **Target Device:** 7인치 터치 LCD (1024×600)
+> **Framework:** PySide6
 > **Reference:** UniFormation 프린터 UI 분석 기반
 
 ---
@@ -29,10 +29,14 @@
 | 항목 | 스펙 |
 |------|------|
 | 디스플레이 | 7인치 HDMI Touch LCD |
-| 해상도 | 800 × 480 px |
+| 해상도 | 1024 × 600 px |
 | 입력방식 | 터치 전용 (마우스/키보드 없음) |
 | 보드 | CM4 + Manta M8P 2.0 통합보드 |
 | 프로젝터 | Young Optics NVR2+ |
+| 모델명 | MAZIC CERA |
+| 출력 영역 | 124.8 x 70.2 x 80 mm |
+| 픽셀 | 65 μm |
+| 펌웨어 | V 2.0.0 |
 
 ### 1.2 프린터 특징
 - **Top-Down 방식** DLP 프린터
@@ -128,7 +132,7 @@
 │              Footer/Navigation (20px padding)        │
 └─────────────────────────────────────────────────────┘
 
-전체: 800 × 480px
+전체: 1024 × 600px
 Header: 56px 높이
 Content: 나머지 영역 (padding 20px)
 ```
@@ -304,8 +308,7 @@ Content: 나머지 영역 (padding 20px)
 | **형태** | SQUARE, SQUARE_HALF, LAYERS | 패턴, 레이어 |
 | **시스템** | INFO, GLOBE, MAIL, WIFI | 시스템 메뉴 |
 | **파일** | FILE, FILE_TEXT, FOLDER_OPEN | 파일 관련 |
-| **Exposure** | PATTERN_RAMP, PATTERN_CHECKER | 테스트 패턴 |
-| **Flip** | FLIP_HORIZONTAL, FLIP_VERTICAL | 이미지 반전 |
+| **Exposure** | PATTERN_RAMP, PATTERN_CHECKER, PATTERN_LOGO | 테스트 패턴 |
 
 ### 6.2 아이콘 스타일
 ```
@@ -324,21 +327,33 @@ Content: 나머지 영역 (padding 20px)
 ```
 Main (L0)
 ├── Tool (L1)
-│   ├── Manual (L2) ────────────── Z축/X축 수동 제어
-│   ├── Exposure (L2) ──────────── LED 노출 테스트 ✅
-│   │   └── Ramp/Checker + H/V Flip + 시간 설정
+│   ├── Manual (L2) ────────────── Z축/X축 수동 제어 ✅ 업데이트
+│   │   └── 위치표시 삭제, 타이틀 가운데정렬
+│   │   └── X축 거리: 1, 10, 100 (단위 없음)
+│   │   └── 홈 타임아웃: 100초
+│   ├── Exposure (L2) ──────────── LED 노출 테스트 ✅ 업데이트
+│   │   └── 아이콘 버튼 (100x100px)
+│   │   └── RAMP/CHECKER/LOGO 패턴
+│   │   └── Flip 기능 삭제, 시간표시 "5 sec"
 │   ├── Clean (L2) ─────────────── 트레이 청소 ✅
 │   │   └── 시간 설정 + START/STOP
 │   ├── Set Z=0 (알림창) ────────── "아직 구현중" ✅
 │   └── STOP (즉시 실행) ────────── 비상 정지
 │
 ├── System (L1) ✅
-│   ├── Device Info (L2) ────────── 장치 정보 ✅
-│   │   └── Print Size, Resolution, Pixel Size, FW Version, Model
-│   ├── Language (L2) ───────────── 언어 설정 ✅
-│   │   └── English / 한국어
-│   ├── Service (L2) ────────────── 서비스 정보 ✅
-│   │   └── Email, Website, Tel
+│   ├── Device Info (L2) ────────── 장치 정보 ✅ 업데이트
+│   │   └── 모델명: MAZIC CERA
+│   │   └── 해상도: 1920 x 1080
+│   │   └── 출력 영역: 124.8 x 70.2 x 80 mm
+│   │   └── 픽셀: 65 μm
+│   │   └── 펌웨어 ver: V 2.0.0
+│   ├── Language (L2) ───────────── 언어 설정 ✅ 업데이트
+│   │   └── 4개 버튼: 한, 中, 日, E (100x100px)
+│   │   └── 눌렀을때 색상만 변경 (기능 없음)
+│   ├── Service (L2) ────────────── 서비스 정보 ✅ 업데이트
+│   │   └── Email: vericom@vericom.co.kr
+│   │   └── Website: www.vericom.co.kr
+│   │   └── Tel: 1661-2883
 │   └── Network (알림창) ─────────── "구현중입니다" ✅
 │
 └── Print (L1) ✅
@@ -347,7 +362,7 @@ Main (L0)
     ├── File Preview (L2) ───────── 파일 미리보기 ✅
     │   └── 썸네일, 파라미터 정보, Blade Speed/LED Power 편집
     │   └── Delete/Start 버튼, NumericKeypad 팝업
-    └── Print Progress (L2) ─────── 인쇄 진행 ✅ NEW
+    └── Print Progress (L2) ─────── 인쇄 진행 ✅
         └── 진행률, 레이어, 시간, PAUSE/STOP 버튼
         └── 완료 시 다이얼로그 → 홈으로 이동
 ```
@@ -623,7 +638,8 @@ self.header.title_label.setText()   # ⚠️ 직접 접근 (비권장)
 | 3.0 | 2024-12-02 | Tool/System 페이지 완료, 10개 페이지 구현 |
 | 4.0 | 2024-12-04 | Print 플로우 완료 (PrintPage 개선, FilePreviewPage 추가) |
 | 5.0 | 2024-12-08 | NumericKeypad 추가, FilePreviewPage 개선 (EditableRow, 값 우측정렬) |
-| 6.0 | 2024-12-08 | **PrintProgressPage 추가**, 완료/정지 다이얼로그, 전체 UI 완성 |
+| 6.0 | 2024-12-08 | PrintProgressPage 추가, 완료/정지 다이얼로그, 전체 UI 완성 |
+| 7.0 | 2024-12-23 | **해상도 1024x600 변경**, Exposure 아이콘버튼+LOGO패턴, Language 4버튼, Manual 위치삭제/X거리변경, Service/DeviceInfo 정보 업데이트, 홈 타임아웃 100초 |
 
 ---
 
