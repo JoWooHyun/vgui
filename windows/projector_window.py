@@ -10,6 +10,8 @@ from PySide6.QtGui import QPixmap, QImage, QPainter, QColor
 
 # 로고 이미지 경로
 LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "VERICOM_LOGO.png")
+# 테스트 이미지 경로 (1.png)
+TEST_IMAGE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "icons", "1.png")
 
 
 class ProjectorWindow(QMainWindow):
@@ -133,6 +135,27 @@ class ProjectorWindow(QMainWindow):
         pixmap = QPixmap(self.PROJECTOR_WIDTH, self.PROJECTOR_HEIGHT)
         pixmap.fill(QColor(255, 255, 255))
         self.show_image(pixmap)
+
+    def show_test_image(self, image_path: str = None):
+        """
+        테스트 이미지 파일 표시 (Setting 페이지 LED ON용)
+
+        Args:
+            image_path: 이미지 파일 경로 (None이면 1.png 사용)
+        """
+        path = image_path or TEST_IMAGE_PATH
+
+        if os.path.exists(path):
+            pixmap = QPixmap(path)
+            if not pixmap.isNull():
+                self.show_image(pixmap)
+                print(f"[Projector] 테스트 이미지 표시: {path}")
+            else:
+                print(f"[Projector] 이미지 로드 실패: {path}")
+                self.show_white_screen()
+        else:
+            print(f"[Projector] 이미지 파일 없음: {path}")
+            self.show_white_screen()
 
     def show_test_pattern(self, pattern_type: str = "checker"):
         """

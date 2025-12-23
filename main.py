@@ -38,6 +38,7 @@ from pages.setting_page import SettingPage
 from controllers.motor_controller import MotorController
 from controllers.dlp_controller import DLPController
 from controllers.gcode_parser import extract_print_parameters
+from controllers.settings_manager import get_settings
 
 # 워커
 from workers.print_worker import PrintWorker, PrintStatus
@@ -92,9 +93,15 @@ class MainWindow(QMainWindow):
         # 하드웨어 컨트롤러 초기화
         self._init_hardware()
 
+        # 설정 관리자
+        self.settings = get_settings()
+
         # 페이지 설정
         self._setup_pages()
         self._connect_signals()
+
+        # 저장된 설정 적용
+        self._apply_saved_settings()
 
         # 프린트 워커
         self.print_worker = None
@@ -150,7 +157,24 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.setting_page)      # 12
 
         self.setCentralWidget(self.stack)
-    
+
+    def _apply_saved_settings(self):
+        """저장된 설정값을 페이지에 적용"""
+        # Setting 페이지에 적용
+        saved_led_power = self.settings.get_led_power()
+        saved_blade_speed = self.settings.get_blade_speed()
+
+        self.setting_page.set_led_power(saved_led_power)
+        self.setting_page.set_blade_speed(saved_blade_speed)
+
+        # File Preview 페이지에도 적용
+        self.file_preview_page.set_led_power(saved_led_power)
+        self.file_preview_page.set_blade_speed(saved_blade_speed)
+
+        print(f"[System] 저장된 설정 적용:")
+        print(f"  - LED Power: {saved_led_power}%")
+        print(f"  - Blade Speed: {saved_blade_speed}mm/s")
+
     def _connect_signals(self):
         """시그널 연결"""
         # 메인 페이지
@@ -168,6 +192,12 @@ class MainWindow(QMainWindow):
 
         # 설정 페이지
         self.setting_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TOOL))
+        self.setting_page.led_on.connect(self._setting_led_on)
+        self.setting_page.led_off.connect(self._setting_led_off)
+        self.setting_page.blade_home.connect(self._setting_blade_home)
+        self.setting_page.blade_move.connect(self._setting_blade_move)
+        self.setting_page.led_power_changed.connect(self._on_led_power_changed)
+        self.setting_page.blade_speed_changed.connect(self._on_blade_speed_changed)
         
         # 매뉴얼 페이지
         self.manual_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TOOL))
@@ -435,7 +465,85 @@ class MainWindow(QMainWindow):
         if self.projector_window:
             self.projector_window.clear_screen()
             self.projector_window.close()
-    
+
+    # ==================== Setting 페이지 제어 ====================
+
+    def _setting_led_on(self, power_percent: int):
+        """Setting 페이지에서 LED ON"""
+        # 퍼센트를 NVM 값으로 변환 (100% = 440, 200% = 880)
+        led_power = int(440 * power_percent / 100)
+        led_power = max(91, min(1023, led_power))  # 범위 제한
+
+        print(f"[Setting] LED ON 시도")
+        print(f"  - Power: {power_percent}% (NVM: {led_power})")
+
+        # 프로젝터 윈도우에 1.png 표시
+        if self.projector_window is None:
+            self.projector_window = ProjectorWindow(screen_index=1)
+
+        screens = QApplication.screens()
+        if len(screens) > 1:
+            self.projector_window.show_on_screen(1)
+        else:
+            self.projector_window.show_on_screen(0)
+
+        self.projector_window.show_test_image()  # 1.png 표시
+
+        # 프로젝터 ON + LED ON
+        self.dlp.projector_on()
+        self.dlp.led_on(led_power)
+
+    def _setting_led_off(self):
+        """Setting 페이지에서 LED OFF"""
+        print("[Setting] LED OFF")
+        self.dlp.led_off()
+        self.dlp.projector_off()
+
+        if self.projector_window:
+            self.projector_window.clear_screen()
+            self.projector_window.close()
+
+    def _setting_blade_home(self):
+        """Setting 페이지에서 Blade Home"""
+        print("[Setting] Blade Home")
+        self.motor.x_home()
+
+    def _setting_blade_move(self):
+        """Setting 페이지에서 Blade Move (0→100 또는 100→0)"""
+        # 현재 X 위치 확인
+        _, x_pos = self.motor.get_position()
+
+        # Blade 속도 가져오기 (mm/s → mm/min 변환)
+        blade_speed_mms = self.setting_page.get_blade_speed()
+        blade_speed = blade_speed_mms * 60  # mm/min으로 변환
+
+        print(f"[Setting] Blade Move (현재: {x_pos:.1f}mm, 속도: {blade_speed_mms}mm/s)")
+
+        if x_pos < 50:  # 0에 가까우면 100으로
+            print("[Setting] Blade 0 → 100mm 이동")
+            self.motor.x_move_absolute(100, blade_speed)
+        else:  # 100에 가까우면 0으로
+            print("[Setting] Blade 100 → 0mm 이동")
+            self.motor.x_move_absolute(0, blade_speed)
+
+    # ==================== 설정 저장/동기화 ====================
+
+    def _on_led_power_changed(self, power: int):
+        """LED Power 변경 시 저장 및 동기화"""
+        print(f"[Setting] LED Power 변경: {power}%")
+        # 설정 저장
+        self.settings.set_led_power(power)
+        # File Preview 페이지에 동기화
+        self.file_preview_page.set_led_power(power)
+
+    def _on_blade_speed_changed(self, speed: int):
+        """Blade Speed 변경 시 저장 및 동기화"""
+        print(f"[Setting] Blade Speed 변경: {speed}mm/s")
+        # 설정 저장
+        self.settings.set_blade_speed(speed)
+        # File Preview 페이지에 동기화 (mm/s → mm/min 변환)
+        self.file_preview_page.set_blade_speed(speed * 60)
+
     # ==================== 시스템 메뉴 ====================
 
     def _send_gcode(self, gcode: str):

@@ -10,11 +10,9 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Signal, Qt
 
 from pages.base_page import BasePage
-from components.icon_button import ControlButton, HomeButton
 from components.numeric_keypad import NumericKeypad
 from styles.colors import Colors
 from styles.fonts import Fonts
-from styles.icons import Icons
 from styles.stylesheets import (
     AXIS_PANEL_STYLE,
     Radius
@@ -25,7 +23,7 @@ class LEDPowerPanel(QFrame):
     """LED Power 설정 패널"""
 
     power_changed = Signal(int)  # 파워 값 변경
-    led_on = Signal()            # LED ON
+    led_on = Signal(int)         # LED ON (파워 값 전달)
     led_off = Signal()           # LED OFF
 
     def __init__(self, parent=None):
@@ -33,6 +31,8 @@ class LEDPowerPanel(QFrame):
 
         self._power_value = 100  # 기본값 100%
         self._is_on = False
+        self._min_power = 30    # 최소 30%
+        self._max_power = 230   # 최대 230% (1023 ≈ 232.5%)
 
         self._setup_ui()
 
@@ -143,8 +143,8 @@ class LEDPowerPanel(QFrame):
             title="LED Power",
             value=self._power_value,
             unit="%",
-            min_val=0,
-            max_val=100,
+            min_val=self._min_power,
+            max_val=self._max_power,
             allow_decimal=False,
             parent=self.window()
         )
@@ -166,7 +166,7 @@ class LEDPowerPanel(QFrame):
         else:
             # 현재 꺼진 상태 → 켜기
             self._is_on = True
-            self.led_on.emit()
+            self.led_on.emit(self._power_value)
         self._update_toggle_style()
 
     def get_power(self) -> int:
@@ -175,7 +175,7 @@ class LEDPowerPanel(QFrame):
 
     def set_power(self, value: int):
         """파워 값 설정"""
-        self._power_value = max(0, min(100, value))
+        self._power_value = max(self._min_power, min(self._max_power, value))
         self.power_btn.setText(f"{self._power_value}%")
 
 
@@ -183,14 +183,15 @@ class BladePanel(QFrame):
     """Blade 설정 패널"""
 
     speed_changed = Signal(int)    # 속도 변경
-    move_positive = Signal()       # 오른쪽 이동
-    move_negative = Signal()       # 왼쪽 이동
+    blade_move = Signal()          # MOVE 버튼 클릭
     home_axis = Signal()           # 홈 이동
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
         self._speed_value = 30  # 기본값 30 mm/s
+        self._min_speed = 10    # 최소 10 mm/s
+        self._max_speed = 100   # 최대 100 mm/s
 
         self._setup_ui()
 
@@ -259,26 +260,51 @@ class BladePanel(QFrame):
 
         layout.addStretch(1)
 
-        # 제어 버튼들 (홈, <, >)
+        # 제어 버튼들 (HOME, MOVE)
         control_layout = QHBoxLayout()
         control_layout.setSpacing(12)
         control_layout.setAlignment(Qt.AlignCenter)
 
         # 홈 버튼
-        self.btn_home = HomeButton(70, 28)
+        self.btn_home = QPushButton("HOME")
+        self.btn_home.setFixedSize(100, 50)
+        self.btn_home.setCursor(Qt.PointingHandCursor)
+        self.btn_home.setFont(Fonts.h3())
+        self.btn_home.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.BG_PRIMARY};
+                border: 2px solid {Colors.BORDER};
+                border-radius: {Radius.MD}px;
+                color: {Colors.TEXT_PRIMARY};
+                font-weight: 600;
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.BG_SECONDARY};
+            }}
+        """)
         self.btn_home.clicked.connect(self.home_axis.emit)
 
-        # 왼쪽 버튼
-        self.btn_left = ControlButton(Icons.CHEVRON_LEFT, 70, 28)
-        self.btn_left.clicked.connect(self.move_negative.emit)
-
-        # 오른쪽 버튼
-        self.btn_right = ControlButton(Icons.CHEVRON_RIGHT, 70, 28)
-        self.btn_right.clicked.connect(self.move_positive.emit)
+        # MOVE 버튼
+        self.btn_move = QPushButton("MOVE")
+        self.btn_move.setFixedSize(100, 50)
+        self.btn_move.setCursor(Qt.PointingHandCursor)
+        self.btn_move.setFont(Fonts.h3())
+        self.btn_move.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.BG_PRIMARY};
+                border: 2px solid {Colors.BORDER};
+                border-radius: {Radius.MD}px;
+                color: {Colors.TEXT_PRIMARY};
+                font-weight: 600;
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.BG_SECONDARY};
+            }}
+        """)
+        self.btn_move.clicked.connect(self.blade_move.emit)
 
         control_layout.addWidget(self.btn_home)
-        control_layout.addWidget(self.btn_left)
-        control_layout.addWidget(self.btn_right)
+        control_layout.addWidget(self.btn_move)
 
         layout.addLayout(control_layout)
 
@@ -290,8 +316,8 @@ class BladePanel(QFrame):
             title="Blade Speed",
             value=self._speed_value,
             unit="mm/s",
-            min_val=1,
-            max_val=100,
+            min_val=self._min_speed,
+            max_val=self._max_speed,
             allow_decimal=False,
             parent=self.window()
         )
@@ -310,7 +336,7 @@ class BladePanel(QFrame):
 
     def set_speed(self, value: int):
         """속도 값 설정"""
-        self._speed_value = max(1, min(100, value))
+        self._speed_value = max(self._min_speed, min(self._max_speed, value))
         self.speed_btn.setText(f"{self._speed_value} mm/s")
 
 
@@ -319,13 +345,12 @@ class SettingPage(BasePage):
 
     # LED 시그널
     led_power_changed = Signal(int)
-    led_on = Signal()
+    led_on = Signal(int)  # 파워 값 전달
     led_off = Signal()
 
     # Blade 시그널
     blade_speed_changed = Signal(int)
-    blade_move_positive = Signal()
-    blade_move_negative = Signal()
+    blade_move = Signal()  # MOVE 버튼 클릭
     blade_home = Signal()
 
     def __init__(self, parent=None):
@@ -347,8 +372,7 @@ class SettingPage(BasePage):
         # Blade 패널
         self.blade_panel = BladePanel()
         self.blade_panel.speed_changed.connect(self.blade_speed_changed.emit)
-        self.blade_panel.move_positive.connect(self.blade_move_positive.emit)
-        self.blade_panel.move_negative.connect(self.blade_move_negative.emit)
+        self.blade_panel.blade_move.connect(self.blade_move.emit)
         self.blade_panel.home_axis.connect(self.blade_home.emit)
 
         panels_layout.addWidget(self.led_panel)

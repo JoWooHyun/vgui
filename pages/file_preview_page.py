@@ -335,13 +335,13 @@ class FilePreviewPage(BasePage):
         self.row_blade_speed.value_changed.connect(self._on_blade_speed_changed)
         right_layout.addWidget(self.row_blade_speed)
         
-        # LED Power
+        # LED Power (30-230% 범위, Setting 페이지와 동일)
         self.row_led_power = EditableRow(
             label="LED Power",
             value=self._led_power,
             unit="%",
-            min_val=10,
-            max_val=100,
+            min_val=30,
+            max_val=230,
             step=5
         )
         self.row_led_power.value_changed.connect(self._on_led_power_changed)
@@ -567,7 +567,17 @@ class FilePreviewPage(BasePage):
     def get_blade_speed(self) -> int:
         """Blade Speed 반환"""
         return self._blade_speed
-    
+
+    def set_blade_speed(self, value: int):
+        """Blade Speed 설정"""
+        self._blade_speed = value
+        self.row_blade_speed.set_value(value)
+
     def get_led_power(self) -> int:
         """LED Power 반환"""
         return self._led_power
+
+    def set_led_power(self, value: int):
+        """LED Power 설정"""
+        self._led_power = value
+        self.row_led_power.set_value(value)
