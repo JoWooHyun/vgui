@@ -88,52 +88,54 @@ class LEDPowerPanel(QFrame):
 
         layout.addStretch(1)
 
-        # ON/OFF 버튼 (디자인에 맞게 Navy/Gray 스타일)
+        # ON/OFF 토글 버튼 (하나만 표시)
         btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(16)
         btn_layout.setAlignment(Qt.AlignCenter)
 
-        self.btn_on = QPushButton("ON")
-        self.btn_on.setFixedSize(100, 50)
-        self.btn_on.setCursor(Qt.PointingHandCursor)
-        self.btn_on.setFont(Fonts.h3())
-        self.btn_on.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {Colors.NAVY};
-                border: none;
-                border-radius: {Radius.MD}px;
-                color: {Colors.WHITE};
-                font-weight: 600;
-            }}
-            QPushButton:pressed {{
-                background-color: {Colors.NAVY_LIGHT};
-            }}
-        """)
-        self.btn_on.clicked.connect(self._on_led_on)
+        self.btn_toggle = QPushButton("ON")
+        self.btn_toggle.setFixedSize(120, 50)
+        self.btn_toggle.setCursor(Qt.PointingHandCursor)
+        self.btn_toggle.setFont(Fonts.h3())
+        self.btn_toggle.clicked.connect(self._on_toggle_click)
+        self._update_toggle_style()
 
-        self.btn_off = QPushButton("OFF")
-        self.btn_off.setFixedSize(100, 50)
-        self.btn_off.setCursor(Qt.PointingHandCursor)
-        self.btn_off.setFont(Fonts.h3())
-        self.btn_off.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {Colors.BG_PRIMARY};
-                border: 2px solid {Colors.BORDER};
-                border-radius: {Radius.MD}px;
-                color: {Colors.TEXT_PRIMARY};
-                font-weight: 600;
-            }}
-            QPushButton:pressed {{
-                background-color: {Colors.BG_SECONDARY};
-            }}
-        """)
-        self.btn_off.clicked.connect(self._on_led_off)
-
-        btn_layout.addWidget(self.btn_on)
-        btn_layout.addWidget(self.btn_off)
+        btn_layout.addWidget(self.btn_toggle)
         layout.addLayout(btn_layout)
 
         layout.addStretch(1)
+
+    def _update_toggle_style(self):
+        """토글 버튼 스타일 업데이트"""
+        if self._is_on:
+            # LED가 켜진 상태 → OFF 버튼 (빨간색)
+            self.btn_toggle.setText("OFF")
+            self.btn_toggle.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {Colors.RED};
+                    border: none;
+                    border-radius: {Radius.MD}px;
+                    color: {Colors.WHITE};
+                    font-weight: 600;
+                }}
+                QPushButton:pressed {{
+                    background-color: #B91C1C;
+                }}
+            """)
+        else:
+            # LED가 꺼진 상태 → ON 버튼 (흰 배경 + 테두리)
+            self.btn_toggle.setText("ON")
+            self.btn_toggle.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {Colors.BG_PRIMARY};
+                    border: 2px solid {Colors.BORDER};
+                    border-radius: {Radius.MD}px;
+                    color: {Colors.TEXT_PRIMARY};
+                    font-weight: 600;
+                }}
+                QPushButton:pressed {{
+                    background-color: {Colors.BG_SECONDARY};
+                }}
+            """)
 
     def _on_power_click(self):
         """파워 값 클릭 - 키패드 열기"""
@@ -155,15 +157,17 @@ class LEDPowerPanel(QFrame):
         self.power_btn.setText(f"{self._power_value}%")
         self.power_changed.emit(self._power_value)
 
-    def _on_led_on(self):
-        """LED ON"""
-        self._is_on = True
-        self.led_on.emit()
-
-    def _on_led_off(self):
-        """LED OFF"""
-        self._is_on = False
-        self.led_off.emit()
+    def _on_toggle_click(self):
+        """ON/OFF 토글"""
+        if self._is_on:
+            # 현재 켜진 상태 → 끄기
+            self._is_on = False
+            self.led_off.emit()
+        else:
+            # 현재 꺼진 상태 → 켜기
+            self._is_on = True
+            self.led_on.emit()
+        self._update_toggle_style()
 
     def get_power(self) -> int:
         """현재 파워 값 반환"""
