@@ -41,7 +41,7 @@ class PatternIconButton(QPushButton):
                     background-color: {Colors.CYAN_LIGHT};
                 }}
             """)
-            self.setIcon(Icons.get_icon(self._icon_svg, Colors.WHITE, icon_size))
+            self.setIcon(Icons.get_icon(self._icon_svg, icon_size, Colors.WHITE))
         else:
             # 미선택: 회색 배경 + Cyan 테두리
             self.setStyleSheet(f"""
@@ -54,7 +54,7 @@ class PatternIconButton(QPushButton):
                     background-color: {Colors.BG_TERTIARY};
                 }}
             """)
-            self.setIcon(Icons.get_icon(self._icon_svg, Colors.CYAN, icon_size))
+            self.setIcon(Icons.get_icon(self._icon_svg, icon_size, Colors.CYAN))
         self.setIconSize(QSize(icon_size, icon_size))
 
     def set_selected(self, selected: bool):
