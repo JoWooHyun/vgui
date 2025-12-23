@@ -16,7 +16,7 @@ from styles.colors import Colors
 from styles.fonts import Fonts
 from styles.icons import Icons
 from styles.stylesheets import (
-    AXIS_PANEL_STYLE, AXIS_TITLE_STYLE,
+    AXIS_PANEL_STYLE,
     Radius
 )
 
@@ -44,9 +44,17 @@ class LEDPowerPanel(QFrame):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(16)
 
-        # 타이틀
+        # 타이틀 (border 없음)
         self.title_label = QLabel("LED POWER SET")
-        self.title_label.setStyleSheet(AXIS_TITLE_STYLE)
+        self.title_label.setStyleSheet(f"""
+            QLabel {{
+                color: {Colors.NAVY};
+                font-size: 18px;
+                font-weight: 700;
+                background-color: transparent;
+                border: none;
+            }}
+        """)
         self.title_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.title_label)
 
@@ -80,7 +88,7 @@ class LEDPowerPanel(QFrame):
 
         layout.addStretch(1)
 
-        # ON/OFF 버튼
+        # ON/OFF 버튼 (디자인에 맞게 Navy/Gray 스타일)
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(16)
         btn_layout.setAlignment(Qt.AlignCenter)
@@ -91,14 +99,14 @@ class LEDPowerPanel(QFrame):
         self.btn_on.setFont(Fonts.h3())
         self.btn_on.setStyleSheet(f"""
             QPushButton {{
-                background-color: {Colors.TEAL};
+                background-color: {Colors.NAVY};
                 border: none;
                 border-radius: {Radius.MD}px;
                 color: {Colors.WHITE};
                 font-weight: 600;
             }}
             QPushButton:pressed {{
-                background-color: #0D9488;
+                background-color: {Colors.NAVY_LIGHT};
             }}
         """)
         self.btn_on.clicked.connect(self._on_led_on)
@@ -109,14 +117,14 @@ class LEDPowerPanel(QFrame):
         self.btn_off.setFont(Fonts.h3())
         self.btn_off.setStyleSheet(f"""
             QPushButton {{
-                background-color: {Colors.RED};
-                border: none;
+                background-color: {Colors.BG_PRIMARY};
+                border: 2px solid {Colors.BORDER};
                 border-radius: {Radius.MD}px;
-                color: {Colors.WHITE};
+                color: {Colors.TEXT_PRIMARY};
                 font-weight: 600;
             }}
             QPushButton:pressed {{
-                background-color: #B91C1C;
+                background-color: {Colors.BG_SECONDARY};
             }}
         """)
         self.btn_off.clicked.connect(self._on_led_off)
@@ -131,17 +139,21 @@ class LEDPowerPanel(QFrame):
         """파워 값 클릭 - 키패드 열기"""
         keypad = NumericKeypad(
             title="LED Power",
-            initial_value=self._power_value,
+            value=self._power_value,
             unit="%",
-            min_value=0,
-            max_value=100,
+            min_val=0,
+            max_val=100,
+            allow_decimal=False,
             parent=self.window()
         )
+        keypad.value_confirmed.connect(self._on_power_confirmed)
+        keypad.exec()
 
-        if keypad.exec():
-            self._power_value = int(keypad.get_value())
-            self.power_btn.setText(f"{self._power_value}%")
-            self.power_changed.emit(self._power_value)
+    def _on_power_confirmed(self, value: float):
+        """파워 값 확정"""
+        self._power_value = int(value)
+        self.power_btn.setText(f"{self._power_value}%")
+        self.power_changed.emit(self._power_value)
 
     def _on_led_on(self):
         """LED ON"""
@@ -186,21 +198,31 @@ class BladePanel(QFrame):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(16)
 
-        # 타이틀
+        # 타이틀 (border 없음)
         self.title_label = QLabel("BLADE SET")
-        self.title_label.setStyleSheet(AXIS_TITLE_STYLE)
+        self.title_label.setStyleSheet(f"""
+            QLabel {{
+                color: {Colors.NAVY};
+                font-size: 18px;
+                font-weight: 700;
+                background-color: transparent;
+                border: none;
+            }}
+        """)
         self.title_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.title_label)
 
         layout.addStretch(1)
 
-        # Speed 라벨
+        # Speed 라벨 (border 없음)
         speed_label = QLabel("Speed")
         speed_label.setAlignment(Qt.AlignCenter)
         speed_label.setStyleSheet(f"""
             QLabel {{
                 color: {Colors.TEXT_SECONDARY};
                 font-size: 14px;
+                background-color: transparent;
+                border: none;
             }}
         """)
         layout.addWidget(speed_label)
@@ -262,17 +284,21 @@ class BladePanel(QFrame):
         """속도 값 클릭 - 키패드 열기"""
         keypad = NumericKeypad(
             title="Blade Speed",
-            initial_value=self._speed_value,
+            value=self._speed_value,
             unit="mm/s",
-            min_value=1,
-            max_value=100,
+            min_val=1,
+            max_val=100,
+            allow_decimal=False,
             parent=self.window()
         )
+        keypad.value_confirmed.connect(self._on_speed_confirmed)
+        keypad.exec()
 
-        if keypad.exec():
-            self._speed_value = int(keypad.get_value())
-            self.speed_btn.setText(f"{self._speed_value} mm/s")
-            self.speed_changed.emit(self._speed_value)
+    def _on_speed_confirmed(self, value: float):
+        """속도 값 확정"""
+        self._speed_value = int(value)
+        self.speed_btn.setText(f"{self._speed_value} mm/s")
+        self.speed_changed.emit(self._speed_value)
 
     def get_speed(self) -> int:
         """현재 속도 값 반환"""
