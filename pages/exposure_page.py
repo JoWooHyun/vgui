@@ -4,7 +4,7 @@ NVR2+ 테스트 패턴 노출
 """
 
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QPushButton
-from PySide6.QtCore import Signal, Qt, QTimer
+from PySide6.QtCore import Signal, Qt, QTimer, QSize
 
 from pages.base_page import BasePage
 from components.number_dial import NumberDial
@@ -22,12 +22,13 @@ class PatternIconButton(QPushButton):
 
         self._selected = False
         self._icon_svg = icon_svg
-        self.setFixedSize(80, 80)
+        self.setFixedSize(100, 100)
         self.setCursor(Qt.PointingHandCursor)
         self._update_style()
 
     def _update_style(self):
         """선택 상태에 따른 스타일 업데이트"""
+        icon_size = 64
         if self._selected:
             # 선택됨: Cyan 배경
             self.setStyleSheet(f"""
@@ -40,7 +41,7 @@ class PatternIconButton(QPushButton):
                     background-color: {Colors.CYAN_LIGHT};
                 }}
             """)
-            self.setIcon(Icons.get_icon(self._icon_svg, Colors.WHITE, 48))
+            self.setIcon(Icons.get_icon(self._icon_svg, Colors.WHITE, icon_size))
         else:
             # 미선택: 회색 배경 + Cyan 테두리
             self.setStyleSheet(f"""
@@ -53,8 +54,8 @@ class PatternIconButton(QPushButton):
                     background-color: {Colors.BG_TERTIARY};
                 }}
             """)
-            self.setIcon(Icons.get_icon(self._icon_svg, Colors.CYAN, 48))
-        self.setIconSize(self.size() * 0.6)
+            self.setIcon(Icons.get_icon(self._icon_svg, Colors.CYAN, icon_size))
+        self.setIconSize(QSize(icon_size, icon_size))
 
     def set_selected(self, selected: bool):
         self._selected = selected
@@ -88,9 +89,12 @@ class ExposurePage(BasePage):
     def _setup_content(self):
         """콘텐츠 구성"""
         main_layout = QVBoxLayout()
-        main_layout.setSpacing(24)
+        main_layout.setSpacing(30)
         main_layout.setContentsMargins(40, 20, 40, 30)
-        
+
+        # 상단 여백
+        main_layout.addStretch(1)
+
         # === Row 1: Pattern Buttons ===
         row1 = QHBoxLayout()
         row1.setSpacing(20)
@@ -139,11 +143,11 @@ class ExposurePage(BasePage):
         row2.addStretch()
 
         main_layout.addLayout(row2)
-        
-        # 빈 공간
-        main_layout.addStretch()
-        
-        # === Row 4: START/STOP 버튼 ===
+
+        # 하단 여백
+        main_layout.addStretch(2)
+
+        # === Row 3: START/STOP 버튼 ===
         row4 = QHBoxLayout()
         
         self.btn_start = QPushButton("START")
