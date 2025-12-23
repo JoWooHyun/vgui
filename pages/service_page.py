@@ -63,9 +63,9 @@ class ServicePage(BasePage):
         
         # 서비스 정보
         self._info = {
-            "Email": "support@vericom.co.kr",
+            "Email": "vericom@vericom.co.kr",
             "Website": "www.vericom.co.kr",
-            "Tel": "02-xxxx-xxxx",
+            "Tel": "1661-2883",
         }
         
         self._setup_content()
