@@ -193,7 +193,6 @@ class MainWindow(QMainWindow):
         
         # 언어 설정 페이지
         self.language_page.go_back.connect(lambda: self._go_to_page(self.PAGE_SYSTEM))
-        self.language_page.language_changed.connect(self._on_language_changed)
         
         # 서비스 정보 페이지
         self.service_page.go_back.connect(lambda: self._go_to_page(self.PAGE_SYSTEM))
@@ -430,12 +429,7 @@ class MainWindow(QMainWindow):
             self.projector_window.close()
     
     # ==================== 시스템 메뉴 ====================
-    
-    def _on_language_changed(self, lang_code: str):
-        """언어 변경됨"""
-        print(f"[System] Language changed to: {lang_code}")
-        # TODO: 언어 설정 저장 및 적용
-    
+
     def _send_gcode(self, gcode: str):
         """G-code 전송 (Moonraker API)"""
         # TODO: Moonraker API 연동

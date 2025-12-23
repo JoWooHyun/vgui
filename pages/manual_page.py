@@ -29,14 +29,15 @@ class AxisControlPanel(QFrame):
     home_axis = Signal()           # 홈 위치로
     stop_axis = Signal()           # 정지
     
-    def __init__(self, axis_name: str, is_horizontal: bool = False, 
-                 parent=None):
+    def __init__(self, axis_name: str, is_horizontal: bool = False,
+                 distances: list = None, parent=None):
         super().__init__(parent)
-        
+
         self._axis_name = axis_name
         self._is_horizontal = is_horizontal  # True면 좌우, False면 상하
+        self._distances = distances  # 커스텀 거리 목록
         self._current_value = 0.0
-        
+
         self._setup_ui()
     
     def _setup_ui(self):
@@ -47,25 +48,18 @@ class AxisControlPanel(QFrame):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(16)
         
-        # 헤더 (축 이름 + 현재 값)
-        header = QHBoxLayout()
-        
+        # 헤더 (축 이름 - 가운데 정렬)
         self.title_label = QLabel(self._axis_name)
         self.title_label.setStyleSheet(AXIS_TITLE_STYLE)
-        
-        self.value_label = QLabel(f"{self._current_value:.2f} mm")
-        self.value_label.setFont(Fonts.mono_large())
-        self.value_label.setStyleSheet(AXIS_VALUE_STYLE)
-        self.value_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        
-        header.addWidget(self.title_label)
-        header.addStretch()
-        header.addWidget(self.value_label)
-        
-        layout.addLayout(header)
+        self.title_label.setAlignment(Qt.AlignCenter)
+
+        layout.addWidget(self.title_label)
         
         # 거리 선택기
-        self.distance_selector = DistanceSelector()
+        if self._distances:
+            self.distance_selector = DistanceSelector(distances=self._distances)
+        else:
+            self.distance_selector = DistanceSelector()
         layout.addWidget(self.distance_selector)
         
         # 제어 버튼들
@@ -117,9 +111,8 @@ class AxisControlPanel(QFrame):
         self.move_negative.emit(distance)
     
     def set_value(self, value: float):
-        """현재 값 업데이트"""
+        """현재 값 업데이트 (사용 안함)"""
         self._current_value = value
-        self.value_label.setText(f"{value:.2f} mm")
 
 
 class ManualPage(BasePage):
@@ -151,8 +144,9 @@ class ManualPage(BasePage):
         self.z_panel.home_axis.connect(self.z_home.emit)
         self.z_panel.stop_axis.connect(self.z_stop.emit)
         
-        # X축 패널 (블레이드)
-        self.x_panel = AxisControlPanel("X Axis (Blade)", is_horizontal=True)
+        # X축 패널 (블레이드) - 거리 1, 10, 100
+        self.x_panel = AxisControlPanel("X Axis (Blade)", is_horizontal=True,
+                                         distances=[1, 10, 100])
         self.x_panel.move_positive.connect(lambda d: self.x_move.emit(d))
         self.x_panel.move_negative.connect(lambda d: self.x_move.emit(-d))
         self.x_panel.home_axis.connect(self.x_home.emit)

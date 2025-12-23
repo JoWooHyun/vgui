@@ -203,11 +203,15 @@ class DistanceSelector(QWidget):
         layout.setSpacing(8)
         
         for i, dist in enumerate(self._distances):
-            btn = QPushButton(f"{dist}mm")
+            # 정수면 정수로, 소수면 소수로 표시 (mm 단위 없음)
+            if dist == int(dist):
+                btn = QPushButton(f"{int(dist)}")
+            else:
+                btn = QPushButton(f"{dist}")
             btn.setFixedHeight(40)
             btn.setCursor(Qt.PointingHandCursor)
             btn.clicked.connect(lambda checked, idx=i: self._select(idx))
-            
+
             self._buttons.append(btn)
             layout.addWidget(btn)
         
