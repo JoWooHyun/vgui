@@ -18,7 +18,7 @@ from styles.fonts import Fonts
 from styles.icons import Icons
 from styles.stylesheets import (
     BUTTON_FILE_ITEM_STYLE, BUTTON_FILE_ITEM_SELECTED_STYLE,
-    BUTTON_NAV_STYLE
+    get_button_nav_style
 )
 
 
@@ -231,7 +231,7 @@ class PrintPage(BasePage):
         
         self.btn_up = QPushButton()
         self.btn_up.setFixedSize(80, 80)
-        self.btn_up.setStyleSheet(BUTTON_NAV_STYLE)
+        self.btn_up.setStyleSheet(get_button_nav_style())
         self.btn_up.setCursor(Qt.PointingHandCursor)
         self.btn_up.setIcon(Icons.get_icon(Icons.CHEVRON_UP, 32, Colors.NAVY))
         self.btn_up.setIconSize(QSize(32, 32))
@@ -239,7 +239,7 @@ class PrintPage(BasePage):
         
         self.btn_down = QPushButton()
         self.btn_down.setFixedSize(80, 80)
-        self.btn_down.setStyleSheet(BUTTON_NAV_STYLE)
+        self.btn_down.setStyleSheet(get_button_nav_style())
         self.btn_down.setCursor(Qt.PointingHandCursor)
         self.btn_down.setIcon(Icons.get_icon(Icons.CHEVRON_DOWN, 32, Colors.NAVY))
         self.btn_down.setIconSize(QSize(32, 32))
@@ -269,7 +269,7 @@ class PrintPage(BasePage):
         
         self.btn_home = QPushButton()
         self.btn_home.setFixedSize(80, 80)
-        self.btn_home.setStyleSheet(BUTTON_NAV_STYLE)
+        self.btn_home.setStyleSheet(get_button_nav_style())
         self.btn_home.setCursor(Qt.PointingHandCursor)
         self.btn_home.setIcon(Icons.get_icon(Icons.HOME, 32, Colors.NAVY))
         self.btn_home.setIconSize(QSize(32, 32))

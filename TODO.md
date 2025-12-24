@@ -134,6 +134,17 @@
 - [x] 동적 스타일 함수 추가 (get_*_style()) (2025-12-24)
 - [x] 다이얼로그 테마 지원 (NumberDial) (2025-12-24)
 - [x] QStackedWidget 배경색 테마 연동 (2025-12-24)
+- [x] FilePreviewPage 아이콘 기반 정보 표시 (2025-12-24)
+  - 5개 파라미터: totalLayer, estimatedPrintTime, layerHeight, bottomLayerExposureTime, normalExposureTime
+  - 커스텀 아이콘: EXPOSURE_NORMAL (광선+레이어), EXPOSURE_BOTTOM (레이어+바닥선)
+- [x] Blade Speed 단위 변경 (2025-12-24)
+  - mm/min → mm/s 표시
+  - 범위: 10-100 mm/s (실제값 = 표시값 × 50)
+- [x] Manual 페이지 다크모드 버튼 수정 (2025-12-24)
+  - get_button_control_style(), get_button_home_style() 동적 함수 추가
+- [x] Print 페이지 다크모드 버튼 수정 (2025-12-24)
+  - get_button_nav_style() 동적 함수 추가
+  - btn_up, btn_down, btn_home 테마 지원
 
 ---
 

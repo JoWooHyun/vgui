@@ -506,8 +506,10 @@ QPushButton:pressed {{
 
 BUTTON_HOME_STYLE = get_button_home_style()
 
-# Nav Button (네비게이션)
-BUTTON_NAV_STYLE = f"""
+
+def get_button_nav_style():
+    """네비게이션 버튼 스타일 (동적)"""
+    return f"""
 QPushButton {{
     background-color: {Colors.BG_SECONDARY};
     border: 2px solid {Colors.BORDER};
@@ -517,6 +519,10 @@ QPushButton:pressed {{
     background-color: {Colors.BG_TERTIARY};
 }}
 """
+
+
+# Nav Button (네비게이션) - 호환성을 위해 유지
+BUTTON_NAV_STYLE = get_button_nav_style()
 
 # File Item Button
 BUTTON_FILE_ITEM_STYLE = f"""

@@ -149,6 +149,16 @@ self.button.setStyleSheet(get_button_style())  # 함수 호출
 □ Colors 클래스 속성 직접 참조 (Colors.NAVY 등)
 ```
 
+**동적 스타일 함수 목록:**
+| 함수명 | 용도 | 사용처 |
+|--------|------|--------|
+| `get_button_control_style()` | 방향 제어 버튼 (상하좌우) | ManualPage, ControlButton |
+| `get_button_home_style()` | 홈 버튼 (시안 테두리) | ManualPage, HomeButton |
+| `get_button_nav_style()` | 네비게이션 버튼 | PrintPage (up/down/home) |
+| `get_tool_button_style()` | 도구 메뉴 버튼 | ToolButton |
+| `get_tool_button_danger_style()` | 위험 도구 버튼 (빨강) | ToolButton (is_danger) |
+| `get_main_menu_button_style()` | 메인 메뉴 큰 버튼 | MainMenuButton |
+
 ### 2.5 라즈베리파이 주의사항 ⚠️
 ```
 ❌ 피해야 할 것:
@@ -286,15 +296,36 @@ Content: 나머지 영역 (padding 20px)
 ### 5.5 편집 가능 행 (EditableRow) ✅
 ```
 ┌──────────────────────────────────────────┐
-│ Blade Speed         1500 mm/min       ✎ │  ← Cyan 테두리 + EDIT 아이콘
+│ Blade Speed              30 mm/s     ✎ │  ← Cyan 테두리 + EDIT 아이콘
 └──────────────────────────────────────────┘
 
 - 클릭 시 NumericKeypad 팝업
 - 라벨 폭: 110px
 - EDIT 아이콘: 18px
+- Blade Speed: 10-100 mm/s (실제값 = 표시값 × 50)
 ```
 
-### 5.6 진행률 바 (QProgressBar) ✅ NEW
+### 5.6 정보 행 (InfoRow) ✅ NEW
+```
+┌──────────────────────────────────────────┐
+│ 📦  120                                  │  ← 아이콘 + 값 (우측 정렬)
+│ ⏱️  45 min                               │
+│ 📏  0.05 mm                              │
+│ ☀️⬇ 50 sec                               │  ← EXPOSURE_BOTTOM (바닥 노출)
+│ ☀️  8 sec                                │  ← EXPOSURE_NORMAL (일반 노출)
+└──────────────────────────────────────────┘
+
+- FilePreviewPage에서 사용
+- 아이콘 기반 정보 표시 (텍스트 라벨 대신)
+- 커스텀 아이콘:
+  - STACK: 레이어 수 (totalLayer)
+  - TIMER: 예상 시간 (estimatedPrintTime)
+  - RULER: 레이어 높이 (layerHeight)
+  - EXPOSURE_BOTTOM: 바닥 노출 시간 (광선 없이 레이어 + 바닥선)
+  - EXPOSURE_NORMAL: 일반 노출 시간 (위쪽 광선 + 레이어)
+```
+
+### 5.7 진행률 바 (QProgressBar) ✅
 ```
 ┌────────────────────────────────────────────────┐
 │████████████████░░░░░░░░░░░░░░░░░░░░░░   45%    │
@@ -306,7 +337,7 @@ Content: 나머지 영역 (padding 20px)
 - 퍼센트 라벨: 별도 QLabel (우측)
 ```
 
-### 5.7 확인 다이얼로그 (ConfirmDialog)
+### 5.8 확인 다이얼로그 (ConfirmDialog)
 ```
 ┌─────────────────────────────┐
 │         Delete File          │
@@ -318,7 +349,7 @@ Content: 나머지 영역 (padding 20px)
 └─────────────────────────────┘
 ```
 
-### 5.8 완료 다이얼로그 (CompletedDialog) ✅ NEW
+### 5.9 완료 다이얼로그 (CompletedDialog) ✅
 ```
 ┌─────────────────────────────┐
 │                              │
@@ -332,7 +363,7 @@ Content: 나머지 영역 (padding 20px)
 - 확인 버튼: Cyan 배경
 ```
 
-### 5.9 정지 확인 다이얼로그 (StopConfirmDialog) ✅ NEW
+### 5.10 정지 확인 다이얼로그 (StopConfirmDialog) ✅
 ```
 ┌─────────────────────────────┐
 │                              │
@@ -432,8 +463,9 @@ Main (L0)
 └── Print (L1) ✅
     ├── File List (L2) ──────────── 파일 목록 (3×2 그리드) ✅
     │   └── 썸네일 + 파일명, Open 버튼으로 이동
-    ├── File Preview (L2) ───────── 파일 미리보기 ✅
-    │   └── 썸네일, 파라미터 정보, Blade Speed/LED Power 편집
+    ├── File Preview (L2) ───────── 파일 미리보기 ✅ 업데이트
+    │   └── 아이콘 기반 정보 표시 (5개 파라미터)
+    │   └── Blade Speed: mm/s 단위 (실제값 = 표시값 × 50)
     │   └── Delete/Start 버튼, NumericKeypad 팝업
     └── Print Progress (L2) ─────── 인쇄 진행 ✅
         └── 진행률, 레이어, 시간, PAUSE/STOP 버튼
@@ -494,7 +526,7 @@ vgui/
 │   ├── __init__.py
 │   ├── colors.py              ✅ 동적 테마 (메타클래스)
 │   ├── fonts.py
-│   ├── icons.py               ✅ EDIT, SUN 아이콘 추가
+│   ├── icons.py               ✅ 커스텀 아이콘 추가 (EDIT, SUN, EXPOSURE_NORMAL/BOTTOM, STACK, TIMER, RULER)
 │   └── stylesheets.py         ✅ 동적 스타일 함수 추가
 ├── controllers/                # 하드웨어/설정 컨트롤러 ✅ NEW
 │   ├── motor_controller.py     # Moonraker API
@@ -732,6 +764,7 @@ self.header.title_label.setText()   # ⚠️ 직접 접근 (비권장)
 | 7.0 | 2024-12-23 | 해상도 1024x600 변경, Exposure 아이콘버튼+LOGO패턴, Language 4버튼, Manual 위치삭제/X거리변경, Service/DeviceInfo 정보 업데이트, 홈 타임아웃 100초 |
 | 7.1 | 2025-12-23 | **Setting 페이지 추가** (LED Power/Blade Speed), **SettingsManager** (JSON 저장), System 페이지 6버튼 그리드, Theme 버튼 추가, controllers/workers/windows 폴더 구조 추가, PrintWorker/Moonraker/NVR2+ 연동 완료 |
 | 7.2 | 2025-12-24 | **테마 시스템 완성** (Light/Dark), ThemeManager 싱글톤, Colors 메타클래스 동적 테마, 동적 스타일 함수 (get_*_style()), 다이얼로그 테마 지원, QStackedWidget 배경 수정 |
+| 7.3 | 2025-12-24 | **FilePreviewPage 개선**: 아이콘 기반 정보 표시 (EXPOSURE_NORMAL/BOTTOM 커스텀 아이콘), Blade Speed mm/s 단위 (×50 변환), **다크모드 버튼 수정**: get_button_nav_style() 추가, Manual/Print 페이지 버튼 테마 지원 |
 
 ---
 
