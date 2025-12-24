@@ -77,38 +77,6 @@ class ThemeColors:
         "TEXT_EMPHASIS": "#FFFFFF",
     }
 
-    # ========== Dark Amber Theme (Printing / Active Mode) ==========
-    DARK_AMBER = {
-        "name": "Dark Amber",
-        # Core
-        "NAVY": "#FB8C00",           # Primary (Amber)
-        "NAVY_LIGHT": "#FBBF24",
-        "NAVY_DARK": "#D97706",
-        "CYAN": "#FFB74D",           # Accent
-        "CYAN_LIGHT": "#FFE0B2",     # Highlight
-        "CYAN_DARK": "#F59E0B",
-        # Semantic
-        "RED": "#EF4444",            # Danger
-        "RED_LIGHT": "#450A0A",
-        "RED_DARK": "#DC2626",
-        "TEAL": "#2DD4BF",
-        "TEAL_LIGHT": "#134E4A",
-        "AMBER": "#FB8C00",          # Warning
-        "AMBER_LIGHT": "#78350F",
-        "GREEN": "#22C55E",          # Success
-        "GREEN_LIGHT": "#14532D",
-        # Neutral
-        "WHITE": "#FFFFFF",
-        "BG_PRIMARY": "#1B1B1B",     # 어두운 배경
-        "BG_SECONDARY": "#262626",   # 카드 배경
-        "BG_TERTIARY": "#3A2A1A",    # 비활성 배경
-        "BORDER": "#4B5563",
-        "BORDER_LIGHT": "#374151",
-        "TEXT_PRIMARY": "#FAFAFA",   # 밝은 텍스트
-        "TEXT_SECONDARY": "#E5E5E5",
-        "TEXT_DISABLED": "#9CA3AF",
-        "TEXT_EMPHASIS": "#FFFFFF",
-    }
 
 
 class ThemeManager(QObject):
@@ -134,7 +102,6 @@ class ThemeManager(QObject):
         self._themes = {
             "Light": ThemeColors.LIGHT,
             "Dark": ThemeColors.DARK,
-            "Dark Amber": ThemeColors.DARK_AMBER,
         }
 
         # 저장된 테마 로드

@@ -9,7 +9,7 @@ from PySide6.QtGui import QPixmap
 from styles.colors import Colors
 from styles.icons import Icons
 from styles.stylesheets import (
-    HEADER_STYLE, HEADER_TITLE_STYLE, BUTTON_BACK_STYLE
+    get_header_style, get_header_title_style, get_back_button_style
 )
 
 
@@ -35,39 +35,39 @@ class Header(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(20, 0, 20, 0)
         layout.setSpacing(16)
-        
+
         # Back 버튼
         self.btn_back = QPushButton()
         self.btn_back.setFixedSize(40, 40)
-        self.btn_back.setStyleSheet(BUTTON_BACK_STYLE)
+        self.btn_back.setStyleSheet(get_back_button_style())
         self.btn_back.setCursor(Qt.PointingHandCursor)
         self.btn_back.clicked.connect(self.back_clicked.emit)
-        
+
         # Back 아이콘 설정
         icon_pixmap = Icons.get_pixmap(Icons.ARROW_LEFT, 20, Colors.NAVY)
         self.btn_back.setIcon(Icons.get_icon(Icons.ARROW_LEFT, 20, Colors.NAVY))
         self.btn_back.setIconSize(icon_pixmap.size())
-        
+
         if not self._show_back:
             self.btn_back.setVisible(False)
-        
+
         # 타이틀
         self.title_label = QLabel(self._title)
-        self.title_label.setStyleSheet(HEADER_TITLE_STYLE)
+        self.title_label.setStyleSheet(get_header_title_style())
         self.title_label.setAlignment(Qt.AlignCenter)
-        
-        # 우측 여백 (Back 버튼과 균형)
+
+        # 우측 여백 (Back 버튼과 균형) - 투명하게 처리
         self.right_spacer = QWidget()
         self.right_spacer.setFixedSize(40, 40)
-        self.right_spacer.setStyleSheet(f"background-color: {Colors.BG_SECONDARY};")
-        
+        self.right_spacer.setStyleSheet("background-color: transparent;")
+
         # 레이아웃 구성
         layout.addWidget(self.btn_back)
         layout.addWidget(self.title_label, 1)
         layout.addWidget(self.right_spacer)
-        
+
         # 스타일 적용
-        self.setStyleSheet(HEADER_STYLE)
+        self.setStyleSheet(get_header_style())
     
     def set_title(self, title: str):
         """타이틀 변경"""

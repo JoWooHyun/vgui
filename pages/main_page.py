@@ -39,7 +39,7 @@ class MainPage(QWidget):
         # 상단 타이틀 영역
         title_widget = QWidget()
         title_widget.setFixedHeight(80)
-        title_widget.setStyleSheet(f"background-color: {Colors.BG_SECONDARY};")
+        title_widget.setStyleSheet(f"background-color: {Colors.BG_PRIMARY};")
 
         title_layout = QVBoxLayout(title_widget)
         title_layout.setAlignment(Qt.AlignCenter)

@@ -1,6 +1,7 @@
 """
 VERICOM DLP 3D Printer GUI - Stylesheets
 모든 컴포넌트의 QSS 스타일 정의
+동적 테마 지원을 위해 함수 형태로 제공
 """
 
 from .colors import Colors
@@ -26,7 +27,110 @@ class Radius:
 
 
 # ============================================================
-# 글로벌 스타일
+# 동적 스타일 함수들 (테마 변경 시 호출)
+# ============================================================
+
+def get_global_style():
+    """글로벌 스타일"""
+    return f"""
+QMainWindow {{
+    background-color: {Colors.BG_PRIMARY};
+}}
+
+QWidget {{
+    font-family: "Pretendard", "Noto Sans KR", sans-serif;
+}}
+
+QLabel {{
+    color: {Colors.TEXT_PRIMARY};
+}}
+"""
+
+def get_tool_button_style():
+    """도구 버튼 스타일"""
+    return f"""
+QPushButton {{
+    background-color: {Colors.BG_SECONDARY};
+    border: 2px solid {Colors.BORDER};
+    border-radius: {Radius.LG}px;
+    color: {Colors.NAVY};
+    font-size: 16px;
+    font-weight: 600;
+}}
+QPushButton:pressed {{
+    background-color: {Colors.BG_TERTIARY};
+    border-color: {Colors.CYAN};
+}}
+"""
+
+def get_tool_button_danger_style():
+    """도구 버튼 위험 스타일"""
+    return f"""
+QPushButton {{
+    background-color: {Colors.BG_SECONDARY};
+    border: 2px solid {Colors.RED};
+    border-radius: {Radius.LG}px;
+    color: {Colors.RED};
+    font-size: 16px;
+    font-weight: 600;
+}}
+QPushButton:pressed {{
+    background-color: {Colors.RED_LIGHT};
+}}
+"""
+
+def get_main_menu_button_style():
+    """메인 메뉴 버튼 스타일"""
+    return f"""
+QPushButton {{
+    background-color: {Colors.BG_SECONDARY};
+    border: 2px solid {Colors.BORDER};
+    border-radius: {Radius.XL}px;
+    color: {Colors.NAVY};
+    font-size: 20px;
+    font-weight: 600;
+}}
+QPushButton:pressed {{
+    background-color: {Colors.BG_TERTIARY};
+    border-color: {Colors.CYAN};
+}}
+"""
+
+def get_back_button_style():
+    """뒤로가기 버튼 스타일"""
+    return f"""
+QPushButton {{
+    background-color: {Colors.BG_SECONDARY};
+    border: 2px solid {Colors.NAVY};
+    border-radius: 10px;
+    padding: 0px;
+}}
+QPushButton:pressed {{
+    background-color: {Colors.BG_TERTIARY};
+}}
+"""
+
+def get_header_style():
+    """헤더 스타일"""
+    return f"""
+QWidget#header {{
+    background-color: {Colors.BG_PRIMARY};
+    border-bottom: 1px solid {Colors.BORDER};
+}}
+"""
+
+def get_header_title_style():
+    """헤더 타이틀 스타일"""
+    return f"""
+QLabel {{
+    color: {Colors.NAVY};
+    font-size: 18px;
+    font-weight: 600;
+}}
+"""
+
+# ============================================================
+# 글로벌 스타일 (정적 - 하위 호환성)
 # ============================================================
 
 GLOBAL_STYLE = f"""

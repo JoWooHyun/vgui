@@ -10,8 +10,8 @@ from styles.colors import Colors
 from styles.icons import Icons
 from styles.stylesheets import (
     BUTTON_ICON_STYLE, BUTTON_ICON_ACTIVE_STYLE,
-    BUTTON_MAIN_MENU_STYLE, BUTTON_TOOL_STYLE, BUTTON_TOOL_DANGER_STYLE,
-    BUTTON_CONTROL_STYLE, BUTTON_HOME_STYLE
+    BUTTON_CONTROL_STYLE, BUTTON_HOME_STYLE,
+    get_tool_button_style, get_tool_button_danger_style, get_main_menu_button_style
 )
 
 
@@ -79,29 +79,29 @@ class HomeButton(IconButton):
 
 class MainMenuButton(QPushButton):
     """메인 메뉴 큰 버튼 (아이콘 + 텍스트)"""
-    
+
     def __init__(self, text: str, icon_svg: str, parent=None):
         super().__init__(parent)
-        
+
         self._text = text
         self._icon_svg = icon_svg
-        
+
         self.setFixedSize(200, 200)
         self.setCursor(Qt.PointingHandCursor)
-        self.setStyleSheet(BUTTON_MAIN_MENU_STYLE)
-        
+        self.setStyleSheet(get_main_menu_button_style())
+
         self._setup_content()
-    
+
     def _setup_content(self):
         """버튼 내용 구성"""
         # 아이콘 설정
         icon = Icons.get_icon(self._icon_svg, 64, Colors.NAVY)
         self.setIcon(icon)
         self.setIconSize(QSize(64, 64))
-        
+
         # 텍스트 설정
         self.setText(self._text)
-        
+
         # 아이콘 위, 텍스트 아래 배치를 위한 스타일
         self.setStyleSheet(self.styleSheet() + """
             QPushButton {
@@ -113,33 +113,33 @@ class MainMenuButton(QPushButton):
 
 class ToolButton(QPushButton):
     """도구 메뉴 버튼 (아이콘 + 텍스트)"""
-    
-    def __init__(self, text: str, icon_svg: str, is_danger: bool = False, 
+
+    def __init__(self, text: str, icon_svg: str, is_danger: bool = False,
                  parent=None):
         super().__init__(parent)
-        
+
         self._text = text
         self._icon_svg = icon_svg
         self._is_danger = is_danger
-        
+
         self.setCursor(Qt.PointingHandCursor)
-        
+
         if is_danger:
-            self.setStyleSheet(BUTTON_TOOL_DANGER_STYLE)
+            self.setStyleSheet(get_tool_button_danger_style())
             self._color = Colors.RED
         else:
-            self.setStyleSheet(BUTTON_TOOL_STYLE)
+            self.setStyleSheet(get_tool_button_style())
             self._color = Colors.NAVY
-        
+
         self._setup_content()
-    
+
     def _setup_content(self):
         """버튼 내용 구성"""
         # 아이콘 설정
         icon = Icons.get_icon(self._icon_svg, 40, self._color)
         self.setIcon(icon)
         self.setIconSize(QSize(40, 40))
-        
+
         # 텍스트 설정
         self.setText(self._text)
 

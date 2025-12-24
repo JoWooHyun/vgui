@@ -1,6 +1,6 @@
 """
 VERICOM DLP 3D Printer GUI - Theme Page
-Light / Dark / Dark Amber 테마 선택
+Light / Dark 테마 선택
 """
 
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QPushButton, QLabel
@@ -153,15 +153,9 @@ class ThemePage(BasePage):
         self.btn_dark.clicked.connect(lambda: self._select_theme("Dark"))
         self._buttons["Dark"] = self.btn_dark
 
-        # Dark Amber 테마
-        self.btn_amber = ThemeButton("Dark Amber", "Dark Amber")
-        self.btn_amber.clicked.connect(lambda: self._select_theme("Dark Amber"))
-        self._buttons["Dark Amber"] = self.btn_amber
-
         btn_layout.addStretch()
         btn_layout.addWidget(self.btn_light)
         btn_layout.addWidget(self.btn_dark)
-        btn_layout.addWidget(self.btn_amber)
         btn_layout.addStretch()
 
         main_layout.addLayout(btn_layout)
