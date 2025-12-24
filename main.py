@@ -19,7 +19,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QStackedWidget
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QCursor
 
-from styles.stylesheets import GLOBAL_STYLE, get_global_style
+from styles.stylesheets import get_global_style
 from pages.main_page import MainPage
 from pages.tool_page import ToolPage
 from pages.manual_page import ManualPage
@@ -657,8 +657,8 @@ def main():
 
     app = QApplication(sys.argv)
 
-    # 글로벌 스타일 적용
-    app.setStyleSheet(GLOBAL_STYLE)
+    # 글로벌 스타일 적용 (동적 함수 사용 - 저장된 테마 반영)
+    app.setStyleSheet(get_global_style())
 
     # 메인 윈도우 생성 및 표시
     window = MainWindow(kiosk_mode=kiosk, simulation=simulation)

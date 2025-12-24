@@ -56,10 +56,10 @@ class Header(QWidget):
         self.title_label.setStyleSheet(get_header_title_style())
         self.title_label.setAlignment(Qt.AlignCenter)
 
-        # 우측 여백 (Back 버튼과 균형) - 투명하게 처리
+        # 우측 여백 (Back 버튼과 균형) - 헤더 배경색과 동일하게
         self.right_spacer = QWidget()
         self.right_spacer.setFixedSize(40, 40)
-        self.right_spacer.setStyleSheet("background-color: transparent;")
+        self.right_spacer.setStyleSheet(f"background-color: {Colors.BG_PRIMARY};")
 
         # 레이아웃 구성
         layout.addWidget(self.btn_back)
