@@ -18,39 +18,39 @@ from styles.icons import Icons
 
 
 class ProgressInfoRow(QFrame):
-    """진행 정보 표시 행"""
-    
-    def __init__(self, label: str, value: str = "-", parent=None):
+    """진행 정보 표시 행 (아이콘 + 값)"""
+
+    def __init__(self, icon_svg: str, value: str = "-", parent=None):
         super().__init__(parent)
-        
-        self.setFixedHeight(32)
+
+        self.setFixedHeight(28)
         self.setStyleSheet(f"""
             QFrame {{
                 background-color: {Colors.BG_SECONDARY};
                 border: none;
-                border-radius: 6px;
+                border-radius: 4px;
             }}
         """)
-        
+
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(12, 0, 12, 0)
-        layout.setSpacing(8)
-        
-        # 라벨
-        self.lbl_label = QLabel(label)
-        self.lbl_label.setFont(Fonts.body_small())
-        self.lbl_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; background-color: transparent; border: none;")
-        self.lbl_label.setFixedWidth(100)
-        
+        layout.setContentsMargins(8, 0, 10, 0)
+        layout.setSpacing(6)
+
+        # 아이콘
+        self.lbl_icon = QLabel()
+        self.lbl_icon.setFixedSize(18, 18)
+        self.lbl_icon.setPixmap(Icons.get_pixmap(icon_svg, 16, Colors.CYAN))
+        self.lbl_icon.setStyleSheet(f"background: {Colors.BG_SECONDARY}; border: none;")
+
         # 값
         self.lbl_value = QLabel(value)
-        self.lbl_value.setFont(Fonts.body())
+        self.lbl_value.setFont(Fonts.body_small())
         self.lbl_value.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.lbl_value.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; background-color: transparent; border: none;")
-        
-        layout.addWidget(self.lbl_label)
+        self.lbl_value.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; background: {Colors.BG_SECONDARY};")
+
+        layout.addWidget(self.lbl_icon)
         layout.addWidget(self.lbl_value, 1)
-    
+
     def set_value(self, value: str):
         """값 설정"""
         self.lbl_value.setText(value)
@@ -300,18 +300,45 @@ class PrintProgressPage(BasePage):
         right_layout.addLayout(top_section)
         right_layout.addSpacing(4)
         
-        # 정보 행들
-        self.row_layer = ProgressInfoRow("Layer")
-        self.row_elapsed = ProgressInfoRow("Elapsed")
-        self.row_remaining = ProgressInfoRow("Remaining")
-        self.row_blade_speed = ProgressInfoRow("Blade Speed")
-        self.row_led_power = ProgressInfoRow("LED Power")
-        
-        right_layout.addWidget(self.row_layer)
-        right_layout.addWidget(self.row_elapsed)
-        right_layout.addWidget(self.row_remaining)
-        right_layout.addWidget(self.row_blade_speed)
-        right_layout.addWidget(self.row_led_power)
+        # 정보 행들 (3열 그리드)
+        info_grid = QHBoxLayout()
+        info_grid.setSpacing(8)
+
+        # 왼쪽 열: 진행 정보
+        left_col = QVBoxLayout()
+        left_col.setSpacing(4)
+        self.row_layer = ProgressInfoRow(Icons.STACK)  # 현재/총 레이어
+        self.row_elapsed = ProgressInfoRow(Icons.CLOCK)  # 경과 시간
+        self.row_remaining = ProgressInfoRow(Icons.HOURGLASS)  # 남은 시간
+        left_col.addWidget(self.row_layer)
+        left_col.addWidget(self.row_elapsed)
+        left_col.addWidget(self.row_remaining)
+
+        # 중앙 열: 레이어 정보
+        center_col = QVBoxLayout()
+        center_col.setSpacing(4)
+        self.row_layer_height = ProgressInfoRow(Icons.RULER)  # 레이어 높이
+        self.row_bottom_exposure = ProgressInfoRow(Icons.EXPOSURE_BOTTOM)  # 바닥 노출
+        self.row_normal_exposure = ProgressInfoRow(Icons.EXPOSURE_NORMAL)  # 일반 노출
+        center_col.addWidget(self.row_layer_height)
+        center_col.addWidget(self.row_bottom_exposure)
+        center_col.addWidget(self.row_normal_exposure)
+
+        # 오른쪽 열: 설정 정보
+        right_col = QVBoxLayout()
+        right_col.setSpacing(4)
+        self.row_bottom_layers = ProgressInfoRow(Icons.BOTTOM_LAYERS)  # 바닥 레이어 수
+        self.row_blade_speed = ProgressInfoRow(Icons.BLADE_SPEED)  # 블레이드 속도
+        self.row_led_power = ProgressInfoRow(Icons.LED_POWER)  # LED 파워
+        right_col.addWidget(self.row_bottom_layers)
+        right_col.addWidget(self.row_blade_speed)
+        right_col.addWidget(self.row_led_power)
+
+        info_grid.addLayout(left_col)
+        info_grid.addLayout(center_col)
+        info_grid.addLayout(right_col)
+
+        right_layout.addLayout(info_grid)
         
         right_layout.addStretch()
         
@@ -452,9 +479,25 @@ class PrintProgressPage(BasePage):
     
     # === Public API (Worker에서 호출) ===
     
-    def set_print_info(self, file_path: str, thumbnail: QPixmap, 
-                       total_layers: int, blade_speed: int, led_power: int):
-        """프린트 정보 설정 (시작 시 호출)"""
+    def set_print_info(self, file_path: str, thumbnail: QPixmap,
+                       total_layers: int, blade_speed: int, led_power: int,
+                       estimated_time: int = 0, layer_height: float = 0.0,
+                       bottom_exposure: float = 0.0, normal_exposure: float = 0.0,
+                       bottom_layer_count: int = 0):
+        """프린트 정보 설정 (시작 시 호출)
+
+        Args:
+            file_path: 파일 경로
+            thumbnail: 썸네일 이미지
+            total_layers: 총 레이어 수
+            blade_speed: 블레이드 속도 (mm/min)
+            led_power: LED 파워 (%)
+            estimated_time: 예상 시간 (초)
+            layer_height: 레이어 높이 (mm)
+            bottom_exposure: 바닥 노출 시간 (초)
+            normal_exposure: 일반 노출 시간 (초)
+            bottom_layer_count: 바닥 레이어 개수
+        """
         self._file_path = file_path
         self._total_layers = total_layers
         self._blade_speed = blade_speed
@@ -462,32 +505,41 @@ class PrintProgressPage(BasePage):
         self._current_layer = 0
         self._elapsed_sec = 0
         self._status = self.STATUS_PRINTING
-        
+
         # UI 업데이트
         filename = os.path.basename(file_path)
         self.lbl_filename.setText(filename)
-        
+
         if thumbnail:
             scaled = thumbnail.scaled(112, 92, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             self.lbl_thumbnail.setPixmap(scaled)
         else:
             self.lbl_thumbnail.setPixmap(Icons.get_pixmap(Icons.FILE, 48, Colors.TEXT_DISABLED))
-        
+
+        # 왼쪽 열: 진행 정보
         self.row_layer.set_value(f"0 / {total_layers}")
         self.row_elapsed.set_value("00:00")
-        self.row_remaining.set_value("--:--")
-        self.row_blade_speed.set_value(f"{blade_speed} mm/min")
+        self.row_remaining.set_value(self._format_time(estimated_time) if estimated_time > 0 else "--:--")
+
+        # 중앙 열: 레이어 정보
+        self.row_layer_height.set_value(f"{layer_height:.3f} mm" if layer_height > 0 else "-")
+        self.row_bottom_exposure.set_value(f"{bottom_exposure:.1f} s" if bottom_exposure > 0 else "-")
+        self.row_normal_exposure.set_value(f"{normal_exposure:.1f} s" if normal_exposure > 0 else "-")
+
+        # 오른쪽 열: 설정 정보
+        self.row_bottom_layers.set_value(f"{bottom_layer_count}" if bottom_layer_count > 0 else "-")
+        self.row_blade_speed.set_value(f"{blade_speed / 50:.0f} mm/s")  # mm/min을 mm/s로 표시
         self.row_led_power.set_value(f"{led_power} %")
-        
+
         self.progress_bar.setValue(0)
         self.lbl_percent.setText("0%")
-        
+
         # 버튼 초기화
         self._set_pause_button_style()
         self.btn_pause.setEnabled(True)
         self.btn_stop.setEnabled(True)
         self._update_title("Printing...")
-        
+
         # 타이머 시작
         self._elapsed_timer.start(1000)
     

@@ -145,6 +145,29 @@
 - [x] Print 페이지 다크모드 버튼 수정 (2025-12-24)
   - get_button_nav_style() 동적 함수 추가
   - btn_up, btn_down, btn_home 테마 지원
+- [x] 다크모드 앱 재시작 시 흰색 코너 버그 수정 (2025-12-24)
+  - main.py: GLOBAL_STYLE → get_global_style() 동적 함수 사용
+  - header.py: right_spacer 배경색 BG_PRIMARY로 변경
+- [x] PrintProgressPage 아이콘 기반 정보 표시 (2025-12-24)
+  - 9개 정보행을 3열 그리드로 재배치
+  - 왼쪽: 현재 레이어(STACK), 경과 시간(CLOCK), 남은 시간(HOURGLASS)
+  - 중앙: 레이어 높이(RULER), 바닥 노출(EXPOSURE_BOTTOM), 일반 노출(EXPOSURE_NORMAL)
+  - 오른쪽: 바닥 레이어 수(BOTTOM_LAYERS), 블레이드 속도(BLADE_SPEED), LED 파워(LED_POWER)
+  - 새 아이콘 추가: BOTTOM_LAYERS, BLADE_SPEED, LED_POWER
+
+---
+
+## 진행 중 (In Progress)
+
+### PrintProgressPage 예상 시간 계산 개선
+- [ ] 블레이드 시간 포함한 총 예상 시간 계산
+  - 현재: run.gcode의 estimatedPrintTime만 사용 (일반 레진 프린터 기준)
+  - 필요: 블레이드 X축 왕복 시간 추가 계산
+  - 계산식: `총 시간 = gcode 시간 + (250mm / blade_speed_mm_s) × 총 레이어`
+  - 예시: 30mm/s, 100레이어 → 블레이드 시간 ≈ 833초 추가
+- [ ] 향후 확장 예정
+  - Z축 이동 시간 (5mm 하강/상승)
+  - 딜레이 시간 (run.gcode에서 가져올 예정)
 
 ---
 

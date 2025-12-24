@@ -507,6 +507,43 @@ class Icons:
     </svg>
     """
 
+    # 바닥 레이어 개수 (층층이 쌓인 레이어 + 하단 강조)
+    BOTTOM_LAYERS = """
+    <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 6l7 3 7-3"/>
+        <path d="M5 10l7 3 7-3"/>
+        <path d="M5 14l7 3 7-3"/>
+        <rect x="4" y="18" width="16" height="3" rx="1" fill="{color}" stroke="none"/>
+    </svg>
+    """
+
+    # 블레이드 속도 (블레이드 + 화살표)
+    BLADE_SPEED = """
+    <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="10" width="20" height="4" rx="1"/>
+        <path d="M18 6l4 4-4 4"/>
+        <line x1="14" y1="10" x2="14" y2="14"/>
+    </svg>
+    """
+
+    # LED 파워 (전구 + 광선)
+    LED_POWER = """
+    <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 18h6"/>
+        <path d="M10 22h4"/>
+        <path d="M12 2v2"/>
+        <path d="M4.93 4.93l1.41 1.41"/>
+        <path d="M19.07 4.93l-1.41 1.41"/>
+        <path d="M2 12h2"/>
+        <path d="M20 12h2"/>
+        <path d="M15 14.5A3 3 0 0 0 9 14.5"/>
+        <circle cx="12" cy="10" r="4"/>
+    </svg>
+    """
+
     @staticmethod
     def get_pixmap(svg_template: str, size: int = 24, 
                    color: str = None) -> QPixmap:

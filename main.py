@@ -324,13 +324,25 @@ class MainWindow(QMainWindow):
         led_power = int(440 * led_power_percent / 100)   # 실제 LED 값으로 변환
         leveling_cycles = params.get('levelingCycles', 1)
 
+        # 추가 파라미터 (run.gcode에서 추출된 값)
+        estimated_time = int(params.get('estimatedPrintTime', 0))  # 초 단위
+        layer_height = float(params.get('layerHeight', 0.0))
+        bottom_exposure = float(params.get('bottomLayerExposureTime', 0.0))
+        normal_exposure = float(params.get('normalExposureTime', 0.0))
+        bottom_layer_count = int(params.get('bottomLayerCount', 0))
+
         # Print Progress 페이지로 정보 전달 및 이동
         self.print_progress_page.set_print_info(
             file_path=file_path,
             thumbnail=thumbnail,
             total_layers=total_layers,
             blade_speed=blade_speed,
-            led_power=led_power
+            led_power=led_power_percent,  # 퍼센트로 전달
+            estimated_time=estimated_time,
+            layer_height=layer_height,
+            bottom_exposure=bottom_exposure,
+            normal_exposure=normal_exposure,
+            bottom_layer_count=bottom_layer_count
         )
         self._go_to_page(self.PAGE_PRINT_PROGRESS)
 

@@ -1,7 +1,7 @@
 # VERICOM DLP 3D Printer GUI 디자인 가이드
 
-> **Version:** 7.1
-> **Last Updated:** 2025-12-23
+> **Version:** 7.2
+> **Last Updated:** 2025-12-24
 > **Target Device:** 7인치 터치 LCD (1024×600)
 > **Framework:** PySide6
 > **Reference:** UniFormation 프린터 UI 분석 기반
@@ -404,6 +404,9 @@ Content: 나머지 영역 (padding 20px)
 | **시스템** | INFO, GLOBE, MAIL, WIFI | 시스템 메뉴 |
 | **파일** | FILE, FILE_TEXT, FOLDER_OPEN | 파일 관련 |
 | **Exposure** | PATTERN_RAMP, PATTERN_CHECKER, PATTERN_LOGO | 테스트 패턴 |
+| **테마** | SUN, MOON, CONTRAST | 라이트/다크 테마 |
+| **프린트 정보** | STACK, TIMER, RULER, EXPOSURE_BOTTOM, EXPOSURE_NORMAL | 레이어, 시간, 높이, 노출 |
+| **프린트 설정** | BOTTOM_LAYERS, BLADE_SPEED, LED_POWER | 바닥 레이어, 블레이드, LED |
 
 ### 6.2 아이콘 스타일
 ```
@@ -600,16 +603,19 @@ vgui/
 └─────────────────────────────────────────────────────┘
 ```
 
-**표시 정보**
-| 항목 | 설명 |
-|------|------|
-| 썸네일 | FilePreviewPage에서 전달받은 미리보기 이미지 |
-| 파일명 | 현재 프린팅 파일명 |
-| Layer | 현재 레이어 / 전체 레이어 |
-| Elapsed | 경과 시간 (QTimer로 1초마다 업데이트) |
-| Remaining | 예상 남은 시간 (레이어 기준 계산) |
-| Blade Speed | 설정된 블레이드 속도 |
-| LED Power | 설정된 LED 파워 |
+**표시 정보 (3열 그리드, 아이콘 기반)** ✅ 2025-12-24 업데이트
+
+| 열 | 항목 | 아이콘 | 설명 |
+|----|------|--------|------|
+| 왼쪽 | Layer | STACK | 현재 레이어 / 전체 레이어 |
+| 왼쪽 | Elapsed | CLOCK | 경과 시간 (QTimer로 1초마다 업데이트) |
+| 왼쪽 | Remaining | HOURGLASS | 예상 남은 시간 |
+| 중앙 | Layer Height | RULER | 레이어 높이 (mm) |
+| 중앙 | Bottom Exp. | EXPOSURE_BOTTOM | 바닥 노출 시간 (s) |
+| 중앙 | Normal Exp. | EXPOSURE_NORMAL | 일반 노출 시간 (s) |
+| 오른쪽 | Bottom Layers | BOTTOM_LAYERS | 바닥 레이어 개수 |
+| 오른쪽 | Blade Speed | BLADE_SPEED | 블레이드 속도 (mm/s) |
+| 오른쪽 | LED Power | LED_POWER | LED 파워 (%) |
 
 **버튼 상태**
 | 상태 | 타이틀 | PAUSE 버튼 | STOP 버튼 |
@@ -630,11 +636,33 @@ vgui/
 **Public API (Worker에서 호출)**
 | 메서드 | 설명 |
 |--------|------|
-| `set_print_info(...)` | 프린트 시작 시 정보 설정 |
+| `set_print_info(file_path, thumbnail, total_layers, blade_speed, led_power, estimated_time, layer_height, bottom_exposure, normal_exposure, bottom_layer_count)` | 프린트 시작 시 정보 설정 |
 | `update_progress(current, total)` | 진행률 업데이트 |
 | `show_completed()` | 완료 다이얼로그 표시 → 확인 시 홈으로 |
 | `show_stopped()` | 정지됨 → 홈으로 이동 |
 | `get_status()` | 현재 상태 반환 |
+
+**set_print_info() 파라미터 상세**
+| 파라미터 | 타입 | 설명 |
+|----------|------|------|
+| file_path | str | 파일 경로 |
+| thumbnail | QPixmap | 썸네일 이미지 |
+| total_layers | int | 총 레이어 수 |
+| blade_speed | int | 블레이드 속도 (Gcode값, GUI = blade_speed / 50) |
+| led_power | int | LED 파워 (%) |
+| estimated_time | int | 예상 시간 (초, run.gcode 기준) |
+| layer_height | float | 레이어 높이 (mm) |
+| bottom_exposure | float | 바닥 노출 시간 (초) |
+| normal_exposure | float | 일반 노출 시간 (초) |
+| bottom_layer_count | int | 바닥 레이어 개수 |
+
+**예상 시간 계산 (TODO)**
+```
+현재: run.gcode의 estimatedPrintTime 사용
+개선 예정: 총 시간 = gcode 시간 + (250mm / blade_speed_mm_s) × 총 레이어
+  - 250mm = 블레이드 왕복 거리 (0→125→0)
+  - blade_speed_mm_s = GUI 표시값 (Gcode값 / 50)
+```
 
 ---
 
