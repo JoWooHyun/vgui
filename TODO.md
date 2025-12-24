@@ -59,7 +59,7 @@
 ### GUI 페이지 추가
 
 - [ ] **Network 설정 페이지** - WiFi 연결, IP 확인
-- [ ] **Theme 페이지** - Light/Dark/High Contrast 테마 선택 (진행중)
+- [x] **Theme 페이지** - Light/Dark 테마 선택 ✅ (2025-12-24)
 - [ ] **Calibration 페이지** - LED Test, Blade Test, Z=0 설정
 - [ ] **프린트 이력 페이지** - 과거 프린트 기록 조회
 - [x] **Setting 페이지** - LED Power/Blade Speed 설정
@@ -69,7 +69,11 @@
 - [ ] **자동 시작** - 부팅 시 자동 실행 (systemd 서비스)
 - [x] **설정 저장/로드** - JSON 파일로 설정 유지 (SettingsManager)
 - [ ] **다국어 지원** - 한국어/영어 전환 실제 구현
-- [ ] **테마 기능** - Light/Dark/High Contrast 3가지 테마 (진행중)
+- [x] **테마 기능** - Light/Dark 2가지 테마 ✅ (2025-12-24)
+  - ThemeManager 싱글톤
+  - Colors 메타클래스 동적 테마
+  - 동적 스타일 함수 (get_*_style())
+  - 다이얼로그/페이지 테마 지원
 - [ ] **OTA 업데이트** - 원격 펌웨어/소프트웨어 업데이트
 - [ ] **로그 저장** - 프린트 로그 파일 저장
 
@@ -124,6 +128,12 @@
 - [x] Setting ↔ File Preview 페이지 설정 동기화
 - [x] System 페이지 레이아웃 개선 (3×2 그리드, 6버튼)
 - [x] Theme 버튼 추가 (SUN 아이콘)
+- [x] Theme 페이지 구현 (Light/Dark 선택) (2025-12-24)
+- [x] ThemeManager 싱글톤 구현 (2025-12-24)
+- [x] Colors 메타클래스 동적 테마 지원 (2025-12-24)
+- [x] 동적 스타일 함수 추가 (get_*_style()) (2025-12-24)
+- [x] 다이얼로그 테마 지원 (NumberDial) (2025-12-24)
+- [x] QStackedWidget 배경색 테마 연동 (2025-12-24)
 
 ---
 

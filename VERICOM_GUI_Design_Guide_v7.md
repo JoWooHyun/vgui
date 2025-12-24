@@ -85,7 +85,71 @@
 | **Gray 500** | `#64748B` | 보조 텍스트 (TEXT_SECONDARY) |
 | **Gray 700** | `#334155` | 주요 텍스트 (TEXT_PRIMARY) |
 
-### 2.4 라즈베리파이 주의사항 ⚠️
+### 2.4 테마 시스템 (Theme System) ✅ NEW
+
+**지원 테마:**
+| 테마 | 용도 | 배경색 |
+|------|------|--------|
+| **Light** | 기본 테마, 밝은 환경 | `#FFFFFF` |
+| **Dark** | 어두운 환경, 산업용 | `#121826` |
+
+**테마별 주요 색상 비교:**
+| 색상 | Light | Dark |
+|------|-------|------|
+| NAVY (Primary) | `#1E3A5F` | `#3B82F6` |
+| CYAN (Accent) | `#06B6D4` | `#22D3EE` |
+| BG_PRIMARY | `#FFFFFF` | `#121826` |
+| BG_SECONDARY | `#F3F6FA` | `#1E293B` |
+| TEXT_PRIMARY | `#334155` | `#E5E7EB` |
+| BORDER | `#CBD5E1` | `#334155` |
+
+**테마 관련 파일:**
+```
+controllers/
+├── theme_manager.py    # 테마 전환 로직, 싱글톤
+├── settings_manager.py # 테마 설정 저장/로드
+
+styles/
+├── colors.py           # 동적 Colors 클래스 (메타클래스)
+├── stylesheets.py      # 동적 스타일 함수들
+
+pages/
+└── theme_page.py       # 테마 선택 UI
+```
+
+**동적 스타일 함수 사용법:**
+```python
+# ❌ 정적 스타일 (테마 변경 시 업데이트 안됨)
+BUTTON_STYLE = f"background-color: {Colors.BG_PRIMARY};"
+
+# ✅ 동적 스타일 함수 (테마 변경 시 새 값 반환)
+def get_button_style():
+    return f"background-color: {Colors.BG_PRIMARY};"
+
+# 사용 시
+self.button.setStyleSheet(get_button_style())  # 함수 호출
+```
+
+**테마 적용 흐름:**
+```
+1. 사용자가 ThemePage에서 테마 선택
+2. ThemeManager.set_theme() 호출
+3. Colors.apply_theme()로 색상값 업데이트
+4. theme_changed 시그널 발생
+5. MainWindow._on_theme_changed() 호출
+6. QApplication.setStyleSheet(get_global_style()) 재적용
+7. _rebuild_pages()로 모든 페이지 재생성
+```
+
+**새 컴포넌트 테마 지원 체크리스트:**
+```
+□ 정적 스타일 상수 대신 get_*_style() 함수 사용
+□ stylesheets.py에 동적 함수 추가
+□ 컴포넌트에서 함수 import 및 호출
+□ Colors 클래스 속성 직접 참조 (Colors.NAVY 등)
+```
+
+### 2.5 라즈베리파이 주의사항 ⚠️
 ```
 ❌ 피해야 할 것:
 - background-color: transparent (자식에게 상속됨)
@@ -359,8 +423,10 @@ Main (L0)
 │   │   └── Website: www.vericom.co.kr
 │   │   └── Tel: 1661-2883
 │   ├── Network (알림창) ─────────── "구현중입니다" ✅
-│   ├── Theme (L2) ───────────────── 테마 설정 (계획중)
-│   │   └── Light / Dark / High Contrast
+│   ├── Theme (L2) ───────────────── 테마 설정 ✅ NEW
+│   │   └── Light / Dark 테마 선택
+│   │   └── 동적 테마 전환 (페이지 재생성)
+│   │   └── 설정 JSON 저장
 │   └── Back ─────────────────────── 메인으로 이동
 │
 └── Print (L1) ✅
@@ -390,8 +456,8 @@ Main (L0)
 | 9 | ServicePage | 서비스 정보 |
 | 10 | FilePreviewPage | 파일 미리보기 |
 | 11 | PrintProgressPage | 인쇄 진행 |
-| 12 | SettingPage | LED/Blade 설정 ✅ NEW |
-| 13 | ThemePage | 테마 설정 (계획중) |
+| 12 | SettingPage | LED/Blade 설정 ✅ |
+| 13 | ThemePage | 테마 설정 ✅ NEW |
 
 ---
 
@@ -426,15 +492,16 @@ vgui/
 │   └── setting_page.py         ✅ NEW
 ├── styles/                     # 스타일 정의
 │   ├── __init__.py
-│   ├── colors.py
+│   ├── colors.py              ✅ 동적 테마 (메타클래스)
 │   ├── fonts.py
-│   ├── icons.py                ✅ EDIT, SUN 아이콘 추가
-│   └── stylesheets.py
+│   ├── icons.py               ✅ EDIT, SUN 아이콘 추가
+│   └── stylesheets.py         ✅ 동적 스타일 함수 추가
 ├── controllers/                # 하드웨어/설정 컨트롤러 ✅ NEW
 │   ├── motor_controller.py     # Moonraker API
 │   ├── dlp_controller.py       # NVR2+ I2C
 │   ├── gcode_parser.py         # ZIP 파싱
-│   └── settings_manager.py     # JSON 설정 저장
+│   ├── settings_manager.py     # JSON 설정 저장
+│   └── theme_manager.py        ✅ 테마 관리 싱글톤
 ├── workers/                    # 백그라운드 워커 ✅ NEW
 │   └── print_worker.py         # QThread 프린트 워커
 └── windows/                    # 추가 윈도우 ✅ NEW
@@ -475,7 +542,8 @@ vgui/
 | ServicePage | service_page.py | 연락처 정보 |
 | FilePreviewPage | file_preview_page.py | 미리보기 + 설정 + Start |
 | PrintProgressPage | print_progress_page.py | 진행률 + PAUSE/STOP |
-| SettingPage | setting_page.py | LED Power + Blade Speed ✅ NEW |
+| SettingPage | setting_page.py | LED Power + Blade Speed ✅ |
+| ThemePage | theme_page.py | Light/Dark 테마 선택 ✅ NEW |
 
 ### 8.4 PrintProgressPage 상세 ✅ NEW
 
@@ -581,7 +649,7 @@ vgui/
 |------|------|------|
 | 다국어 지원 | 영어/한국어 텍스트 전환 | ❌ |
 | ~~설정 저장~~ | JSON 파일로 설정 유지 | ✅ 완료 (SettingsManager) |
-| **테마 기능** | Light/Dark/High Contrast | ❌ **진행중** |
+| ~~테마 기능~~ | Light/Dark 테마 전환 | ✅ 완료 (ThemeManager) |
 | 에러 핸들링 | 오류 알림 및 복구 | ❌ |
 | 부팅 자동 실행 | systemd 서비스 등록 | ❌ |
 
@@ -663,6 +731,7 @@ self.header.title_label.setText()   # ⚠️ 직접 접근 (비권장)
 | 6.0 | 2024-12-08 | PrintProgressPage 추가, 완료/정지 다이얼로그, 전체 UI 완성 |
 | 7.0 | 2024-12-23 | 해상도 1024x600 변경, Exposure 아이콘버튼+LOGO패턴, Language 4버튼, Manual 위치삭제/X거리변경, Service/DeviceInfo 정보 업데이트, 홈 타임아웃 100초 |
 | 7.1 | 2025-12-23 | **Setting 페이지 추가** (LED Power/Blade Speed), **SettingsManager** (JSON 저장), System 페이지 6버튼 그리드, Theme 버튼 추가, controllers/workers/windows 폴더 구조 추가, PrintWorker/Moonraker/NVR2+ 연동 완료 |
+| 7.2 | 2025-12-24 | **테마 시스템 완성** (Light/Dark), ThemeManager 싱글톤, Colors 메타클래스 동적 테마, 동적 스타일 함수 (get_*_style()), 다이얼로그 테마 지원, QStackedWidget 배경 수정 |
 
 ---
 
@@ -670,14 +739,15 @@ self.header.title_label.setText()   # ⚠️ 직접 접근 (비권장)
 
 | 카테고리 | 완료 | 전체 | 진행률 |
 |----------|------|------|--------|
-| **UI 페이지** | 13 | 14 | **93%** ✅ |
+| **UI 페이지** | 14 | 14 | **100%** ✅ |
 | 컴포넌트 | 13 | 15 | 87% |
 | 하드웨어 연동 | 4 | 5 | **80%** ✅ |
-| 고급 기능 | 1 | 5 | 20% |
+| 고급 기능 | 2 | 5 | 40% |
 
-🎉 **핵심 기능 연동 완료!** (PrintWorker, Moonraker API, NVR2+ I2C)
+🎉 **모든 UI 페이지 완료!** (14개 페이지)
+🎉 **테마 시스템 완료!** (Light/Dark 동적 전환)
 
-**다음 우선순위:** Theme 페이지 구현 (Light/Dark/High Contrast)
+**다음 우선순위:** 다국어 지원 (영어/한국어)
 
 ---
 
