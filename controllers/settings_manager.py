@@ -26,6 +26,7 @@ class AppSettings:
     """앱 전체 설정"""
     print_settings: PrintSettings = None
     language: str = "en"        # 언어 설정
+    theme: str = "Light"        # 테마 설정
 
     def __post_init__(self):
         if self.print_settings is None:
@@ -76,6 +77,7 @@ class SettingsManager:
 
             # 기타 설정 로드
             self._settings.language = data.get('language', 'en')
+            self._settings.theme = data.get('theme', 'Light')
 
             print(f"[Settings] 설정 로드 완료: {SETTINGS_FILE}")
             print(f"  - LED Power: {self._settings.print_settings.led_power}%")
@@ -91,7 +93,8 @@ class SettingsManager:
         try:
             data = {
                 'print_settings': asdict(self._settings.print_settings),
-                'language': self._settings.language
+                'language': self._settings.language,
+                'theme': self._settings.theme
             }
 
             with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
@@ -135,6 +138,43 @@ class SettingsManager:
     def set_language(self, lang: str):
         """언어 설정"""
         self._settings.language = lang
+        self.save()
+
+    # ==================== Theme ====================
+
+    def get_theme(self) -> str:
+        """테마 설정 반환"""
+        return self._settings.theme
+
+    def set_theme(self, theme: str):
+        """테마 설정"""
+        self._settings.theme = theme
+        self.save()
+
+    # ==================== Generic get/set ====================
+
+    def get(self, key: str, default=None):
+        """일반적인 설정 값 반환"""
+        if key == "theme":
+            return self._settings.theme
+        elif key == "language":
+            return self._settings.language
+        elif key == "led_power":
+            return self._settings.print_settings.led_power
+        elif key == "blade_speed":
+            return self._settings.print_settings.blade_speed
+        return default
+
+    def set(self, key: str, value):
+        """일반적인 설정 값 저장"""
+        if key == "theme":
+            self._settings.theme = value
+        elif key == "language":
+            self._settings.language = value
+        elif key == "led_power":
+            self._settings.print_settings.led_power = value
+        elif key == "blade_speed":
+            self._settings.print_settings.blade_speed = value
         self.save()
 
 
