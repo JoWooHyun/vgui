@@ -10,7 +10,7 @@ from styles.colors import Colors
 from styles.icons import Icons
 from styles.stylesheets import (
     BUTTON_ICON_STYLE, BUTTON_ICON_ACTIVE_STYLE,
-    BUTTON_CONTROL_STYLE, BUTTON_HOME_STYLE,
+    get_button_control_style, get_button_home_style,
     get_tool_button_style, get_tool_button_danger_style, get_main_menu_button_style
 )
 
@@ -62,19 +62,19 @@ class IconButton(QPushButton):
 
 class ControlButton(IconButton):
     """방향 제어용 버튼 (네이비 테두리)"""
-    
-    def __init__(self, icon_svg: str = None, size: int = 70, 
+
+    def __init__(self, icon_svg: str = None, size: int = 70,
                  icon_size: int = 28, parent=None):
         super().__init__(icon_svg, size, icon_size, Colors.NAVY, parent)
-        self.setStyleSheet(BUTTON_CONTROL_STYLE)
+        self.setStyleSheet(get_button_control_style())
 
 
 class HomeButton(IconButton):
     """홈 버튼 (시안 테두리)"""
-    
+
     def __init__(self, size: int = 70, icon_size: int = 28, parent=None):
         super().__init__(Icons.HOME, size, icon_size, Colors.CYAN, parent)
-        self.setStyleSheet(BUTTON_HOME_STYLE)
+        self.setStyleSheet(get_button_home_style())
 
 
 class MainMenuButton(QPushButton):

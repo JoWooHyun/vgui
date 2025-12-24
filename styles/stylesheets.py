@@ -473,7 +473,9 @@ QPushButton {{
 """
 
 # Control Button (방향키 등)
-BUTTON_CONTROL_STYLE = f"""
+def get_button_control_style():
+    """방향 제어 버튼 스타일 (동적)"""
+    return f"""
 QPushButton {{
     background-color: {Colors.BG_PRIMARY};
     border: 2px solid {Colors.NAVY};
@@ -485,8 +487,12 @@ QPushButton:pressed {{
 }}
 """
 
+BUTTON_CONTROL_STYLE = get_button_control_style()
+
 # Home Button (홈 버튼 - 시안)
-BUTTON_HOME_STYLE = f"""
+def get_button_home_style():
+    """홈 버튼 스타일 (동적)"""
+    return f"""
 QPushButton {{
     background-color: {Colors.BG_PRIMARY};
     border: 2px solid {Colors.CYAN};
@@ -497,6 +503,8 @@ QPushButton:pressed {{
     background-color: {Colors.CYAN_ALPHA_10};
 }}
 """
+
+BUTTON_HOME_STYLE = get_button_home_style()
 
 # Nav Button (네비게이션)
 BUTTON_NAV_STYLE = f"""

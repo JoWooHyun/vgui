@@ -249,8 +249,8 @@ class FilePreviewPage(BasePage):
         self._print_params = {}
         
         # 사용자 설정값 (기본값)
-        self._blade_speed = 1500  # mm/min
-        self._led_power = 100     # %
+        self._blade_speed = 30   # mm/s (실제값 = 표시값 × 50)
+        self._led_power = 100    # %
         
         self._setup_content()
     
@@ -326,14 +326,14 @@ class FilePreviewPage(BasePage):
         right_layout.addSpacing(8)
         
         # 수정 가능한 행들
-        # Blade Speed
+        # Blade Speed (mm/s, 실제값 = 표시값 × 50)
         self.row_blade_speed = EditableRow(
             label="Blade Speed",
             value=self._blade_speed,
-            unit="mm/min",
-            min_val=100,
-            max_val=5000,
-            step=100
+            unit="mm/s",
+            min_val=10,
+            max_val=100,
+            step=5
         )
         self.row_blade_speed.value_changed.connect(self._on_blade_speed_changed)
         right_layout.addWidget(self.row_blade_speed)
@@ -414,7 +414,7 @@ class FilePreviewPage(BasePage):
     def _on_blade_speed_changed(self, value: float):
         """Blade Speed 변경"""
         self._blade_speed = int(value)
-        print(f"[Preview] Blade Speed: {self._blade_speed} mm/min")
+        print(f"[Preview] Blade Speed: {self._blade_speed} mm/s (실제: {self._blade_speed * 50} mm/min)")
     
     def _on_led_power_changed(self, value: float):
         """LED Power 변경"""
@@ -557,7 +557,7 @@ class FilePreviewPage(BasePage):
             # 사용자 설정값 포함한 전체 파라미터
             full_params = {
                 **self._print_params,
-                'bladeSpeed': self._blade_speed,
+                'bladeSpeed': self._blade_speed * 50,  # mm/s → mm/min 변환
                 'ledPower': self._led_power,
             }
             self.start_print.emit(self._file_path, full_params)
@@ -570,7 +570,7 @@ class FilePreviewPage(BasePage):
         """프린트 파라미터 반환"""
         return {
             **self._print_params,
-            'bladeSpeed': self._blade_speed,
+            'bladeSpeed': self._blade_speed * 50,  # mm/s → mm/min 변환
             'ledPower': self._led_power,
         }
     
