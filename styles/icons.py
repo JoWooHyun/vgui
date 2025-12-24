@@ -397,6 +397,21 @@ class Icons:
     </svg>
     """
 
+    MOON = """
+    <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+    """
+
+    CONTRAST = """
+    <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 2a10 10 0 0 1 0 20z" fill="{color}"/>
+    </svg>
+    """
+
     # ========== Calibration Icon ==========
 
     CALIBRATION = """

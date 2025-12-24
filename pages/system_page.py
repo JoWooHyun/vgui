@@ -75,6 +75,7 @@ class SystemPage(BasePage):
     go_device_info = Signal()
     go_language = Signal()
     go_service = Signal()
+    go_theme = Signal()
     
     def __init__(self, parent=None):
         super().__init__("System", show_back=True, parent=parent)
@@ -105,7 +106,7 @@ class SystemPage(BasePage):
 
         # Theme 버튼
         self.btn_theme = ToolButton("Theme", Icons.SUN)
-        self.btn_theme.clicked.connect(self._on_theme)
+        self.btn_theme.clicked.connect(self.go_theme.emit)
 
         # Back 버튼
         self.btn_back = ToolButton("Back", Icons.ARROW_LEFT)
@@ -129,10 +130,5 @@ class SystemPage(BasePage):
     
     def _on_network(self):
         """Network 버튼 클릭 - 알림창"""
-        alert = SimpleAlert("구현중입니다", self)
-        alert.exec()
-
-    def _on_theme(self):
-        """Theme 버튼 클릭 - 알림창"""
         alert = SimpleAlert("구현중입니다", self)
         alert.exec()

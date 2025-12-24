@@ -33,6 +33,7 @@ from pages.service_page import ServicePage
 from pages.file_preview_page import FilePreviewPage
 from pages.print_progress_page import PrintProgressPage
 from pages.setting_page import SettingPage
+from pages.theme_page import ThemePage
 
 # 하드웨어 컨트롤러
 from controllers.motor_controller import MotorController
@@ -75,6 +76,7 @@ class MainWindow(QMainWindow):
     PAGE_FILE_PREVIEW = 10
     PAGE_PRINT_PROGRESS = 11
     PAGE_SETTING = 12
+    PAGE_THEME = 13
 
     def __init__(self, kiosk_mode: bool = False, simulation: bool = True):
         super().__init__()
@@ -140,6 +142,7 @@ class MainWindow(QMainWindow):
         self.file_preview_page = FilePreviewPage()
         self.print_progress_page = PrintProgressPage()
         self.setting_page = SettingPage()
+        self.theme_page = ThemePage()
 
         # 스택에 추가
         self.stack.addWidget(self.main_page)         # 0
@@ -155,6 +158,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.file_preview_page) # 10
         self.stack.addWidget(self.print_progress_page) # 11
         self.stack.addWidget(self.setting_page)      # 12
+        self.stack.addWidget(self.theme_page)        # 13
 
         self.setCentralWidget(self.stack)
 
@@ -225,7 +229,11 @@ class MainWindow(QMainWindow):
         self.system_page.go_device_info.connect(lambda: self._go_to_page(self.PAGE_DEVICE_INFO))
         self.system_page.go_language.connect(lambda: self._go_to_page(self.PAGE_LANGUAGE))
         self.system_page.go_service.connect(lambda: self._go_to_page(self.PAGE_SERVICE))
-        
+        self.system_page.go_theme.connect(lambda: self._go_to_page(self.PAGE_THEME))
+
+        # 테마 페이지
+        self.theme_page.go_back.connect(lambda: self._go_to_page(self.PAGE_SYSTEM))
+
         # 장치 정보 페이지
         self.device_info_page.go_back.connect(lambda: self._go_to_page(self.PAGE_SYSTEM))
         
