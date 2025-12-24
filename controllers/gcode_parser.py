@@ -16,6 +16,7 @@ class PrintParameters:
     # 레이어 정보
     totalLayer: int = 0
     layerHeight: float = 0.05
+    estimatedPrintTime: float = 0.0  # 초 단위
 
     # 바닥 레이어
     bottomLayerCount: int = 8
@@ -51,6 +52,7 @@ class GCodeParser:
     PATTERNS = {
         'totalLayer': r';totalLayer:(\d+)',
         'layerHeight': r';layerHeight:([\d.]+)',
+        'estimatedPrintTime': r';estimatedPrintTime:([\d.]+)',
         'bottomLayerCount': r';bottomLayerCount:(\d+)',
         'bottomLayerExposureTime': r';bottomLayerExposureTime:([\d.]+)',
         'bottomLayerLiftHeight': r';bottomLayerLiftHeight:([\d.]+)',

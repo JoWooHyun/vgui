@@ -23,38 +23,38 @@ from controllers.gcode_parser import extract_print_parameters
 
 class InfoRow(QFrame):
     """정보 표시 행 (읽기 전용)"""
-    
+
     def __init__(self, label: str, value: str = "-", parent=None):
         super().__init__(parent)
-        
-        self.setFixedHeight(36)
+
+        self.setFixedHeight(30)
         self.setStyleSheet(f"""
             QFrame {{
                 background-color: {Colors.BG_SECONDARY};
                 border: none;
-                border-radius: 6px;
+                border-radius: 4px;
             }}
         """)
-        
+
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(12, 0, 12, 0)
-        layout.setSpacing(8)
-        
+        layout.setContentsMargins(10, 0, 10, 0)
+        layout.setSpacing(6)
+
         # 라벨
         self.lbl_label = QLabel(label)
-        self.lbl_label.setFont(Fonts.body_small())
+        self.lbl_label.setFont(Fonts.caption())
         self.lbl_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; background: {Colors.BG_SECONDARY};")
-        self.lbl_label.setFixedWidth(100)
-        
+        self.lbl_label.setFixedWidth(90)
+
         # 값
         self.lbl_value = QLabel(value)
-        self.lbl_value.setFont(Fonts.body())
+        self.lbl_value.setFont(Fonts.caption())
         self.lbl_value.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.lbl_value.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; background: {Colors.BG_SECONDARY};")
-        
+
         layout.addWidget(self.lbl_label)
         layout.addWidget(self.lbl_value, 1)
-    
+
     def set_value(self, value: str):
         """값 설정"""
         self.lbl_value.setText(value)
@@ -308,11 +308,13 @@ class FilePreviewPage(BasePage):
         
         # 읽기 전용 정보 행들
         self.info_rows = {}
-        
+
         info_items = [
+            ("Total Layer", "totalLayer"),
             ("Total Time", "estimatedPrintTime"),
-            ("Normal Exp.", "normalExposureTime"),
+            ("Layer Height", "layerHeight"),
             ("Bottom Exp.", "bottomLayerExposureTime"),
+            ("Normal Exp.", "normalExposureTime"),
         ]
         
         for label, key in info_items:
@@ -500,20 +502,27 @@ class FilePreviewPage(BasePage):
     def _update_info_display(self):
         """정보 표시 업데이트"""
         p = self._print_params
-        
-        # 예상 시간 (초 -> 분)
+
+        # Total Layer
+        self.info_rows['totalLayer'].set_value(f"{p.get('totalLayer', 0)}")
+
+        # 예상 시간 (초 -> 분, 소수점 버림)
         est_seconds = p.get('estimatedPrintTime', 0)
-        est_minutes = est_seconds / 60
+        est_minutes = int(est_seconds / 60)
         if est_minutes >= 60:
-            hours = int(est_minutes // 60)
-            mins = int(est_minutes % 60)
+            hours = est_minutes // 60
+            mins = est_minutes % 60
             self.info_rows['estimatedPrintTime'].set_value(f"{hours}h {mins}m")
         else:
-            self.info_rows['estimatedPrintTime'].set_value(f"{est_minutes:.1f} min")
-        
+            self.info_rows['estimatedPrintTime'].set_value(f"{est_minutes} min")
+
+        # Layer Height
+        layer_height = p.get('layerHeight', 0)
+        self.info_rows['layerHeight'].set_value(f"{layer_height} mm")
+
         # 노출 시간
-        self.info_rows['normalExposureTime'].set_value(f"{p.get('normalExposureTime', 0)} sec")
         self.info_rows['bottomLayerExposureTime'].set_value(f"{p.get('bottomLayerExposureTime', 0)} sec")
+        self.info_rows['normalExposureTime'].set_value(f"{p.get('normalExposureTime', 0)} sec")
     
     def _clear_info(self):
         """정보 초기화"""
