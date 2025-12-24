@@ -31,7 +31,7 @@
 - [ ] 프린트 완료 후 Z축 상단으로 이동 (출력물 제거 용이)
 - [ ] 레이어별 진행 로그 개선 (현재 레이어/총 레이어 표시)
 - [ ] 예상 남은 시간 계산 및 표시
-- [ ] 프린트 중 현재 레이어 이미지 미리보기 (선택적)
+- [x] 프린트 중 현재 레이어 이미지 미리보기 ✅ (2025-12-24)
 
 ### DLP/LED 관련
 
@@ -154,6 +154,11 @@
   - 중앙: 레이어 높이(RULER), 바닥 노출(EXPOSURE_BOTTOM), 일반 노출(EXPOSURE_NORMAL)
   - 오른쪽: 바닥 레이어 수(BOTTOM_LAYERS), 블레이드 속도(BLADE_SPEED), LED 파워(LED_POWER)
   - 새 아이콘 추가: BOTTOM_LAYERS, BLADE_SPEED, LED_POWER
+- [x] PrintProgressPage 레이아웃 재설계 (2025-12-24)
+  - 왼쪽: 현재 레이어 이미지 큰 프리뷰 (280x280)
+  - 오른쪽: 9개 정보 행 세로 나열
+  - 하단: 파일명, 진행바, PAUSE/STOP 버튼
+  - `update_layer_image(pixmap)` 메서드 추가 (Worker 연동용)
 
 ---
 

@@ -219,58 +219,81 @@ class PrintProgressPage(BasePage):
     
     def _setup_content(self):
         """콘텐츠 구성"""
-        # 메인 레이아웃
-        main_layout = QHBoxLayout()
-        main_layout.setSpacing(24)
-        
-        # === 왼쪽: 썸네일 ===
-        left_layout = QVBoxLayout()
-        left_layout.setAlignment(Qt.AlignTop)
-        
-        # 썸네일 프레임
-        self.thumbnail_frame = QFrame()
-        self.thumbnail_frame.setFixedSize(120, 100)
-        self.thumbnail_frame.setStyleSheet(f"""
+        # === 상단: 레이어 이미지 + 정보 ===
+        top_layout = QHBoxLayout()
+        top_layout.setSpacing(16)
+
+        # 왼쪽: 현재 레이어 이미지 (큰 프리뷰)
+        self.preview_frame = QFrame()
+        self.preview_frame.setFixedSize(280, 280)
+        self.preview_frame.setStyleSheet(f"""
             QFrame {{
                 background-color: {Colors.BG_SECONDARY};
-                border: 2px solid {Colors.BORDER};
-                border-radius: 8px;
+                border: 3px solid {Colors.CYAN};
+                border-radius: 12px;
             }}
         """)
-        
-        thumb_layout = QVBoxLayout(self.thumbnail_frame)
-        thumb_layout.setContentsMargins(4, 4, 4, 4)
-        thumb_layout.setAlignment(Qt.AlignCenter)
-        
-        self.lbl_thumbnail = QLabel()
-        self.lbl_thumbnail.setFixedSize(112, 92)
-        self.lbl_thumbnail.setAlignment(Qt.AlignCenter)
-        self.lbl_thumbnail.setStyleSheet(f"background-color: transparent; border: none;")
-        self.lbl_thumbnail.setPixmap(Icons.get_pixmap(Icons.FILE, 48, Colors.TEXT_DISABLED))
-        
-        thumb_layout.addWidget(self.lbl_thumbnail)
-        
-        left_layout.addWidget(self.thumbnail_frame)
-        left_layout.addStretch()
-        
-        # === 오른쪽: 정보 + 진행률 ===
-        right_layout = QVBoxLayout()
-        right_layout.setSpacing(8)
-        
-        # 파일명 + 진행률 바
-        top_section = QVBoxLayout()
-        top_section.setSpacing(8)
-        
+
+        preview_layout = QVBoxLayout(self.preview_frame)
+        preview_layout.setContentsMargins(4, 4, 4, 4)
+        preview_layout.setAlignment(Qt.AlignCenter)
+
+        self.lbl_layer_image = QLabel()
+        self.lbl_layer_image.setFixedSize(270, 270)
+        self.lbl_layer_image.setAlignment(Qt.AlignCenter)
+        self.lbl_layer_image.setStyleSheet(f"background-color: transparent; border: none;")
+        self.lbl_layer_image.setPixmap(Icons.get_pixmap(Icons.FILE, 64, Colors.TEXT_DISABLED))
+
+        preview_layout.addWidget(self.lbl_layer_image)
+
+        # 오른쪽: 정보 세로 나열
+        info_layout = QVBoxLayout()
+        info_layout.setSpacing(6)
+        info_layout.setAlignment(Qt.AlignTop)
+
+        # 정보 행들 (세로 나열)
+        self.row_bottom_exposure = ProgressInfoRow(Icons.EXPOSURE_BOTTOM)  # 바닥 노출
+        self.row_normal_exposure = ProgressInfoRow(Icons.EXPOSURE_NORMAL)  # 일반 노출
+        self.row_layer_height = ProgressInfoRow(Icons.RULER)  # 레이어 높이
+        self.row_layer = ProgressInfoRow(Icons.STACK)  # 현재/총 레이어
+        self.row_bottom_layers = ProgressInfoRow(Icons.BOTTOM_LAYERS)  # 바닥 레이어 수
+        self.row_blade_speed = ProgressInfoRow(Icons.BLADE_SPEED)  # 블레이드 속도
+        self.row_led_power = ProgressInfoRow(Icons.LED_POWER)  # LED 파워
+        self.row_elapsed = ProgressInfoRow(Icons.CLOCK)  # 경과 시간
+        self.row_remaining = ProgressInfoRow(Icons.HOURGLASS)  # 남은 시간
+
+        info_layout.addWidget(self.row_bottom_exposure)
+        info_layout.addWidget(self.row_normal_exposure)
+        info_layout.addWidget(self.row_layer_height)
+        info_layout.addWidget(self.row_layer)
+        info_layout.addWidget(self.row_bottom_layers)
+        info_layout.addWidget(self.row_blade_speed)
+        info_layout.addWidget(self.row_led_power)
+        info_layout.addWidget(self.row_elapsed)
+        info_layout.addWidget(self.row_remaining)
+        info_layout.addStretch()
+
+        top_layout.addWidget(self.preview_frame)
+        top_layout.addLayout(info_layout, 1)
+
+        self.content_layout.addLayout(top_layout, 1)
+
+        # === 하단: 파일명 + 진행바 + 버튼 ===
+        bottom_layout = QVBoxLayout()
+        bottom_layout.setSpacing(12)
+
+        # 파일명
         self.lbl_filename = QLabel("filename.zip")
         self.lbl_filename.setFont(Fonts.h3())
         self.lbl_filename.setStyleSheet(f"color: {Colors.TEXT_PRIMARY};")
-        
-        # 진행률 바
+        self.lbl_filename.setAlignment(Qt.AlignCenter)
+
+        # 진행률 바 + 퍼센트
         progress_layout = QHBoxLayout()
-        progress_layout.setSpacing(8)
-        
+        progress_layout.setSpacing(12)
+
         self.progress_bar = QProgressBar()
-        self.progress_bar.setFixedHeight(24)
+        self.progress_bar.setFixedHeight(28)
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)
         self.progress_bar.setTextVisible(False)
@@ -278,92 +301,41 @@ class PrintProgressPage(BasePage):
             QProgressBar {{
                 background-color: {Colors.BG_TERTIARY};
                 border: none;
-                border-radius: 6px;
+                border-radius: 8px;
             }}
             QProgressBar::chunk {{
                 background-color: {Colors.CYAN};
-                border-radius: 6px;
+                border-radius: 8px;
             }}
         """)
-        
+
         self.lbl_percent = QLabel("0%")
-        self.lbl_percent.setFont(Fonts.body())
-        self.lbl_percent.setFixedWidth(45)
+        self.lbl_percent.setFont(Fonts.h2())
+        self.lbl_percent.setFixedWidth(60)
         self.lbl_percent.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.lbl_percent.setStyleSheet(f"color: {Colors.CYAN}; font-weight: 600;")
-        
+
         progress_layout.addWidget(self.progress_bar)
         progress_layout.addWidget(self.lbl_percent)
-        
-        top_section.addWidget(self.lbl_filename)
-        top_section.addLayout(progress_layout)
-        
-        right_layout.addLayout(top_section)
-        right_layout.addSpacing(4)
-        
-        # 정보 행들 (3열 그리드)
-        info_grid = QHBoxLayout()
-        info_grid.setSpacing(8)
 
-        # 왼쪽 열: 진행 정보
-        left_col = QVBoxLayout()
-        left_col.setSpacing(4)
-        self.row_layer = ProgressInfoRow(Icons.STACK)  # 현재/총 레이어
-        self.row_elapsed = ProgressInfoRow(Icons.CLOCK)  # 경과 시간
-        self.row_remaining = ProgressInfoRow(Icons.HOURGLASS)  # 남은 시간
-        left_col.addWidget(self.row_layer)
-        left_col.addWidget(self.row_elapsed)
-        left_col.addWidget(self.row_remaining)
+        bottom_layout.addWidget(self.lbl_filename)
+        bottom_layout.addLayout(progress_layout)
 
-        # 중앙 열: 레이어 정보
-        center_col = QVBoxLayout()
-        center_col.setSpacing(4)
-        self.row_layer_height = ProgressInfoRow(Icons.RULER)  # 레이어 높이
-        self.row_bottom_exposure = ProgressInfoRow(Icons.EXPOSURE_BOTTOM)  # 바닥 노출
-        self.row_normal_exposure = ProgressInfoRow(Icons.EXPOSURE_NORMAL)  # 일반 노출
-        center_col.addWidget(self.row_layer_height)
-        center_col.addWidget(self.row_bottom_exposure)
-        center_col.addWidget(self.row_normal_exposure)
-
-        # 오른쪽 열: 설정 정보
-        right_col = QVBoxLayout()
-        right_col.setSpacing(4)
-        self.row_bottom_layers = ProgressInfoRow(Icons.BOTTOM_LAYERS)  # 바닥 레이어 수
-        self.row_blade_speed = ProgressInfoRow(Icons.BLADE_SPEED)  # 블레이드 속도
-        self.row_led_power = ProgressInfoRow(Icons.LED_POWER)  # LED 파워
-        right_col.addWidget(self.row_bottom_layers)
-        right_col.addWidget(self.row_blade_speed)
-        right_col.addWidget(self.row_led_power)
-
-        info_grid.addLayout(left_col)
-        info_grid.addLayout(center_col)
-        info_grid.addLayout(right_col)
-
-        right_layout.addLayout(info_grid)
-        
-        right_layout.addStretch()
-        
-        # 조립
-        main_layout.addLayout(left_layout)
-        main_layout.addLayout(right_layout, 1)
-        
-        self.content_layout.addLayout(main_layout)
-        
-        # === 하단: 버튼들 ===
+        # 버튼들
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(20)
-        
+
         # PAUSE/RESUME 버튼
         self.btn_pause = QPushButton("PAUSE")
-        self.btn_pause.setFixedSize(140, 56)
+        self.btn_pause.setFixedSize(120, 48)
         self.btn_pause.setFont(Fonts.body())
         self.btn_pause.setCursor(Qt.PointingHandCursor)
         self._set_pause_button_style()
         self.btn_pause.clicked.connect(self._on_pause_clicked)
-        
+
         # STOP 버튼
         self.btn_stop = QPushButton("STOP")
-        self.btn_stop.setFixedSize(140, 56)
+        self.btn_stop.setFixedSize(120, 48)
         self.btn_stop.setFont(Fonts.body())
         self.btn_stop.setCursor(Qt.PointingHandCursor)
         self.btn_stop.setStyleSheet(f"""
@@ -371,7 +343,7 @@ class PrintProgressPage(BasePage):
                 background-color: {Colors.BG_SECONDARY};
                 color: {Colors.RED};
                 border: 2px solid {Colors.RED};
-                border-radius: 12px;
+                border-radius: 10px;
             }}
             QPushButton:pressed {{
                 background-color: {Colors.RED};
@@ -379,14 +351,15 @@ class PrintProgressPage(BasePage):
             }}
         """)
         self.btn_stop.clicked.connect(self._on_stop_clicked)
-        
+
         btn_layout.addStretch()
         btn_layout.addWidget(self.btn_pause)
         btn_layout.addWidget(self.btn_stop)
         btn_layout.addStretch()
-        
-        self.content_layout.addSpacing(8)
-        self.content_layout.addLayout(btn_layout)
+
+        bottom_layout.addLayout(btn_layout)
+
+        self.content_layout.addLayout(bottom_layout)
     
     def _set_pause_button_style(self):
         """PAUSE 버튼 스타일 (Amber)"""
@@ -396,13 +369,13 @@ class PrintProgressPage(BasePage):
                 background-color: {Colors.AMBER};
                 color: {Colors.WHITE};
                 border: none;
-                border-radius: 12px;
+                border-radius: 10px;
             }}
             QPushButton:pressed {{
                 background-color: #E68A00;
             }}
         """)
-    
+
     def _set_resume_button_style(self):
         """RESUME 버튼 스타일 (Cyan)"""
         self.btn_pause.setText("RESUME")
@@ -411,7 +384,7 @@ class PrintProgressPage(BasePage):
                 background-color: {Colors.CYAN};
                 color: {Colors.WHITE};
                 border: none;
-                border-radius: 12px;
+                border-radius: 10px;
             }}
             QPushButton:pressed {{
                 background-color: {Colors.CYAN_DARK};
@@ -545,11 +518,12 @@ class PrintProgressPage(BasePage):
         filename = os.path.basename(file_path)
         self.lbl_filename.setText(filename)
 
+        # 초기 레이어 이미지 (썸네일 또는 기본 아이콘)
         if thumbnail:
-            scaled = thumbnail.scaled(112, 92, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            self.lbl_thumbnail.setPixmap(scaled)
+            scaled = thumbnail.scaled(270, 270, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self.lbl_layer_image.setPixmap(scaled)
         else:
-            self.lbl_thumbnail.setPixmap(Icons.get_pixmap(Icons.FILE, 48, Colors.TEXT_DISABLED))
+            self.lbl_layer_image.setPixmap(Icons.get_pixmap(Icons.FILE, 64, Colors.TEXT_DISABLED))
 
         # 총 예상 시간 계산 (블레이드 시간 포함)
         total_estimated_time = self._calculate_total_time(
@@ -588,18 +562,24 @@ class PrintProgressPage(BasePage):
         """진행률 업데이트 (Worker에서 호출)"""
         self._current_layer = current_layer
         self._total_layers = total_layers
-        
+
         # 퍼센트 계산
         if total_layers > 0:
             percent = int((current_layer / total_layers) * 100)
         else:
             percent = 0
-        
+
         self.progress_bar.setValue(percent)
         self.lbl_percent.setText(f"{percent}%")
         self.row_layer.set_value(f"{current_layer} / {total_layers}")
-        
+
         self._update_time_display()
+
+    def update_layer_image(self, pixmap: QPixmap):
+        """현재 레이어 이미지 업데이트 (Worker에서 호출)"""
+        if pixmap:
+            scaled = pixmap.scaled(270, 270, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self.lbl_layer_image.setPixmap(scaled)
     
     def show_completed(self):
         """완료 다이얼로그 표시"""
