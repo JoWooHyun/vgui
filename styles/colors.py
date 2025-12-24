@@ -9,30 +9,30 @@ class _ColorsMeta(type):
 
     # 현재 테마 색상 (기본값: Light)
     _current = {
-        # Primary
-        "NAVY": "#1E3A5F",
+        # Core
+        "NAVY": "#1E3A5F",           # Primary
         "NAVY_LIGHT": "#2D4A6F",
         "NAVY_DARK": "#152C4A",
-        "CYAN": "#06B6D4",
-        "CYAN_LIGHT": "#22D3EE",
+        "CYAN": "#06B6D4",           # Accent
+        "CYAN_LIGHT": "#67E8F9",     # Highlight
         "CYAN_DARK": "#0891B2",
         # Semantic
-        "RED": "#DC2626",
+        "RED": "#DC2626",            # Danger
         "RED_LIGHT": "#FEE2E2",
         "RED_DARK": "#B91C1C",
         "TEAL": "#14B8A6",
         "TEAL_LIGHT": "#CCFBF1",
-        "AMBER": "#F59E0B",
+        "AMBER": "#F59E0B",          # Warning
         "AMBER_LIGHT": "#FEF3C7",
-        "GREEN": "#22C55E",
+        "GREEN": "#16A34A",          # Success
         "GREEN_LIGHT": "#DCFCE7",
         # Neutral
         "WHITE": "#FFFFFF",
         "BG_PRIMARY": "#FFFFFF",
-        "BG_SECONDARY": "#F8FAFC",
-        "BG_TERTIARY": "#F1F5F9",
-        "BORDER": "#E2E8F0",
-        "BORDER_LIGHT": "#F1F5F9",
+        "BG_SECONDARY": "#F3F6FA",
+        "BG_TERTIARY": "#E5EAF0",
+        "BORDER": "#CBD5E1",
+        "BORDER_LIGHT": "#E2E8F0",
         "TEXT_PRIMARY": "#334155",
         "TEXT_SECONDARY": "#64748B",
         "TEXT_DISABLED": "#94A3B8",

@@ -11,103 +11,103 @@ from styles.colors import Colors
 class ThemeColors:
     """테마별 색상 정의"""
 
-    # ========== Light Theme (현재 기본) ==========
+    # ========== Light Theme ==========
     LIGHT = {
         "name": "Light",
-        # Primary
-        "NAVY": "#1E3A5F",
+        # Core
+        "NAVY": "#1E3A5F",           # Primary
         "NAVY_LIGHT": "#2D4A6F",
         "NAVY_DARK": "#152C4A",
-        "CYAN": "#06B6D4",
-        "CYAN_LIGHT": "#22D3EE",
+        "CYAN": "#06B6D4",           # Accent
+        "CYAN_LIGHT": "#67E8F9",     # Highlight
         "CYAN_DARK": "#0891B2",
         # Semantic
-        "RED": "#DC2626",
+        "RED": "#DC2626",            # Danger
         "RED_LIGHT": "#FEE2E2",
         "RED_DARK": "#B91C1C",
         "TEAL": "#14B8A6",
         "TEAL_LIGHT": "#CCFBF1",
-        "AMBER": "#F59E0B",
+        "AMBER": "#F59E0B",          # Warning
         "AMBER_LIGHT": "#FEF3C7",
-        "GREEN": "#22C55E",
+        "GREEN": "#16A34A",          # Success
         "GREEN_LIGHT": "#DCFCE7",
         # Neutral
         "WHITE": "#FFFFFF",
         "BG_PRIMARY": "#FFFFFF",
-        "BG_SECONDARY": "#F8FAFC",
-        "BG_TERTIARY": "#F1F5F9",
-        "BORDER": "#E2E8F0",
-        "BORDER_LIGHT": "#F1F5F9",
+        "BG_SECONDARY": "#F3F6FA",
+        "BG_TERTIARY": "#E5EAF0",
+        "BORDER": "#CBD5E1",
+        "BORDER_LIGHT": "#E2E8F0",
         "TEXT_PRIMARY": "#334155",
         "TEXT_SECONDARY": "#64748B",
         "TEXT_DISABLED": "#94A3B8",
         "TEXT_EMPHASIS": "#0F172A",
     }
 
-    # ========== Dark Theme ==========
+    # ========== Dark Theme (산업용 메인) ==========
     DARK = {
         "name": "Dark",
-        # Primary
-        "NAVY": "#3B82F6",       # 밝은 블루
+        # Core
+        "NAVY": "#3B82F6",           # Primary (밝은 블루)
         "NAVY_LIGHT": "#60A5FA",
         "NAVY_DARK": "#2563EB",
-        "CYAN": "#22D3EE",       # 밝은 시안
-        "CYAN_LIGHT": "#67E8F9",
+        "CYAN": "#22D3EE",           # Accent
+        "CYAN_LIGHT": "#7DD3FC",     # Highlight
         "CYAN_DARK": "#06B6D4",
         # Semantic
-        "RED": "#EF4444",
-        "RED_LIGHT": "#7F1D1D",
+        "RED": "#F87171",            # Danger
+        "RED_LIGHT": "#450A0A",
         "RED_DARK": "#DC2626",
         "TEAL": "#2DD4BF",
         "TEAL_LIGHT": "#134E4A",
-        "AMBER": "#FBBF24",
+        "AMBER": "#FBBF24",          # Warning
         "AMBER_LIGHT": "#78350F",
-        "GREEN": "#4ADE80",
+        "GREEN": "#4ADE80",          # Success
         "GREEN_LIGHT": "#14532D",
         # Neutral
         "WHITE": "#FFFFFF",
-        "BG_PRIMARY": "#1E293B",     # 어두운 배경
-        "BG_SECONDARY": "#334155",   # 카드 배경
-        "BG_TERTIARY": "#475569",    # 비활성 배경
-        "BORDER": "#475569",
-        "BORDER_LIGHT": "#334155",
-        "TEXT_PRIMARY": "#F1F5F9",   # 밝은 텍스트
-        "TEXT_SECONDARY": "#CBD5E1",
-        "TEXT_DISABLED": "#64748B",
+        "BG_PRIMARY": "#121826",     # 어두운 배경
+        "BG_SECONDARY": "#1E293B",   # 카드 배경
+        "BG_TERTIARY": "#334155",    # 비활성 배경
+        "BORDER": "#334155",
+        "BORDER_LIGHT": "#1E293B",
+        "TEXT_PRIMARY": "#E5E7EB",   # 밝은 텍스트
+        "TEXT_SECONDARY": "#9CA3AF",
+        "TEXT_DISABLED": "#6B7280",
         "TEXT_EMPHASIS": "#FFFFFF",
     }
 
-    # ========== High Contrast Theme ==========
-    HIGH_CONTRAST = {
-        "name": "High Contrast",
-        # Primary
-        "NAVY": "#000000",           # 순수 검정
-        "NAVY_LIGHT": "#1A1A1A",
-        "NAVY_DARK": "#000000",
-        "CYAN": "#00FFFF",           # 순수 시안
-        "CYAN_LIGHT": "#66FFFF",
-        "CYAN_DARK": "#00CCCC",
+    # ========== Dark Amber Theme (Printing / Active Mode) ==========
+    DARK_AMBER = {
+        "name": "Dark Amber",
+        # Core
+        "NAVY": "#FB8C00",           # Primary (Amber)
+        "NAVY_LIGHT": "#FBBF24",
+        "NAVY_DARK": "#D97706",
+        "CYAN": "#FFB74D",           # Accent
+        "CYAN_LIGHT": "#FFE0B2",     # Highlight
+        "CYAN_DARK": "#F59E0B",
         # Semantic
-        "RED": "#FF0000",
-        "RED_LIGHT": "#FFCCCC",
-        "RED_DARK": "#CC0000",
-        "TEAL": "#00FF99",
-        "TEAL_LIGHT": "#CCFFEE",
-        "AMBER": "#FFFF00",
-        "AMBER_LIGHT": "#FFFFCC",
-        "GREEN": "#00FF00",
-        "GREEN_LIGHT": "#CCFFCC",
+        "RED": "#EF4444",            # Danger
+        "RED_LIGHT": "#450A0A",
+        "RED_DARK": "#DC2626",
+        "TEAL": "#2DD4BF",
+        "TEAL_LIGHT": "#134E4A",
+        "AMBER": "#FB8C00",          # Warning
+        "AMBER_LIGHT": "#78350F",
+        "GREEN": "#22C55E",          # Success
+        "GREEN_LIGHT": "#14532D",
         # Neutral
         "WHITE": "#FFFFFF",
-        "BG_PRIMARY": "#FFFFFF",     # 순수 흰색 배경
-        "BG_SECONDARY": "#F0F0F0",
-        "BG_TERTIARY": "#E0E0E0",
-        "BORDER": "#000000",         # 검은 테두리
-        "BORDER_LIGHT": "#333333",
-        "TEXT_PRIMARY": "#000000",   # 순수 검정 텍스트
-        "TEXT_SECONDARY": "#333333",
-        "TEXT_DISABLED": "#666666",
-        "TEXT_EMPHASIS": "#000000",
+        "BG_PRIMARY": "#1B1B1B",     # 어두운 배경
+        "BG_SECONDARY": "#262626",   # 카드 배경
+        "BG_TERTIARY": "#3A2A1A",    # 비활성 배경
+        "BORDER": "#4B5563",
+        "BORDER_LIGHT": "#374151",
+        "TEXT_PRIMARY": "#FAFAFA",   # 밝은 텍스트
+        "TEXT_SECONDARY": "#E5E5E5",
+        "TEXT_DISABLED": "#9CA3AF",
+        "TEXT_EMPHASIS": "#FFFFFF",
     }
 
 
@@ -134,7 +134,7 @@ class ThemeManager(QObject):
         self._themes = {
             "Light": ThemeColors.LIGHT,
             "Dark": ThemeColors.DARK,
-            "High Contrast": ThemeColors.HIGH_CONTRAST,
+            "Dark Amber": ThemeColors.DARK_AMBER,
         }
 
         # 저장된 테마 로드

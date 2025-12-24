@@ -1,6 +1,6 @@
 """
 VERICOM DLP 3D Printer GUI - Theme Page
-Light / Dark / High Contrast 테마 선택
+Light / Dark / Dark Amber 테마 선택
 """
 
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QPushButton, QLabel
@@ -10,42 +10,34 @@ from pages.base_page import BasePage
 from styles.colors import Colors
 from styles.fonts import Fonts
 from styles.stylesheets import Radius
-from styles.icons import Icons
 from controllers.theme_manager import get_theme_manager
 
 
 class ThemeButton(QPushButton):
-    """테마 선택 버튼"""
+    """테마 선택 버튼 - 텍스트만"""
 
-    def __init__(self, theme_name: str, icon_svg: str, display_name: str, parent=None):
+    def __init__(self, theme_name: str, display_name: str, parent=None):
         super().__init__(parent)
 
         self._theme_name = theme_name
         self._display_name = display_name
         self._is_selected = False
 
-        self.setFixedSize(160, 140)
+        self.setFixedSize(160, 100)
         self.setCursor(Qt.PointingHandCursor)
 
         # 레이아웃
         layout = QVBoxLayout(self)
-        layout.setSpacing(8)
-        layout.setContentsMargins(10, 15, 10, 15)
+        layout.setSpacing(0)
+        layout.setContentsMargins(10, 10, 10, 10)
         layout.setAlignment(Qt.AlignCenter)
 
-        # 아이콘
-        self.icon_label = QLabel()
-        self.icon_label.setAlignment(Qt.AlignCenter)
-        self.icon_label.setFixedSize(48, 48)
-        layout.addWidget(self.icon_label, alignment=Qt.AlignCenter)
-
-        # 텍스트
+        # 텍스트만
         self.text_label = QLabel(display_name)
         self.text_label.setAlignment(Qt.AlignCenter)
-        self.text_label.setFont(Fonts.body())
+        self.text_label.setFont(Fonts.h3())
         layout.addWidget(self.text_label, alignment=Qt.AlignCenter)
 
-        self._icon_svg = icon_svg
         self._update_style()
 
     @property
@@ -68,7 +60,6 @@ class ThemeButton(QPushButton):
                     border-radius: {Radius.MD}px;
                 }}
             """)
-            icon_color = Colors.WHITE
             text_color = Colors.WHITE
         else:
             # 미선택: 테두리만
@@ -82,18 +73,7 @@ class ThemeButton(QPushButton):
                     border: 2px solid {Colors.CYAN};
                 }}
             """)
-            icon_color = Colors.NAVY
             text_color = Colors.TEXT_PRIMARY
-
-        # 아이콘 업데이트
-        icon_svg = self._icon_svg.replace("{color}", icon_color)
-        self.icon_label.setText(icon_svg)
-        self.icon_label.setStyleSheet(f"""
-            QLabel {{
-                background-color: transparent;
-                border: none;
-            }}
-        """)
 
         # 텍스트 색상 업데이트
         self.text_label.setStyleSheet(f"""
@@ -164,24 +144,24 @@ class ThemePage(BasePage):
         btn_layout.setSpacing(20)
 
         # Light 테마
-        self.btn_light = ThemeButton("Light", Icons.SUN, "Light")
+        self.btn_light = ThemeButton("Light", "Light")
         self.btn_light.clicked.connect(lambda: self._select_theme("Light"))
         self._buttons["Light"] = self.btn_light
 
         # Dark 테마
-        self.btn_dark = ThemeButton("Dark", Icons.MOON, "Dark")
+        self.btn_dark = ThemeButton("Dark", "Dark")
         self.btn_dark.clicked.connect(lambda: self._select_theme("Dark"))
         self._buttons["Dark"] = self.btn_dark
 
-        # High Contrast 테마
-        self.btn_contrast = ThemeButton("High Contrast", Icons.CONTRAST, "High Contrast")
-        self.btn_contrast.clicked.connect(lambda: self._select_theme("High Contrast"))
-        self._buttons["High Contrast"] = self.btn_contrast
+        # Dark Amber 테마
+        self.btn_amber = ThemeButton("Dark Amber", "Dark Amber")
+        self.btn_amber.clicked.connect(lambda: self._select_theme("Dark Amber"))
+        self._buttons["Dark Amber"] = self.btn_amber
 
         btn_layout.addStretch()
         btn_layout.addWidget(self.btn_light)
         btn_layout.addWidget(self.btn_dark)
-        btn_layout.addWidget(self.btn_contrast)
+        btn_layout.addWidget(self.btn_amber)
         btn_layout.addStretch()
 
         main_layout.addLayout(btn_layout)
