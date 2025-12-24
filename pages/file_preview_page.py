@@ -22,12 +22,12 @@ from controllers.gcode_parser import extract_print_parameters
 
 
 class InfoRow(QFrame):
-    """정보 표시 행 (읽기 전용)"""
+    """정보 표시 행 (아이콘 + 값)"""
 
-    def __init__(self, label: str, value: str = "-", parent=None):
+    def __init__(self, icon_svg: str, value: str = "-", parent=None):
         super().__init__(parent)
 
-        self.setFixedHeight(30)
+        self.setFixedHeight(28)
         self.setStyleSheet(f"""
             QFrame {{
                 background-color: {Colors.BG_SECONDARY};
@@ -37,22 +37,22 @@ class InfoRow(QFrame):
         """)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(10, 0, 10, 0)
+        layout.setContentsMargins(8, 0, 10, 0)
         layout.setSpacing(6)
 
-        # 라벨
-        self.lbl_label = QLabel(label)
-        self.lbl_label.setFont(Fonts.caption())
-        self.lbl_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; background: {Colors.BG_SECONDARY};")
-        self.lbl_label.setFixedWidth(90)
+        # 아이콘
+        self.lbl_icon = QLabel()
+        self.lbl_icon.setFixedSize(18, 18)
+        self.lbl_icon.setPixmap(Icons.get_pixmap(icon_svg, 16, Colors.CYAN))
+        self.lbl_icon.setStyleSheet(f"background: {Colors.BG_SECONDARY}; border: none;")
 
         # 값
         self.lbl_value = QLabel(value)
-        self.lbl_value.setFont(Fonts.caption())
+        self.lbl_value.setFont(Fonts.body_small())
         self.lbl_value.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.lbl_value.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; background: {Colors.BG_SECONDARY};")
 
-        layout.addWidget(self.lbl_label)
+        layout.addWidget(self.lbl_icon)
         layout.addWidget(self.lbl_value, 1)
 
     def set_value(self, value: str):
@@ -306,19 +306,20 @@ class FilePreviewPage(BasePage):
         right_layout = QVBoxLayout()
         right_layout.setSpacing(8)
         
-        # 읽기 전용 정보 행들
+        # 읽기 전용 정보 행들 (아이콘 + 값)
         self.info_rows = {}
 
+        # (아이콘, 키) - 아이콘으로 의미 전달
         info_items = [
-            ("Total Layer", "totalLayer"),
-            ("Total Time", "estimatedPrintTime"),
-            ("Layer Height", "layerHeight"),
-            ("Bottom Exp.", "bottomLayerExposureTime"),
-            ("Normal Exp.", "normalExposureTime"),
+            (Icons.STACK, "totalLayer"),        # 레이어 수
+            (Icons.TIMER, "estimatedPrintTime"), # 예상 시간
+            (Icons.RULER, "layerHeight"),        # 레이어 높이
+            (Icons.SUNRISE, "bottomLayerExposureTime"),  # 바닥 노출
+            (Icons.ZAP, "normalExposureTime"),   # 일반 노출
         ]
-        
-        for label, key in info_items:
-            row = InfoRow(label)
+
+        for icon_svg, key in info_items:
+            row = InfoRow(icon_svg)
             self.info_rows[key] = row
             right_layout.addWidget(row)
         
