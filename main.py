@@ -19,7 +19,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QStackedWidget
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QCursor
 
-from styles.stylesheets import GLOBAL_STYLE
+from styles.stylesheets import GLOBAL_STYLE, get_global_style
 from pages.main_page import MainPage
 from pages.tool_page import ToolPage
 from pages.manual_page import ManualPage
@@ -571,6 +571,9 @@ class MainWindow(QMainWindow):
     def _on_theme_changed(self, theme_name: str):
         """테마 변경 시 UI 새로고침"""
         print(f"[Theme] 테마 변경: {theme_name}")
+
+        # 글로벌 스타일 재적용
+        QApplication.instance().setStyleSheet(get_global_style())
 
         # 모든 페이지를 새로 생성하여 교체
         self._rebuild_pages()

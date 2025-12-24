@@ -37,6 +37,10 @@ QMainWindow {{
     background-color: {Colors.BG_PRIMARY};
 }}
 
+QStackedWidget {{
+    background-color: {Colors.BG_PRIMARY};
+}}
+
 QWidget {{
     font-family: "Pretendard", "Noto Sans KR", sans-serif;
 }}
@@ -126,6 +130,107 @@ QLabel {{
     color: {Colors.NAVY};
     font-size: 18px;
     font-weight: 600;
+}}
+"""
+
+def get_dialog_style():
+    """다이얼로그 스타일"""
+    return f"""
+QDialog {{
+    background-color: {Colors.BG_PRIMARY};
+    border: 2px solid {Colors.BORDER};
+    border-radius: {Radius.LG}px;
+}}
+"""
+
+def get_dial_value_style():
+    """다이얼 값 프레임 스타일"""
+    return f"""
+QFrame {{
+    background-color: {Colors.BG_SECONDARY};
+    border: 2px solid {Colors.CYAN};
+    border-radius: {Radius.LG}px;
+}}
+"""
+
+def get_dial_number_style():
+    """다이얼 숫자 스타일"""
+    return f"""
+QLabel {{
+    color: {Colors.NAVY};
+    font-size: 42px;
+    font-weight: 700;
+    background-color: {Colors.BG_SECONDARY};
+    border: none;
+}}
+"""
+
+def get_dial_unit_style():
+    """다이얼 단위 스타일"""
+    return f"""
+QLabel {{
+    color: {Colors.TEXT_SECONDARY};
+    font-size: 18px;
+    background-color: {Colors.BG_SECONDARY};
+    border: none;
+}}
+"""
+
+def get_dial_label_style():
+    """다이얼 라벨 스타일"""
+    return f"""
+QLabel {{
+    color: {Colors.TEXT_SECONDARY};
+    font-size: 16px;
+    background-color: transparent;
+}}
+"""
+
+def get_dial_cancel_style():
+    """다이얼 취소 버튼 스타일"""
+    return f"""
+QPushButton {{
+    background-color: {Colors.BG_PRIMARY};
+    border: 2px solid {Colors.BORDER};
+    border-radius: {Radius.MD}px;
+    color: {Colors.TEXT_SECONDARY};
+    font-size: 16px;
+    font-weight: 600;
+    padding: 12px 24px;
+}}
+QPushButton:pressed {{
+    background-color: {Colors.BG_TERTIARY};
+}}
+"""
+
+def get_dial_confirm_style():
+    """다이얼 확인 버튼 스타일"""
+    return f"""
+QPushButton {{
+    background-color: {Colors.NAVY};
+    border: none;
+    border-radius: {Radius.MD}px;
+    color: {Colors.WHITE};
+    font-size: 16px;
+    font-weight: 600;
+    padding: 12px 24px;
+}}
+QPushButton:pressed {{
+    background-color: {Colors.NAVY_DARK};
+}}
+"""
+
+def get_control_button_style():
+    """컨트롤 버튼 스타일 (다이얼 +/- 버튼)"""
+    return f"""
+QPushButton {{
+    background-color: {Colors.BG_PRIMARY};
+    border: 2px solid {Colors.NAVY};
+    border-radius: {Radius.LG}px;
+    padding: 0px;
+}}
+QPushButton:pressed {{
+    background-color: {Colors.BG_TERTIARY};
 }}
 """
 

@@ -13,9 +13,9 @@ from styles.colors import Colors
 from styles.fonts import Fonts
 from styles.icons import Icons
 from styles.stylesheets import (
-    BUTTON_CONTROL_STYLE, DIAL_VALUE_STYLE,
-    DIAL_NUMBER_STYLE, DIAL_UNIT_STYLE, DIAL_LABEL_STYLE,
-    BUTTON_DIAL_CANCEL_STYLE, BUTTON_DIAL_CONFIRM_STYLE,
+    get_dialog_style, get_dial_value_style, get_dial_number_style,
+    get_dial_unit_style, get_dial_label_style, get_dial_cancel_style,
+    get_dial_confirm_style, get_control_button_style,
     Spacing, Radius
 )
 
@@ -47,13 +47,7 @@ class NumberDial(QDialog):
     
     def _setup_ui(self):
         """UI 구성"""
-        self.setStyleSheet(f"""
-            QDialog {{
-                background-color: {Colors.BG_PRIMARY};
-                border: 2px solid {Colors.BORDER};
-                border-radius: {Radius.LG}px;
-            }}
-        """)
+        self.setStyleSheet(get_dialog_style())
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(30, 30, 30, 30)
@@ -63,7 +57,7 @@ class NumberDial(QDialog):
         # 라벨
         self.label = QLabel(self._title)
         self.label.setAlignment(Qt.AlignCenter)
-        self.label.setStyleSheet(DIAL_LABEL_STYLE)
+        self.label.setStyleSheet(get_dial_label_style())
         layout.addWidget(self.label)
         
         # 다이얼 컨테이너
@@ -74,7 +68,7 @@ class NumberDial(QDialog):
         # 마이너스 버튼
         self.btn_minus = QPushButton()
         self.btn_minus.setFixedSize(60, 60)
-        self.btn_minus.setStyleSheet(BUTTON_CONTROL_STYLE)
+        self.btn_minus.setStyleSheet(get_control_button_style())
         self.btn_minus.setCursor(Qt.PointingHandCursor)
         self.btn_minus.setIcon(Icons.get_icon(Icons.MINUS, 24, Colors.NAVY))
         self.btn_minus.clicked.connect(self._decrease)
@@ -82,19 +76,19 @@ class NumberDial(QDialog):
         # 값 표시 영역
         value_frame = QFrame()
         value_frame.setFixedSize(160, 80)
-        value_frame.setStyleSheet(DIAL_VALUE_STYLE)
-        
+        value_frame.setStyleSheet(get_dial_value_style())
+
         value_layout = QHBoxLayout(value_frame)
         value_layout.setContentsMargins(10, 0, 10, 0)
         value_layout.setAlignment(Qt.AlignCenter)
-        
+
         self.value_label = QLabel(self._format_value())
         self.value_label.setFont(Fonts.mono_display())
-        self.value_label.setStyleSheet(DIAL_NUMBER_STYLE)
+        self.value_label.setStyleSheet(get_dial_number_style())
         self.value_label.setAlignment(Qt.AlignCenter)
-        
+
         self.unit_label = QLabel(self._unit)
-        self.unit_label.setStyleSheet(DIAL_UNIT_STYLE)
+        self.unit_label.setStyleSheet(get_dial_unit_style())
         self.unit_label.setAlignment(Qt.AlignCenter)
         
         value_layout.addWidget(self.value_label)
@@ -104,7 +98,7 @@ class NumberDial(QDialog):
         # 플러스 버튼
         self.btn_plus = QPushButton()
         self.btn_plus.setFixedSize(60, 60)
-        self.btn_plus.setStyleSheet(BUTTON_CONTROL_STYLE)
+        self.btn_plus.setStyleSheet(get_control_button_style())
         self.btn_plus.setCursor(Qt.PointingHandCursor)
         self.btn_plus.setIcon(Icons.get_icon(Icons.PLUS, 24, Colors.NAVY))
         self.btn_plus.clicked.connect(self._increase)
@@ -121,14 +115,14 @@ class NumberDial(QDialog):
         
         self.btn_cancel = QPushButton("Cancel")
         self.btn_cancel.setFixedSize(140, 50)
-        self.btn_cancel.setStyleSheet(BUTTON_DIAL_CANCEL_STYLE)
+        self.btn_cancel.setStyleSheet(get_dial_cancel_style())
         self.btn_cancel.setCursor(Qt.PointingHandCursor)
         self.btn_cancel.setIcon(Icons.get_icon(Icons.X, 18, Colors.TEXT_SECONDARY))
         self.btn_cancel.clicked.connect(self.reject)
-        
+
         self.btn_confirm = QPushButton("Confirm")
         self.btn_confirm.setFixedSize(140, 50)
-        self.btn_confirm.setStyleSheet(BUTTON_DIAL_CONFIRM_STYLE)
+        self.btn_confirm.setStyleSheet(get_dial_confirm_style())
         self.btn_confirm.setCursor(Qt.PointingHandCursor)
         self.btn_confirm.setIcon(Icons.get_icon(Icons.CHECK, 18, Colors.WHITE))
         self.btn_confirm.clicked.connect(self._confirm)
