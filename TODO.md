@@ -159,12 +159,12 @@
 
 ## 진행 중 (In Progress)
 
-### PrintProgressPage 예상 시간 계산 개선
-- [ ] 블레이드 시간 포함한 총 예상 시간 계산
-  - 현재: run.gcode의 estimatedPrintTime만 사용 (일반 레진 프린터 기준)
-  - 필요: 블레이드 X축 왕복 시간 추가 계산
+### PrintProgressPage 예상 시간 계산 개선 ✅ 완료 (2025-12-24)
+- [x] 블레이드 시간 포함한 총 예상 시간 계산
+  - `_calculate_total_time()` 메서드 추가
   - 계산식: `총 시간 = gcode 시간 + (250mm / blade_speed_mm_s) × 총 레이어`
   - 예시: 30mm/s, 100레이어 → 블레이드 시간 ≈ 833초 추가
+  - `_format_time()` 1시간 이상 시 HH:MM:SS 형식 지원
 - [ ] 향후 확장 예정
   - Z축 이동 시간 (5mm 하강/상승)
   - 딜레이 시간 (run.gcode에서 가져올 예정)

@@ -209,6 +209,7 @@ class PrintProgressPage(BasePage):
         self._elapsed_sec = 0
         self._blade_speed = 1500
         self._led_power = 100
+        self._total_estimated_time = 0
         
         # 경과 시간 타이머
         self._elapsed_timer = QTimer()
@@ -472,11 +473,45 @@ class PrintProgressPage(BasePage):
             self.row_remaining.set_value("--:--")
     
     def _format_time(self, seconds: int) -> str:
-        """초를 MM:SS 형식으로 변환"""
-        minutes = seconds // 60
-        secs = seconds % 60
-        return f"{minutes:02d}:{secs:02d}"
-    
+        """초를 MM:SS 또는 HH:MM:SS 형식으로 변환"""
+        if seconds >= 3600:
+            hours = seconds // 3600
+            minutes = (seconds % 3600) // 60
+            secs = seconds % 60
+            return f"{hours}:{minutes:02d}:{secs:02d}"
+        else:
+            minutes = seconds // 60
+            secs = seconds % 60
+            return f"{minutes:02d}:{secs:02d}"
+
+    def _calculate_total_time(self, gcode_time: int, total_layers: int,
+                               blade_speed: int) -> int:
+        """총 예상 시간 계산 (블레이드 시간 포함)
+
+        Args:
+            gcode_time: run.gcode의 예상 시간 (초)
+            total_layers: 총 레이어 수
+            blade_speed: 블레이드 속도 (Gcode값, GUI = blade_speed / 50)
+
+        Returns:
+            총 예상 시간 (초)
+        """
+        BLADE_ROUND_TRIP = 250.0  # mm (0→125→0 왕복)
+
+        # Gcode값을 GUI값(mm/s)으로 변환
+        blade_speed_mm_s = blade_speed / 50.0
+
+        if blade_speed_mm_s <= 0:
+            blade_speed_mm_s = 30.0  # 기본값
+
+        # 블레이드 1회 왕복 시간
+        blade_time_per_layer = BLADE_ROUND_TRIP / blade_speed_mm_s
+
+        # 총 블레이드 시간
+        total_blade_time = blade_time_per_layer * total_layers
+
+        return int(gcode_time + total_blade_time)
+
     # === Public API (Worker에서 호출) ===
     
     def set_print_info(self, file_path: str, thumbnail: QPixmap,
@@ -516,10 +551,16 @@ class PrintProgressPage(BasePage):
         else:
             self.lbl_thumbnail.setPixmap(Icons.get_pixmap(Icons.FILE, 48, Colors.TEXT_DISABLED))
 
+        # 총 예상 시간 계산 (블레이드 시간 포함)
+        total_estimated_time = self._calculate_total_time(
+            estimated_time, total_layers, blade_speed
+        )
+        self._total_estimated_time = total_estimated_time
+
         # 왼쪽 열: 진행 정보
         self.row_layer.set_value(f"0 / {total_layers}")
         self.row_elapsed.set_value("00:00")
-        self.row_remaining.set_value(self._format_time(estimated_time) if estimated_time > 0 else "--:--")
+        self.row_remaining.set_value(self._format_time(total_estimated_time) if total_estimated_time > 0 else "--:--")
 
         # 중앙 열: 레이어 정보
         self.row_layer_height.set_value(f"{layer_height:.3f} mm" if layer_height > 0 else "-")
