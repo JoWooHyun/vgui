@@ -311,11 +311,11 @@ class FilePreviewPage(BasePage):
 
         # (아이콘, 키) - 아이콘으로 의미 전달
         info_items = [
-            (Icons.STACK, "totalLayer"),        # 레이어 수
-            (Icons.TIMER, "estimatedPrintTime"), # 예상 시간
-            (Icons.RULER, "layerHeight"),        # 레이어 높이
-            (Icons.SUNRISE, "bottomLayerExposureTime"),  # 바닥 노출
-            (Icons.ZAP, "normalExposureTime"),   # 일반 노출
+            (Icons.STACK, "totalLayer"),              # 레이어 수
+            (Icons.TIMER, "estimatedPrintTime"),      # 예상 시간
+            (Icons.RULER, "layerHeight"),             # 레이어 높이
+            (Icons.EXPOSURE_BOTTOM, "bottomLayerExposureTime"),  # 바닥 노출
+            (Icons.EXPOSURE_NORMAL, "normalExposureTime"),       # 일반 노출
         ]
 
         for icon_svg, key in info_items:
