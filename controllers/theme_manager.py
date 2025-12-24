@@ -5,6 +5,7 @@ Manages dynamic theme switching (Light/Dark/High Contrast)
 
 from PySide6.QtCore import QObject, Signal
 from controllers.settings_manager import SettingsManager
+from styles.colors import Colors
 
 
 class ThemeColors:
@@ -140,11 +141,13 @@ class ThemeManager(QObject):
         self._load_theme()
 
     def _load_theme(self):
-        """저장된 테마 설정 로드"""
+        """저장된 테마 설정 로드 및 적용"""
         settings = SettingsManager()
         saved_theme = settings.get("theme", "Light")
         if saved_theme in self._themes:
             self._current_theme = saved_theme
+            # Colors 클래스에 테마 적용
+            Colors.apply_theme(self._themes[self._current_theme])
 
     def _save_theme(self):
         """현재 테마 설정 저장"""
@@ -169,6 +172,8 @@ class ThemeManager(QObject):
         """테마 변경"""
         if theme_name in self._themes and theme_name != self._current_theme:
             self._current_theme = theme_name
+            # Colors 클래스에 테마 적용
+            Colors.apply_theme(self._themes[self._current_theme])
             self._save_theme()
             self.theme_changed.emit(theme_name)
 

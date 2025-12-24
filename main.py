@@ -40,6 +40,7 @@ from controllers.motor_controller import MotorController
 from controllers.dlp_controller import DLPController
 from controllers.gcode_parser import extract_print_parameters
 from controllers.settings_manager import get_settings
+from controllers.theme_manager import get_theme_manager
 
 # 워커
 from workers.print_worker import PrintWorker, PrintStatus
@@ -98,12 +99,18 @@ class MainWindow(QMainWindow):
         # 설정 관리자
         self.settings = get_settings()
 
+        # 테마 관리자 (Colors 클래스에 저장된 테마 적용)
+        self.theme_manager = get_theme_manager()
+
         # 페이지 설정
         self._setup_pages()
         self._connect_signals()
 
         # 저장된 설정 적용
         self._apply_saved_settings()
+
+        # 테마 변경 시그널 연결
+        self.theme_manager.theme_changed.connect(self._on_theme_changed)
 
         # 프린트 워커
         self.print_worker = None
@@ -558,7 +565,40 @@ class MainWindow(QMainWindow):
         """G-code 전송 (Moonraker API)"""
         # TODO: Moonraker API 연동
         pass
-    
+
+    # ==================== 테마 변경 ====================
+
+    def _on_theme_changed(self, theme_name: str):
+        """테마 변경 시 UI 새로고침"""
+        print(f"[Theme] 테마 변경: {theme_name}")
+
+        # 모든 페이지를 새로 생성하여 교체
+        self._rebuild_pages()
+
+    def _rebuild_pages(self):
+        """모든 페이지를 새로 생성하여 테마 적용"""
+        # 현재 페이지 인덱스 저장
+        current_index = self.stack.currentIndex()
+
+        # 기존 페이지들 제거
+        while self.stack.count() > 0:
+            widget = self.stack.widget(0)
+            self.stack.removeWidget(widget)
+            widget.deleteLater()
+
+        # 페이지 재생성
+        self._setup_pages()
+        self._connect_signals()
+
+        # 저장된 설정 적용
+        self._apply_saved_settings()
+
+        # 이전 페이지로 복원
+        if current_index < self.stack.count():
+            self.stack.setCurrentIndex(current_index)
+
+        print("[Theme] UI 새로고침 완료")
+
     def closeEvent(self, event):
         """앱 종료 시"""
         print("[System] VERICOM DLP Printer GUI 종료")
