@@ -33,8 +33,8 @@ class ProgressInfoRow(QFrame):
         """)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 0, 10, 0)
-        layout.setSpacing(6)
+        layout.setContentsMargins(6, 0, 8, 0)
+        layout.setSpacing(4)  # 아이콘-값 간격 좁힘
 
         # 아이콘
         self.lbl_icon = QLabel()
@@ -42,14 +42,15 @@ class ProgressInfoRow(QFrame):
         self.lbl_icon.setPixmap(Icons.get_pixmap(icon_svg, 16, Colors.CYAN))
         self.lbl_icon.setStyleSheet(f"background: {Colors.BG_SECONDARY}; border: none;")
 
-        # 값
+        # 값 (왼쪽 정렬로 아이콘 바로 옆에 표시)
         self.lbl_value = QLabel(value)
         self.lbl_value.setFont(Fonts.body_small())
-        self.lbl_value.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.lbl_value.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.lbl_value.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; background: {Colors.BG_SECONDARY};")
 
         layout.addWidget(self.lbl_icon)
-        layout.addWidget(self.lbl_value, 1)
+        layout.addWidget(self.lbl_value)
+        layout.addStretch()  # 남은 공간은 오른쪽으로
 
     def set_value(self, value: str):
         """값 설정"""
@@ -246,12 +247,39 @@ class PrintProgressPage(BasePage):
 
         preview_layout.addWidget(self.lbl_layer_image)
 
-        # 오른쪽: 정보 세로 나열
-        info_layout = QVBoxLayout()
-        info_layout.setSpacing(6)
-        info_layout.setAlignment(Qt.AlignTop)
+        # 오른쪽: 현재 레이어 이미지 + 정보 세로 나열
+        right_layout = QVBoxLayout()
+        right_layout.setSpacing(8)
+
+        # 현재 레이어 이미지 표시 영역 (1.png, 2.png 등)
+        self.current_layer_frame = QFrame()
+        self.current_layer_frame.setFixedHeight(140)
+        self.current_layer_frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {Colors.BG_SECONDARY};
+                border: 2px solid {Colors.BORDER};
+                border-radius: 8px;
+            }}
+        """)
+
+        current_layer_layout = QVBoxLayout(self.current_layer_frame)
+        current_layer_layout.setContentsMargins(4, 4, 4, 4)
+        current_layer_layout.setAlignment(Qt.AlignCenter)
+
+        self.lbl_current_layer_img = QLabel()
+        self.lbl_current_layer_img.setFixedSize(200, 130)
+        self.lbl_current_layer_img.setAlignment(Qt.AlignCenter)
+        self.lbl_current_layer_img.setStyleSheet(f"background-color: transparent; border: none;")
+        self.lbl_current_layer_img.setPixmap(Icons.get_pixmap(Icons.STACK, 48, Colors.TEXT_DISABLED))
+
+        current_layer_layout.addWidget(self.lbl_current_layer_img)
+
+        right_layout.addWidget(self.current_layer_frame)
 
         # 정보 행들 (세로 나열)
+        info_layout = QVBoxLayout()
+        info_layout.setSpacing(4)
+
         self.row_bottom_exposure = ProgressInfoRow(Icons.EXPOSURE_BOTTOM)  # 바닥 노출
         self.row_normal_exposure = ProgressInfoRow(Icons.EXPOSURE_NORMAL)  # 일반 노출
         self.row_layer_height = ProgressInfoRow(Icons.RULER)  # 레이어 높이
@@ -271,10 +299,12 @@ class PrintProgressPage(BasePage):
         info_layout.addWidget(self.row_led_power)
         info_layout.addWidget(self.row_elapsed)
         info_layout.addWidget(self.row_remaining)
-        info_layout.addStretch()
+
+        right_layout.addLayout(info_layout)
+        right_layout.addStretch()
 
         top_layout.addWidget(self.preview_frame)
-        top_layout.addLayout(info_layout, 1)
+        top_layout.addLayout(right_layout, 1)
 
         self.content_layout.addLayout(top_layout, 1)
 
@@ -576,10 +606,18 @@ class PrintProgressPage(BasePage):
         self._update_time_display()
 
     def update_layer_image(self, pixmap: QPixmap):
-        """현재 레이어 이미지 업데이트 (Worker에서 호출)"""
+        """현재 레이어 이미지 업데이트 (Worker에서 호출)
+
+        왼쪽 큰 프리뷰와 오른쪽 작은 이미지 둘 다 업데이트
+        """
         if pixmap:
-            scaled = pixmap.scaled(270, 270, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            self.lbl_layer_image.setPixmap(scaled)
+            # 왼쪽 큰 프리뷰 (270x270)
+            scaled_large = pixmap.scaled(270, 270, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self.lbl_layer_image.setPixmap(scaled_large)
+
+            # 오른쪽 현재 레이어 이미지 (200x130)
+            scaled_small = pixmap.scaled(200, 130, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self.lbl_current_layer_img.setPixmap(scaled_small)
     
     def show_completed(self):
         """완료 다이얼로그 표시"""
