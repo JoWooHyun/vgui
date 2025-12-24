@@ -261,7 +261,7 @@ class PrintProgressPage(BasePage):
         self.row_blade_speed = ProgressInfoRow(Icons.BLADE_SPEED)  # 블레이드 속도
         self.row_led_power = ProgressInfoRow(Icons.LED_POWER)  # LED 파워
         self.row_elapsed = ProgressInfoRow(Icons.CLOCK)  # 경과 시간
-        self.row_remaining = ProgressInfoRow(Icons.HOURGLASS)  # 남은 시간
+        self.row_total_time = ProgressInfoRow(Icons.HOURGLASS)  # 총 예상 시간
 
         info_layout.addWidget(self.row_bottom_exposure)
         info_layout.addWidget(self.row_normal_exposure)
@@ -271,7 +271,7 @@ class PrintProgressPage(BasePage):
         info_layout.addWidget(self.row_blade_speed)
         info_layout.addWidget(self.row_led_power)
         info_layout.addWidget(self.row_elapsed)
-        info_layout.addWidget(self.row_remaining)
+        info_layout.addWidget(self.row_total_time)
         info_layout.addStretch()
 
         top_layout.addWidget(self.preview_frame)
@@ -428,23 +428,9 @@ class PrintProgressPage(BasePage):
         self._update_time_display()
     
     def _update_time_display(self):
-        """시간 표시 업데이트"""
-        # 경과 시간
-        elapsed_min = self._elapsed_sec // 60
-        elapsed_sec = self._elapsed_sec % 60
-        self.row_elapsed.set_value(f"{elapsed_min:02d}:{elapsed_sec:02d}")
-        
-        # 남은 시간 계산 (레이어 기준)
-        if self._current_layer > 0 and self._total_layers > 0:
-            avg_time_per_layer = self._elapsed_sec / self._current_layer
-            remaining_layers = self._total_layers - self._current_layer
-            remaining_sec = int(avg_time_per_layer * remaining_layers)
-            
-            remain_min = remaining_sec // 60
-            remain_sec = remaining_sec % 60
-            self.row_remaining.set_value(f"{remain_min:02d}:{remain_sec:02d}")
-        else:
-            self.row_remaining.set_value("--:--")
+        """시간 표시 업데이트 (경과 시간만 업데이트, 총 예상 시간은 고정)"""
+        # 경과 시간만 업데이트
+        self.row_elapsed.set_value(self._format_time(self._elapsed_sec))
     
     def _format_time(self, seconds: int) -> str:
         """초를 MM:SS 또는 HH:MM:SS 형식으로 변환"""
@@ -535,7 +521,7 @@ class PrintProgressPage(BasePage):
         # 왼쪽 열: 진행 정보
         self.row_layer.set_value(f"0 / {total_layers}")
         self.row_elapsed.set_value("00:00")
-        self.row_remaining.set_value(self._format_time(total_estimated_time) if total_estimated_time > 0 else "--:--")
+        self.row_total_time.set_value(self._format_time(total_estimated_time) if total_estimated_time > 0 else "--:--")
 
         # 중앙 열: 레이어 정보
         self.row_layer_height.set_value(f"{layer_height:.3f} mm" if layer_height > 0 else "-")
