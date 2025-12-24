@@ -302,6 +302,13 @@ class PrintWorker(QThread):
         # 2. X축 이동 (0 → 125mm)
         self._motor_x_move(125, job.blade_speed)
 
+        # 정지/일시정지 체크 (LED ON 전에)
+        if self._check_stopped():
+            return
+        self._check_paused()
+        if self._check_stopped():
+            return
+
         # 3. 이미지 투영
         self._show_layer_image(job.file_path, layer_idx)
 
@@ -444,7 +451,7 @@ class PrintWorker(QThread):
         self._mutex.unlock()
 
     def _cleanup(self):
-        """정리"""
+        """정리 (STOP 또는 완료 시)"""
         print("[PrintWorker] 정리 중...")
 
         # LED OFF
@@ -455,6 +462,9 @@ class PrintWorker(QThread):
 
         # 이미지 클리어
         self.clear_image.emit()
+
+        # X축 블레이드 홈 복귀
+        self._motor_x_home()
 
         self._set_status(PrintStatus.IDLE)
         print("[PrintWorker] 정리 완료")
