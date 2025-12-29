@@ -87,7 +87,7 @@ class MotorController:
             elif "G1" in gcode and "X" in gcode:
                 timeout = 300
             elif "G28" in gcode:
-                timeout = 100  # 홈잉: 100초
+                timeout = 120  # 홈잉: 120초
             elif "M400" in gcode:
                 timeout = 300  # M400 대기: 5분
             else:
@@ -143,11 +143,11 @@ class MotorController:
     def z_home(self) -> bool:
         """Z축 홈으로 이동"""
         print("[Motor] Z축 홈 이동 시작")
-        success = self.send_gcode("G28 Z", timeout=100)
+        success = self.send_gcode("G28 Z", timeout=120)
         if success:
             self._z_position = 0.0
             self._z_is_homed = True
-            self.wait_for_movement_complete(timeout=100)
+            self.wait_for_movement_complete(timeout=120)
             print("[Motor] Z축 홈 이동 완료")
         return success
 
@@ -203,11 +203,11 @@ class MotorController:
             return True
 
         print("[Motor] X축 홈 이동 시작")
-        success = self.send_gcode("G28 X", timeout=100)
+        success = self.send_gcode("G28 X", timeout=120)
         if success:
             self._x_position = 0.0
             self._x_is_homed = True
-            self.wait_for_movement_complete(timeout=100)
+            self.wait_for_movement_complete(timeout=120)
             print("[Motor] X축 홈 이동 완료")
         return success
 
