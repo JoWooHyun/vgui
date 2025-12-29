@@ -568,8 +568,8 @@ class MainWindow(QMainWindow):
         print(f"[Setting] Blade Speed 변경: {speed}mm/s")
         # 설정 저장
         self.settings.set_blade_speed(speed)
-        # File Preview 페이지에 동기화 (mm/s → mm/min 변환)
-        self.file_preview_page.set_blade_speed(speed * 60)
+        # File Preview 페이지에 동기화 (mm/s 그대로)
+        self.file_preview_page.set_blade_speed(speed)
 
     # ==================== 시스템 메뉴 ====================
 
