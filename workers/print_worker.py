@@ -220,12 +220,18 @@ class PrintWorker(QThread):
         # Z축 홈
         if self._check_stopped():
             return
-        self._motor_z_home()
+        if not self._motor_z_home():
+            self.error_occurred.emit("Z축 홈 이동 실패")
+            self._is_stopped = True
+            return
 
         # X축 홈
         if self._check_stopped():
             return
-        self._motor_x_home()
+        if not self._motor_x_home():
+            self.error_occurred.emit("X축 홈 이동 실패")
+            self._is_stopped = True
+            return
 
         # 2. 레진 평탄화
         if job.leveling_cycles > 0:
@@ -255,8 +261,9 @@ class PrintWorker(QThread):
             self.layer_started.emit(layer_idx)
             self.progress_updated.emit(layer_idx + 1, total_layers)
 
-            # 레이어 처리
-            self._process_layer(layer_idx, job)
+            # 레이어 처리 (실패 시 루프 종료)
+            if not self._process_layer(layer_idx, job):
+                break
 
         # 5. 완료 또는 정지
         if self._is_stopped:
@@ -266,7 +273,7 @@ class PrintWorker(QThread):
             self._set_status(PrintStatus.COMPLETED)
             self.print_completed.emit()
 
-    def _process_layer(self, layer_idx: int, job: PrintJob):
+    def _process_layer(self, layer_idx: int, job: PrintJob) -> bool:
         """
         단일 레이어 처리
 
@@ -279,6 +286,9 @@ class PrintWorker(QThread):
         6. Z축 리프트
         7. X축 복귀
         8. Z축 다음 레이어 준비
+
+        Returns:
+            bool: 성공 시 True, 실패 시 False (이미지 로드 실패 등)
         """
         params = job.params
 
@@ -297,20 +307,31 @@ class PrintWorker(QThread):
         z_position = (layer_idx + 1) * params.layerHeight
 
         # 1. Z축 레이어 높이로 이동
-        self._motor_z_move(z_position)
+        if not self._motor_z_move(z_position):
+            self.error_occurred.emit(f"레이어 {layer_idx}: Z축 이동 실패")
+            self._is_stopped = True
+            return False
 
         # 2. X축 이동 (0 → 125mm)
-        self._motor_x_move(125, job.blade_speed)
+        if not self._motor_x_move(125, job.blade_speed):
+            self.error_occurred.emit(f"레이어 {layer_idx}: X축 이동 실패")
+            self._is_stopped = True
+            return False
 
         # 정지/일시정지 체크 (LED ON 전에)
         if self._check_stopped():
-            return
+            return True  # 정지 요청은 정상 종료
         self._check_paused()
         if self._check_stopped():
-            return
+            return True
 
-        # 3. 이미지 투영
-        self._show_layer_image(job.file_path, layer_idx)
+        # 3. 이미지 투영 (실패 시 프린트 중지)
+        if not self._show_layer_image(job.file_path, layer_idx):
+            # 이미지 로드 실패 - 프린트 중지
+            self._mutex.lock()
+            self._is_stopped = True
+            self._mutex.unlock()
+            return False
 
         # 4. LED ON + 노광
         self._dlp_led_on(job.led_power)
@@ -325,46 +346,61 @@ class PrintWorker(QThread):
         self.clear_image.emit()
 
         # 6. Z축 리프트
-        self._motor_z_move(z_position + lift_height, lift_speed)
+        if not self._motor_z_move(z_position + lift_height, lift_speed):
+            self.error_occurred.emit(f"레이어 {layer_idx}: Z축 리프트 실패")
+            self._is_stopped = True
+            return False
 
         # 7. X축 복귀 (125 → 0mm)
-        self._motor_x_move(0, job.blade_speed)
+        if not self._motor_x_move(0, job.blade_speed):
+            self.error_occurred.emit(f"레이어 {layer_idx}: X축 복귀 실패")
+            self._is_stopped = True
+            return False
 
         # 8. Z축 다음 레이어 높이로 하강
         next_z = (layer_idx + 2) * params.layerHeight
-        self._motor_z_move(next_z, params.normalDropSpeed)
+        if not self._motor_z_move(next_z, params.normalDropSpeed):
+            self.error_occurred.emit(f"레이어 {layer_idx}: Z축 하강 실패")
+            self._is_stopped = True
+            return False
+
+        return True
 
     # ==================== 하드웨어 제어 래퍼 ====================
 
-    def _motor_z_home(self):
+    def _motor_z_home(self) -> bool:
         """Z축 홈"""
         print("[PrintWorker] Z축 홈 이동")
         if self.motor and not self.simulation:
-            self.motor.z_home()
+            return self.motor.z_home()
         else:
             time.sleep(0.5)  # 시뮬레이션
+            return True
 
-    def _motor_x_home(self):
+    def _motor_x_home(self) -> bool:
         """X축 홈"""
         print("[PrintWorker] X축 홈 이동")
         if self.motor and not self.simulation:
-            self.motor.x_home()
+            return self.motor.x_home()
         else:
             time.sleep(0.3)
+            return True
 
-    def _motor_z_move(self, position: float, speed: int = 300):
+    def _motor_z_move(self, position: float, speed: int = 300) -> bool:
         """Z축 이동"""
         if self.motor and not self.simulation:
-            self.motor.z_move_absolute(position, speed)
+            return self.motor.z_move_absolute(position, speed)
         else:
             time.sleep(0.1)
+            return True
 
-    def _motor_x_move(self, position: float, speed: int = 4500):
+    def _motor_x_move(self, position: float, speed: int = 4500) -> bool:
         """X축 이동"""
         if self.motor and not self.simulation:
-            self.motor.x_move_absolute(position, speed)
+            return self.motor.x_move_absolute(position, speed)
         else:
             time.sleep(0.2)
+            return True
 
     def _dlp_projector_on(self):
         """프로젝터 ON"""
@@ -388,16 +424,44 @@ class PrintWorker(QThread):
         if self.dlp and not self.simulation:
             self.dlp.led_off()
 
-    def _show_layer_image(self, zip_path: str, layer_idx: int):
-        """레이어 이미지 표시"""
-        try:
-            image_data = GCodeParser.get_layer_image(zip_path, layer_idx)
-            if image_data:
-                qimage = QImage.fromData(image_data)
-                pixmap = QPixmap.fromImage(qimage)
-                self.show_image.emit(pixmap)
-        except Exception as e:
-            print(f"[PrintWorker] 이미지 로드 오류: {e}")
+    def _show_layer_image(self, zip_path: str, layer_idx: int) -> bool:
+        """
+        레이어 이미지 표시
+
+        Args:
+            zip_path: ZIP 파일 경로
+            layer_idx: 레이어 인덱스
+
+        Returns:
+            bool: 성공 시 True, 실패 시 False
+        """
+        max_retries = 3
+        retry_delay = 0.5  # 500ms
+
+        for attempt in range(max_retries):
+            try:
+                image_data = GCodeParser.get_layer_image(zip_path, layer_idx)
+                if image_data:
+                    qimage = QImage.fromData(image_data)
+                    if qimage.isNull():
+                        raise ValueError(f"이미지 데이터 손상 (레이어 {layer_idx})")
+                    pixmap = QPixmap.fromImage(qimage)
+                    self.show_image.emit(pixmap)
+                    return True
+                else:
+                    raise FileNotFoundError(f"레이어 {layer_idx} 이미지를 찾을 수 없음")
+            except Exception as e:
+                print(f"[PrintWorker] 이미지 로드 오류 (시도 {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                else:
+                    # 모든 재시도 실패
+                    error_msg = f"레이어 {layer_idx} 이미지 로드 실패: {e}"
+                    print(f"[PrintWorker] 치명적 오류: {error_msg}")
+                    self.error_occurred.emit(error_msg)
+                    return False
+
+        return False
 
     # ==================== 유틸리티 ====================
 
@@ -463,7 +527,7 @@ class PrintWorker(QThread):
         # 이미지 클리어
         self.clear_image.emit()
 
-        # X축 블레이드 홈 복귀
+        # X축만 홈 복귀 (Z축은 현재 위치 유지 - 안전을 위해)
         self._motor_x_home()
 
         self._set_status(PrintStatus.IDLE)

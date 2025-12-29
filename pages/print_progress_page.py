@@ -178,7 +178,70 @@ class StopConfirmDialog(QDialog):
         
         btn_layout.addWidget(btn_cancel)
         btn_layout.addWidget(btn_stop)
-        
+
+        layout.addWidget(lbl_message)
+        layout.addStretch()
+        layout.addLayout(btn_layout)
+
+
+class ErrorDialog(QDialog):
+    """에러 다이얼로그"""
+
+    def __init__(self, message: str, parent=None):
+        super().__init__(parent)
+
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Dialog)
+        self.setFixedSize(360, 180)
+        self.setStyleSheet(f"""
+            QDialog {{
+                background-color: {Colors.WHITE};
+                border: 2px solid {Colors.RED};
+                border-radius: 16px;
+            }}
+        """)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(16)
+
+        # 에러 제목
+        lbl_title = QLabel("오류")
+        lbl_title.setFont(Fonts.h2())
+        lbl_title.setAlignment(Qt.AlignCenter)
+        lbl_title.setStyleSheet(f"color: {Colors.RED}; background: transparent;")
+
+        # 에러 메시지
+        lbl_message = QLabel(message)
+        lbl_message.setFont(Fonts.body_small())
+        lbl_message.setAlignment(Qt.AlignCenter)
+        lbl_message.setWordWrap(True)
+        lbl_message.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; background: transparent;")
+
+        # 확인 버튼
+        btn_ok = QPushButton("확인")
+        btn_ok.setFixedSize(120, 48)
+        btn_ok.setFont(Fonts.body())
+        btn_ok.setCursor(Qt.PointingHandCursor)
+        btn_ok.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.RED};
+                color: {Colors.WHITE};
+                border: none;
+                border-radius: 10px;
+            }}
+            QPushButton:pressed {{
+                background-color: #B71C1C;
+            }}
+        """)
+        btn_ok.clicked.connect(self.accept)
+
+        # 버튼 중앙 정렬
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        btn_layout.addWidget(btn_ok)
+        btn_layout.addStretch()
+
+        layout.addWidget(lbl_title)
         layout.addWidget(lbl_message)
         layout.addStretch()
         layout.addLayout(btn_layout)

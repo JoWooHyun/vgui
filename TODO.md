@@ -2,7 +2,50 @@
 
 ## 현재 상태
 
-**기본 프린팅 동작 확인됨** (2025-12)
+**코드 리뷰 진행 중** (2025-12-29)
+- Critical/High 우선순위 버그 수정 완료
+- Medium/Low 우선순위 항목 대기 중
+
+---
+
+## 코드 리뷰 결과 (2025-12-29)
+
+### Critical - 수정 완료 ✅
+
+- [x] **블레이드 속도 단위 혼란** - main.py에서 ×60 사용, FilePreviewPage에서 ×50 사용
+  - 수정: main.py에서 ×60 제거, ×50으로 통일
+
+- [x] **레이어 이미지 업데이트 안됨** - PrintProgressPage에 show_image 시그널 미연결
+  - 수정: main.py에서 print_worker.show_image → print_progress_page.update_layer_image 연결
+
+- [x] **이미지 로드 실패 시 무시** - 레이어 이미지 로드 실패해도 프린트 계속 진행
+  - 수정: 3회 재시도 후 실패 시 프린트 중지, 에러 다이얼로그 표시
+
+### High - 수정 완료 ✅
+
+- [x] **홈 이동 타임아웃** - Z/X축 홈 이동 시 100초 타임아웃으로 실패
+  - 수정: motor_controller.py에서 타임아웃 100초 → 120초 증가
+
+- [x] **에러 시 ProgressPage 미통보** - 에러 발생해도 PrintProgressPage가 모르고 계속 표시
+  - 수정: ErrorDialog 추가, 에러 시 다이얼로그 표시 후 메인 페이지로 이동
+
+- [x] **모터 에러 무시** - 모터 이동 실패해도 프린트 계속 진행
+  - 수정: 모터 래퍼 함수에 반환값 체크, 실패 시 error_occurred 시그널 emit
+
+- [x] **정지/에러 시 홈 복귀 순서** - Z축 먼저 복귀하면 출력물 손상 가능
+  - 수정: X축만 홈 복귀 (Z축은 현재 위치 유지 - 안전)
+
+### Medium - 대기 중
+
+- [ ] **_process_layer() 후 stop 체크 없음** - 레이어 처리 후 즉시 다음 레이어로 진행
+- [ ] **일시정지 시 LED 상태** - 일시정지해도 LED가 계속 켜져 있을 수 있음
+- [ ] **파라미터 기본값 의존** - PrintParameters 기본값과 실제 gcode 값 불일치 가능
+
+### Low - 대기 중
+
+- [ ] **레이어 인덱스 0-based vs 1-based** - 로그와 UI에서 혼용
+- [ ] **시뮬레이션 모드 불완전** - 일부 하드웨어 로직 시뮬레이션 누락
+- [ ] **하드코딩된 값들** - 매직 넘버 상수화 필요
 
 ---
 
@@ -13,9 +56,6 @@
 - [ ] **LED 밝기 설정 실패** - I2C 쓰기 오류 17 발생
   - 로그: `[DLP] I2C 쓰기 실패: 17`
   - 원인 조사 필요 (I2C 주소, 권한, 하드웨어 연결 확인)
-
-- [ ] **프린트 완료 후 홈 복귀 없음** - 프린트 완료 시 Z축이 현재 위치에 멈춤
-  - PrintWorker `_cleanup()`에서 홈 복귀 로직 추가 필요
 
 ### 중간 우선순위
 
@@ -30,7 +70,6 @@
 
 - [ ] 프린트 완료 후 Z축 상단으로 이동 (출력물 제거 용이)
 - [ ] 레이어별 진행 로그 개선 (현재 레이어/총 레이어 표시)
-- [ ] 예상 남은 시간 계산 및 표시
 - [x] 프린트 중 현재 레이어 이미지 미리보기 ✅ (2025-12-24)
 
 ### DLP/LED 관련
@@ -70,10 +109,6 @@
 - [x] **설정 저장/로드** - JSON 파일로 설정 유지 (SettingsManager)
 - [ ] **다국어 지원** - 한국어/영어 전환 실제 구현
 - [x] **테마 기능** - Light/Dark 2가지 테마 ✅ (2025-12-24)
-  - ThemeManager 싱글톤
-  - Colors 메타클래스 동적 테마
-  - 동적 스타일 함수 (get_*_style())
-  - 다이얼로그/페이지 테마 지원
 - [ ] **OTA 업데이트** - 원격 펌웨어/소프트웨어 업데이트
 - [ ] **로그 저장** - 프린트 로그 파일 저장
 
@@ -107,6 +142,30 @@
 
 ## 완료된 항목 (Done)
 
+### 2025-12-29 (코드 리뷰)
+
+- [x] 블레이드 속도 단위 통일 (×50)
+- [x] PrintProgressPage 레이어 이미지 업데이트 연결
+- [x] 이미지 로드 실패 시 3회 재시도 + 프린트 중지
+- [x] 홈 이동 타임아웃 120초로 증가
+- [x] ErrorDialog 추가 및 에러 처리 개선
+- [x] 모터 에러 체크 및 처리
+- [x] 정지/에러 시 X축만 홈 복귀 (Z축 위치 유지)
+
+### 2025-12-24
+
+- [x] Theme 페이지 구현 (Light/Dark 선택)
+- [x] ThemeManager 싱글톤 구현
+- [x] Colors 메타클래스 동적 테마 지원
+- [x] 동적 스타일 함수 추가 (get_*_style())
+- [x] 다이얼로그 테마 지원 (NumberDial)
+- [x] FilePreviewPage 아이콘 기반 정보 표시
+- [x] PrintProgressPage 레이아웃 재설계
+- [x] 프린트 중 현재 레이어 이미지 미리보기
+- [x] 블레이드 시간 포함한 총 예상 시간 계산
+
+### 2025-12 (이전)
+
 - [x] 기본 GUI 프레임워크 구축 (PySide6)
 - [x] 12개 페이지 UI 구현
 - [x] Moonraker API 모터 제어 연동
@@ -114,65 +173,9 @@
 - [x] PrintWorker QThread 구현
 - [x] ZIP 파일 파싱 및 레이어 이미지 추출
 - [x] 프로젝터 윈도우 (두 번째 모니터 출력)
-- [x] totalLayer 파라미터 전달 버그 수정 (2025-12)
-- [x] 레이어 이미지 탐지 개선 (1.png 형식 지원)
-- [x] VERICOM 로고 추가 (메인 페이지 + 모든 서브페이지 우측하단)
-- [x] "Set Z=0" → "Calibration" 이름/아이콘 변경
-- [x] Clean 페이지 시간 표시 수정 (10.0 sec → 10 sec)
-- [x] 프로젝터 해상도 수정 (1440x2560 → 1920x1080)
-- [x] LED Power 퍼센트→실제값 변환 수정 (100%=440, 120%=528)
-- [x] Setting 페이지 구현 (LED Power + Blade 설정) (2025-12)
-- [x] LED ON/OFF 토글 버튼 구현 (1.png 테스트 이미지 표시)
-- [x] Blade HOME/MOVE 버튼 구현
+- [x] totalLayer 파라미터 전달 버그 수정
+- [x] Setting 페이지 구현 (LED Power + Blade 설정)
 - [x] 설정 저장/로드 구현 (JSON, SettingsManager)
-- [x] Setting ↔ File Preview 페이지 설정 동기화
-- [x] System 페이지 레이아웃 개선 (3×2 그리드, 6버튼)
-- [x] Theme 버튼 추가 (SUN 아이콘)
-- [x] Theme 페이지 구현 (Light/Dark 선택) (2025-12-24)
-- [x] ThemeManager 싱글톤 구현 (2025-12-24)
-- [x] Colors 메타클래스 동적 테마 지원 (2025-12-24)
-- [x] 동적 스타일 함수 추가 (get_*_style()) (2025-12-24)
-- [x] 다이얼로그 테마 지원 (NumberDial) (2025-12-24)
-- [x] QStackedWidget 배경색 테마 연동 (2025-12-24)
-- [x] FilePreviewPage 아이콘 기반 정보 표시 (2025-12-24)
-  - 5개 파라미터: totalLayer, estimatedPrintTime, layerHeight, bottomLayerExposureTime, normalExposureTime
-  - 커스텀 아이콘: EXPOSURE_NORMAL (광선+레이어), EXPOSURE_BOTTOM (레이어+바닥선)
-- [x] Blade Speed 단위 변경 (2025-12-24)
-  - mm/min → mm/s 표시
-  - 범위: 10-100 mm/s (실제값 = 표시값 × 50)
-- [x] Manual 페이지 다크모드 버튼 수정 (2025-12-24)
-  - get_button_control_style(), get_button_home_style() 동적 함수 추가
-- [x] Print 페이지 다크모드 버튼 수정 (2025-12-24)
-  - get_button_nav_style() 동적 함수 추가
-  - btn_up, btn_down, btn_home 테마 지원
-- [x] 다크모드 앱 재시작 시 흰색 코너 버그 수정 (2025-12-24)
-  - main.py: GLOBAL_STYLE → get_global_style() 동적 함수 사용
-  - header.py: right_spacer 배경색 BG_PRIMARY로 변경
-- [x] PrintProgressPage 아이콘 기반 정보 표시 (2025-12-24)
-  - 9개 정보행을 3열 그리드로 재배치
-  - 왼쪽: 현재 레이어(STACK), 경과 시간(CLOCK), 남은 시간(HOURGLASS)
-  - 중앙: 레이어 높이(RULER), 바닥 노출(EXPOSURE_BOTTOM), 일반 노출(EXPOSURE_NORMAL)
-  - 오른쪽: 바닥 레이어 수(BOTTOM_LAYERS), 블레이드 속도(BLADE_SPEED), LED 파워(LED_POWER)
-  - 새 아이콘 추가: BOTTOM_LAYERS, BLADE_SPEED, LED_POWER
-- [x] PrintProgressPage 레이아웃 재설계 (2025-12-24)
-  - 왼쪽: 현재 레이어 이미지 큰 프리뷰 (280x280)
-  - 오른쪽: 9개 정보 행 세로 나열
-  - 하단: 파일명, 진행바, PAUSE/STOP 버튼
-  - `update_layer_image(pixmap)` 메서드 추가 (Worker 연동용)
-
----
-
-## 진행 중 (In Progress)
-
-### PrintProgressPage 예상 시간 계산 개선 ✅ 완료 (2025-12-24)
-- [x] 블레이드 시간 포함한 총 예상 시간 계산
-  - `_calculate_total_time()` 메서드 추가
-  - 계산식: `총 시간 = gcode 시간 + (250mm / blade_speed_mm_s) × 총 레이어`
-  - 예시: 30mm/s, 100레이어 → 블레이드 시간 ≈ 833초 추가
-  - `_format_time()` 1시간 이상 시 HH:MM:SS 형식 지원
-- [ ] 향후 확장 예정
-  - Z축 이동 시간 (5mm 하강/상승)
-  - 딜레이 시간 (run.gcode에서 가져올 예정)
 
 ---
 

@@ -4,12 +4,21 @@ VERICOM DLP 3D 프린터를 위한 터치스크린 GUI 애플리케이션입니�
 
 ## 현재 상태
 
-**프린팅 기능 동작 확인됨** - 기본적인 프린팅 시퀀스가 정상 작동합니다.
+**코드 리뷰 진행 중** (2025-12-29)
 
-- Z축/X축 모터 제어
-- DLP 프로젝터 및 UV LED 제어
-- 레이어별 이미지 투영
-- 레진 평탄화 (블레이드)
+- Critical/High 우선순위 버그 수정 완료
+- 기본 프린팅 시퀀스 정상 작동
+- 에러 처리 및 안전 기능 강화됨
+
+### 최근 변경사항 (2025-12-29)
+
+| 항목 | 변경 내용 |
+|------|-----------|
+| 이미지 로드 | 3회 재시도 후 실패 시 프린트 중지 |
+| 에러 다이얼로그 | 에러 발생 시 사용자에게 알림 |
+| 모터 에러 처리 | 모터 이동 실패 시 프린트 중지 |
+| 홈 복귀 | 정지/에러 시 X축만 복귀 (Z축 위치 유지) |
+| 타임아웃 | 홈 이동 타임아웃 120초로 증가 |
 
 ## 시스템 사양
 
@@ -44,12 +53,14 @@ vgui/
 ├── controllers/                # 하드웨어 컨트롤러
 │   ├── motor_controller.py     # Moonraker 모터 제어
 │   ├── dlp_controller.py       # NVR2+ DLP/LED 제어
-│   └── gcode_parser.py         # ZIP/G-code 파싱
+│   ├── gcode_parser.py         # ZIP/G-code 파싱
+│   ├── settings_manager.py     # 설정 저장/로드
+│   └── theme_manager.py        # 테마 관리
 ├── workers/                    # 백그라운드 워커
 │   └── print_worker.py         # 프린팅 시퀀스 실행 (QThread)
 ├── windows/                    # 추가 윈도우
 │   └── projector_window.py     # 프로젝터 출력 윈도우
-├── pages/                      # GUI 페이지 (12개)
+├── pages/                      # GUI 페이지 (14개)
 │   ├── main_page.py            # 메인 홈
 │   ├── tool_page.py            # 도구 메뉴
 │   ├── manual_page.py          # Z축/X축 수동 제어
@@ -59,11 +70,13 @@ vgui/
 │   ├── exposure_page.py        # LED 노출 테스트
 │   ├── clean_page.py           # 트레이 클리닝
 │   ├── system_page.py          # 시스템 설정
+│   ├── setting_page.py         # LED/블레이드 설정
+│   ├── theme_page.py           # 테마 선택
 │   ├── device_info_page.py     # 장치 정보
 │   ├── language_page.py        # 언어 설정
 │   └── service_page.py         # 서비스 정보
 ├── styles/                     # 스타일 정의
-│   ├── colors.py               # 컬러 팔레트
+│   ├── colors.py               # 컬러 팔레트 (동적 테마)
 │   ├── fonts.py                # 폰트 설정
 │   ├── icons.py                # SVG 아이콘
 │   └── stylesheets.py          # Qt 스타일시트
@@ -132,7 +145,24 @@ python main.py --sim
    - Z축/X축 홈 이동
    - 레진 평탄화
    - 레이어별 노출 및 이동
-5. **완료**: 자동 정리 및 홈 복귀
+5. **완료 또는 에러**: 자동 정리 (X축 홈 복귀)
+
+## 에러 처리
+
+### 이미지 로드 실패
+- 3회 재시도 후 실패 시 프린트 자동 중지
+- 에러 다이얼로그로 사용자 알림
+
+### 모터 에러
+- Z축/X축 이동 실패 시 프린트 자동 중지
+- 안전을 위해 Z축은 현재 위치 유지
+
+### 정지/에러 시 동작
+1. LED OFF
+2. 프로젝터 OFF
+3. X축만 홈 복귀 (Z축 위치 유지)
+4. 에러 다이얼로그 표시 (에러 시)
+5. 메인 페이지로 이동
 
 ## ZIP 파일 형식
 
@@ -164,6 +194,27 @@ print_file.zip
 ## 알려진 문제점
 
 자세한 내용은 [TODO.md](TODO.md) 참조
+
+### 남은 작업 (Medium/Low 우선순위)
+
+- 일시정지 시 LED 상태 처리
+- 레이어 인덱스 표기 통일 (0-based vs 1-based)
+- 시뮬레이션 모드 완성도 개선
+- 매직 넘버 상수화
+
+## 개발 가이드
+
+### 블레이드 속도 단위
+
+- **UI 표시**: mm/s (10-100)
+- **내부 저장**: mm/s × 50 = Gcode F-value
+- **예시**: 30 mm/s → F1500
+
+### 테마 시스템
+
+- `ThemeManager` 싱글톤으로 테마 관리
+- `Colors` 메타클래스로 동적 색상 변경
+- `get_*_style()` 함수로 동적 스타일 적용
 
 ## 라이선스
 

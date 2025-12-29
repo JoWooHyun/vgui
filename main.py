@@ -31,7 +31,7 @@ from pages.device_info_page import DeviceInfoPage
 from pages.language_page import LanguagePage
 from pages.service_page import ServicePage
 from pages.file_preview_page import FilePreviewPage
-from pages.print_progress_page import PrintProgressPage
+from pages.print_progress_page import PrintProgressPage, ErrorDialog
 from pages.setting_page import SettingPage
 from pages.theme_page import ThemePage
 
@@ -407,8 +407,25 @@ class MainWindow(QMainWindow):
     def _on_print_error(self, message: str):
         """프린트 오류"""
         print(f"[Print] 오류: {message}")
+
+        # 프로젝터 윈도우 닫기
         if self.projector_window:
             self.projector_window.close()
+
+        # 타이머 정지
+        self.print_progress_page._elapsed_timer.stop()
+
+        # 에러 다이얼로그 표시
+        dialog = ErrorDialog(message, self)
+        dialog.exec()
+
+        # X축만 홈 복귀 (Z축은 현재 위치 유지 - 안전을 위해)
+        if self.motor:
+            print("[Print] X축 홈 복귀...")
+            self.motor.x_home()
+
+        # 메인 페이지로 이동
+        self.stack.setCurrentWidget(self.main_page)
 
     def _on_print_pause(self):
         """프린트 일시정지"""
