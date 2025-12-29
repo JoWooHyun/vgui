@@ -184,6 +184,61 @@ class StopConfirmDialog(QDialog):
         layout.addLayout(btn_layout)
 
 
+class StoppedDialog(QDialog):
+    """정지 완료 다이얼로그"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Dialog)
+        self.setFixedSize(300, 160)
+        self.setStyleSheet(f"""
+            QDialog {{
+                background-color: {Colors.WHITE};
+                border: 2px solid {Colors.AMBER};
+                border-radius: 16px;
+            }}
+        """)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(20)
+
+        # 메시지
+        lbl_message = QLabel("정지 완료!")
+        lbl_message.setFont(Fonts.h2())
+        lbl_message.setAlignment(Qt.AlignCenter)
+        lbl_message.setStyleSheet(f"color: {Colors.AMBER}; background: transparent;")
+
+        # 확인 버튼
+        btn_ok = QPushButton("확인")
+        btn_ok.setFixedSize(120, 48)
+        btn_ok.setFont(Fonts.body())
+        btn_ok.setCursor(Qt.PointingHandCursor)
+        btn_ok.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.AMBER};
+                color: {Colors.WHITE};
+                border: none;
+                border-radius: 10px;
+            }}
+            QPushButton:pressed {{
+                background-color: #E68A00;
+            }}
+        """)
+        btn_ok.clicked.connect(self.accept)
+
+        # 버튼 중앙 정렬
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        btn_layout.addWidget(btn_ok)
+        btn_layout.addStretch()
+
+        layout.addWidget(lbl_message)
+        layout.addStretch()
+        layout.addLayout(btn_layout)
+
+
 class ErrorDialog(QDialog):
     """에러 다이얼로그"""
 
@@ -249,18 +304,21 @@ class ErrorDialog(QDialog):
 
 class PrintProgressPage(BasePage):
     """프린트 진행 페이지"""
-    
+
     # 시그널 (Worker 제어용)
     pause_requested = Signal()
     resume_requested = Signal()
     stop_requested = Signal()
     go_home = Signal()
-    
+    z_home_requested = Signal()  # Z축 홈 요청
+
     # 상태 상수
     STATUS_PRINTING = "printing"
     STATUS_PAUSED = "paused"
     STATUS_STOPPING = "stopping"
     STATUS_COMPLETED = "completed"
+    STATUS_ERROR = "error"
+    STATUS_STOPPED = "stopped"
     
     def __init__(self, parent=None):
         super().__init__("Printing...", show_back=False, parent=parent)
@@ -385,9 +443,9 @@ class PrintProgressPage(BasePage):
         bottom_layout.addWidget(self.lbl_filename)
         bottom_layout.addLayout(progress_layout)
 
-        # 버튼들
-        btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(20)
+        # 버튼들 (프린팅 중: PAUSE/STOP, 종료 후: GUI홈/Z축홈)
+        self.btn_layout = QHBoxLayout()
+        self.btn_layout.setSpacing(20)
 
         # PAUSE/RESUME 버튼
         self.btn_pause = QPushButton("PAUSE")
@@ -416,12 +474,53 @@ class PrintProgressPage(BasePage):
         """)
         self.btn_stop.clicked.connect(self._on_stop_clicked)
 
-        btn_layout.addStretch()
-        btn_layout.addWidget(self.btn_pause)
-        btn_layout.addWidget(self.btn_stop)
-        btn_layout.addStretch()
+        # GUI 홈 버튼 (종료 후 표시)
+        self.btn_gui_home = QPushButton("GUI 홈")
+        self.btn_gui_home.setFixedSize(120, 48)
+        self.btn_gui_home.setFont(Fonts.body())
+        self.btn_gui_home.setCursor(Qt.PointingHandCursor)
+        self.btn_gui_home.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.CYAN};
+                color: {Colors.WHITE};
+                border: none;
+                border-radius: 10px;
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.CYAN_DARK};
+            }}
+        """)
+        self.btn_gui_home.clicked.connect(self._on_gui_home_clicked)
+        self.btn_gui_home.hide()
 
-        bottom_layout.addLayout(btn_layout)
+        # Z축 홈 버튼 (종료 후 표시)
+        self.btn_z_home = QPushButton("Z축 홈")
+        self.btn_z_home.setFixedSize(120, 48)
+        self.btn_z_home.setFont(Fonts.body())
+        self.btn_z_home.setCursor(Qt.PointingHandCursor)
+        self.btn_z_home.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.BG_SECONDARY};
+                color: {Colors.CYAN};
+                border: 2px solid {Colors.CYAN};
+                border-radius: 10px;
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.CYAN};
+                color: {Colors.WHITE};
+            }}
+        """)
+        self.btn_z_home.clicked.connect(self._on_z_home_clicked)
+        self.btn_z_home.hide()
+
+        self.btn_layout.addStretch()
+        self.btn_layout.addWidget(self.btn_pause)
+        self.btn_layout.addWidget(self.btn_stop)
+        self.btn_layout.addWidget(self.btn_gui_home)
+        self.btn_layout.addWidget(self.btn_z_home)
+        self.btn_layout.addStretch()
+
+        bottom_layout.addLayout(self.btn_layout)
 
         self.content_layout.addLayout(bottom_layout)
     
@@ -480,7 +579,32 @@ class PrintProgressPage(BasePage):
             self.btn_pause.setEnabled(False)
             self.btn_stop.setEnabled(False)
             self.stop_requested.emit()
-    
+
+    def _on_gui_home_clicked(self):
+        """GUI 홈 버튼 클릭 - 메인 페이지로 이동"""
+        self.go_home.emit()
+
+    def _on_z_home_clicked(self):
+        """Z축 홈 버튼 클릭 - Z축 홈 복귀 후 메인 페이지로 이동"""
+        self.z_home_requested.emit()
+        self.go_home.emit()
+
+    def _show_finish_buttons(self):
+        """종료 버튼 표시 (PAUSE/STOP 숨기고 GUI홈/Z축홈 표시)"""
+        self.btn_pause.hide()
+        self.btn_stop.hide()
+        self.btn_gui_home.show()
+        self.btn_z_home.show()
+
+    def _show_printing_buttons(self):
+        """프린팅 버튼 표시 (GUI홈/Z축홈 숨기고 PAUSE/STOP 표시)"""
+        self.btn_gui_home.hide()
+        self.btn_z_home.hide()
+        self.btn_pause.show()
+        self.btn_stop.show()
+        self.btn_pause.setEnabled(True)
+        self.btn_stop.setEnabled(True)
+
     def _update_title(self, title: str):
         """헤더 타이틀 업데이트"""
         self.header.set_title(title)
@@ -599,10 +723,9 @@ class PrintProgressPage(BasePage):
         self.progress_bar.setValue(0)
         self.lbl_percent.setText("0%")
 
-        # 버튼 초기화
+        # 버튼 초기화 (프린팅 버튼 표시)
+        self._show_printing_buttons()
         self._set_pause_button_style()
-        self.btn_pause.setEnabled(True)
-        self.btn_stop.setEnabled(True)
         self._update_title("Printing...")
 
         # 타이머 시작
@@ -632,26 +755,47 @@ class PrintProgressPage(BasePage):
             self.lbl_layer_image.setPixmap(scaled)
     
     def show_completed(self):
-        """완료 다이얼로그 표시"""
+        """완료 - 다이얼로그 표시 후 종료 버튼으로 전환"""
         self._status = self.STATUS_COMPLETED
         self._elapsed_timer.stop()
         self._update_title("Completed")
-        
+
         self.progress_bar.setValue(100)
         self.lbl_percent.setText("100%")
-        
+
+        # 완료 다이얼로그 표시
         dialog = CompletedDialog(self)
         dialog.exec()
-        
-        # 확인 누르면 홈으로
-        self.go_home.emit()
-    
+
+        # 종료 버튼 표시
+        self._show_finish_buttons()
+
     def show_stopped(self):
-        """정지됨 - 홈으로 이동"""
-        self._status = self.STATUS_STOPPING
+        """정지됨 - 다이얼로그 표시 후 종료 버튼으로 전환"""
+        self._status = self.STATUS_STOPPED
         self._elapsed_timer.stop()
-        self.go_home.emit()
-    
+        self._update_title("Stopped")
+
+        # 정지 완료 다이얼로그
+        dialog = StoppedDialog(self)
+        dialog.exec()
+
+        # 종료 버튼 표시
+        self._show_finish_buttons()
+
+    def show_error(self, message: str):
+        """에러 - 다이얼로그 표시 후 종료 버튼으로 전환"""
+        self._status = self.STATUS_ERROR
+        self._elapsed_timer.stop()
+        self._update_title("Error")
+
+        # 에러 다이얼로그 표시
+        dialog = ErrorDialog(message, self)
+        dialog.exec()
+
+        # 종료 버튼 표시
+        self._show_finish_buttons()
+
     def get_status(self) -> str:
         """현재 상태 반환"""
         return self._status

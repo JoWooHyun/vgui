@@ -18,7 +18,7 @@ from components.numeric_keypad import NumericKeypad
 from styles.colors import Colors
 from styles.fonts import Fonts
 from styles.icons import Icons
-from controllers.gcode_parser import extract_print_parameters
+from controllers.gcode_parser import extract_print_parameters, validate_zip_file
 
 
 class InfoRow(QFrame):
@@ -228,7 +228,70 @@ class ConfirmDialog(QDialog):
         
         btn_layout.addWidget(self.btn_cancel)
         btn_layout.addWidget(self.btn_confirm)
-        
+
+        layout.addWidget(lbl_title)
+        layout.addWidget(lbl_message)
+        layout.addStretch()
+        layout.addLayout(btn_layout)
+
+
+class ZipErrorDialog(QDialog):
+    """ZIP 파일 오류 다이얼로그"""
+
+    def __init__(self, message: str, parent=None):
+        super().__init__(parent)
+
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Dialog)
+        self.setFixedSize(360, 180)
+        self.setStyleSheet(f"""
+            QDialog {{
+                background-color: {Colors.WHITE};
+                border: 2px solid {Colors.RED};
+                border-radius: 16px;
+            }}
+        """)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(16)
+
+        # 에러 제목
+        lbl_title = QLabel("파일 오류")
+        lbl_title.setFont(Fonts.h2())
+        lbl_title.setAlignment(Qt.AlignCenter)
+        lbl_title.setStyleSheet(f"color: {Colors.RED}; background: transparent;")
+
+        # 에러 메시지
+        lbl_message = QLabel(message)
+        lbl_message.setFont(Fonts.body())
+        lbl_message.setAlignment(Qt.AlignCenter)
+        lbl_message.setWordWrap(True)
+        lbl_message.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; background: transparent;")
+
+        # 확인 버튼
+        btn_ok = QPushButton("확인")
+        btn_ok.setFixedSize(120, 48)
+        btn_ok.setFont(Fonts.body())
+        btn_ok.setCursor(Qt.PointingHandCursor)
+        btn_ok.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.RED};
+                color: {Colors.WHITE};
+                border: none;
+                border-radius: 10px;
+            }}
+            QPushButton:pressed {{
+                background-color: #B71C1C;
+            }}
+        """)
+        btn_ok.clicked.connect(self.accept)
+
+        # 버튼 중앙 정렬
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        btn_layout.addWidget(btn_ok)
+        btn_layout.addStretch()
+
         layout.addWidget(lbl_title)
         layout.addWidget(lbl_message)
         layout.addStretch()
@@ -439,6 +502,19 @@ class FilePreviewPage(BasePage):
     
     def _load_zip_info(self, file_path: str):
         """ZIP 파일에서 정보 로드"""
+        # 먼저 ZIP 파일 검증
+        validation = validate_zip_file(file_path)
+        if not validation.is_valid:
+            print(f"[FilePreview] ZIP 검증 실패: {validation.error_message}")
+            self._clear_info()
+            self.lbl_thumbnail.setPixmap(Icons.get_pixmap(Icons.FILE, 64, Colors.TEXT_DISABLED))
+            # 에러 다이얼로그 표시
+            dialog = ZipErrorDialog(validation.error_message, self)
+            dialog.exec()
+            # 이전 페이지로 돌아가기
+            self.go_back.emit()
+            return
+
         try:
             with zipfile.ZipFile(file_path, 'r') as z:
                 # 썸네일 로드
@@ -467,6 +543,10 @@ class FilePreviewPage(BasePage):
             print(f"ZIP 파일 로드 오류: {e}")
             self._clear_info()
             self.lbl_thumbnail.setPixmap(Icons.get_pixmap(Icons.FILE, 64, Colors.TEXT_DISABLED))
+            # 에러 다이얼로그 표시
+            dialog = ZipErrorDialog("ZIP 파일을 읽을 수 없습니다", self)
+            dialog.exec()
+            self.go_back.emit()
     
     def _parse_gcode_params(self, gcode_content: str) -> dict:
         """G-code에서 프린트 파라미터 추출"""

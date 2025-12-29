@@ -260,7 +260,8 @@ class MainWindow(QMainWindow):
         self.print_progress_page.pause_requested.connect(self._on_print_pause)
         self.print_progress_page.resume_requested.connect(self._on_print_resume)
         self.print_progress_page.stop_requested.connect(self._on_print_stop)
-    
+        self.print_progress_page.z_home_requested.connect(self._on_z_home_requested)
+
     def _go_to_page(self, page_index: int):
         """페이지 전환"""
         self.stack.setCurrentIndex(page_index)
@@ -412,20 +413,8 @@ class MainWindow(QMainWindow):
         if self.projector_window:
             self.projector_window.close()
 
-        # 타이머 정지
-        self.print_progress_page._elapsed_timer.stop()
-
-        # 에러 다이얼로그 표시
-        dialog = ErrorDialog(message, self)
-        dialog.exec()
-
-        # X축만 홈 복귀 (Z축은 현재 위치 유지 - 안전을 위해)
-        if self.motor:
-            print("[Print] X축 홈 복귀...")
-            self.motor.x_home()
-
-        # 메인 페이지로 이동
-        self.stack.setCurrentWidget(self.main_page)
+        # PrintProgressPage에서 에러 표시 및 종료 버튼 표시
+        self.print_progress_page.show_error(message)
 
     def _on_print_pause(self):
         """프린트 일시정지"""
@@ -446,7 +435,12 @@ class MainWindow(QMainWindow):
             self.print_worker.stop()
         else:
             self.print_progress_page.show_stopped()
-    
+
+    def _on_z_home_requested(self):
+        """Z축 홈 요청 (프린트 종료 후 사용자 선택)"""
+        print("[Motor] Z축 홈으로 이동 (사용자 요청)")
+        self.motor.z_home()
+
     def _on_file_deleted(self, file_path: str):
         """파일 삭제됨"""
         print(f"[Print] 파일 삭제됨: {file_path}")

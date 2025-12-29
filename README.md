@@ -4,9 +4,10 @@ VERICOM DLP 3D 프린터를 위한 터치스크린 GUI 애플리케이션입니�
 
 ## 현재 상태
 
-**코드 리뷰 진행 중** (2025-12-29)
+**코드 리뷰 완료** (2025-12-29)
 
 - Critical/High 우선순위 버그 수정 완료
+- Medium 일부 항목 수정 완료 (ZIP 파일 검증, 프린트 종료 UI 개선)
 - 기본 프린팅 시퀀스 정상 작동
 - 에러 처리 및 안전 기능 강화됨
 
@@ -19,6 +20,8 @@ VERICOM DLP 3D 프린터를 위한 터치스크린 GUI 애플리케이션입니�
 | 모터 에러 처리 | 모터 이동 실패 시 프린트 중지 |
 | 홈 복귀 | 정지/에러 시 X축만 복귀 (Z축 위치 유지) |
 | 타임아웃 | 홈 이동 타임아웃 120초로 증가 |
+| ZIP 파일 검증 | run.gcode, 머신설정, 미리보기, 레이어 연속성 체크 |
+| 프린트 종료 UI | 완료/에러/정지 후 GUI홈/Z축홈 버튼 선택 |
 
 ## 시스템 사양
 
@@ -170,12 +173,33 @@ python main.py --sim
 
 ```
 print_file.zip
-├── run.gcode           # 프린트 파라미터 (주석)
-├── preview.png         # 썸네일 이미지 (선택)
-├── 1.png               # 레이어 1
-├── 2.png               # 레이어 2
+├── run.gcode             # 프린트 파라미터 (필수)
+├── preview.png           # 썸네일 이미지 (필수)
+├── preview_cropping.png  # 크롭된 썸네일 (필수)
+├── 1.png                 # 레이어 1
+├── 2.png                 # 레이어 2
 ├── ...
-└── N.png               # 레이어 N
+└── N.png                 # 레이어 N (연속된 숫자)
+```
+
+### ZIP 파일 검증 조건
+
+| 조건 | 설명 | 실패 시 메시지 |
+|------|------|----------------|
+| run.gcode 존재 | 필수 파일 | "run.gcode 파일이 없습니다" |
+| 머신 설정 일치 | 아래 5개 값 필수 | "지원하지 않는 프린터 파일입니다" |
+| preview.png 존재 | 필수 파일 | "미리보기 이미지가 없습니다" |
+| preview_cropping.png 존재 | 필수 파일 | "미리보기 이미지가 없습니다" |
+| 레이어 이미지 연속 | 1.png, 2.png... 중간 빠짐 없이 | "레이어 이미지가 손상되었습니다" |
+
+### 필수 머신 설정 (run.gcode 내)
+
+```gcode
+;resolutionX:1920
+;resolutionY:1080
+;machineX:124.8
+;machineY:70.2
+;machineZ:80
 ```
 
 ### run.gcode 파라미터 예시
@@ -189,6 +213,11 @@ print_file.zip
 ;normalLayerLiftHeight:5.0
 ;normalLayerLiftSpeed:65
 ;estimatedPrintTime:3600
+;resolutionX:1920
+;resolutionY:1080
+;machineX:124.8
+;machineY:70.2
+;machineZ:80
 ```
 
 ## 알려진 문제점
