@@ -374,6 +374,9 @@ class MainWindow(QMainWindow):
             self.print_worker.show_image.connect(self.projector_window.show_image)
             self.print_worker.clear_image.connect(self.projector_window.clear_screen)
 
+        # PrintProgressPage에 레이어 이미지 업데이트 연결
+        self.print_worker.show_image.connect(self.print_progress_page.update_layer_image)
+
         # 프린트 시작
         self.print_worker.start_print(
             file_path=file_path,
