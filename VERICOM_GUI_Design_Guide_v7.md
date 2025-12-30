@@ -1,7 +1,7 @@
 # VERICOM DLP 3D Printer GUI 디자인 가이드
 
-> **Version:** 7.2
-> **Last Updated:** 2025-12-24
+> **Version:** 7.4
+> **Last Updated:** 2025-12-30
 > **Target Device:** 7인치 터치 LCD (1024×600)
 > **Framework:** PySide6
 > **Reference:** UniFormation 프린터 UI 분석 기반
@@ -130,6 +130,15 @@ def get_button_style():
 self.button.setStyleSheet(get_button_style())  # 함수 호출
 ```
 
+**다이얼로그 배경색 주의:**
+```python
+# ❌ 항상 흰색 (다크모드에서 문제)
+background-color: {Colors.WHITE};
+
+# ✅ 테마에 따라 변경됨
+background-color: {Colors.BG_PRIMARY};
+```
+
 **테마 적용 흐름:**
 ```
 1. 사용자가 ThemePage에서 테마 선택
@@ -158,6 +167,13 @@ self.button.setStyleSheet(get_button_style())  # 함수 호출
 | `get_tool_button_style()` | 도구 메뉴 버튼 | ToolButton |
 | `get_tool_button_danger_style()` | 위험 도구 버튼 (빨강) | ToolButton (is_danger) |
 | `get_main_menu_button_style()` | 메인 메뉴 큰 버튼 | MainMenuButton |
+| `get_axis_panel_style()` | 축 패널 배경 | ManualPage (Z/X축 패널) |
+| `get_axis_title_style()` | 축 타이틀 라벨 | ManualPage |
+| `get_stop_button_style()` | 정지 버튼 | ManualPage |
+| `get_distance_button_style()` | 거리 선택 버튼 (미선택) | DistanceSelector |
+| `get_distance_button_active_style()` | 거리 선택 버튼 (선택됨) | DistanceSelector |
+| `get_icon_button_style()` | 아이콘 버튼 기본 | IconButton |
+| `get_icon_button_active_style()` | 아이콘 버튼 활성 | IconButton (set_active) |
 
 ### 2.5 라즈베리파이 주의사항 ⚠️
 ```
@@ -793,6 +809,7 @@ self.header.title_label.setText()   # ⚠️ 직접 접근 (비권장)
 | 7.1 | 2025-12-23 | **Setting 페이지 추가** (LED Power/Blade Speed), **SettingsManager** (JSON 저장), System 페이지 6버튼 그리드, Theme 버튼 추가, controllers/workers/windows 폴더 구조 추가, PrintWorker/Moonraker/NVR2+ 연동 완료 |
 | 7.2 | 2025-12-24 | **테마 시스템 완성** (Light/Dark), ThemeManager 싱글톤, Colors 메타클래스 동적 테마, 동적 스타일 함수 (get_*_style()), 다이얼로그 테마 지원, QStackedWidget 배경 수정 |
 | 7.3 | 2025-12-24 | **FilePreviewPage 개선**: 아이콘 기반 정보 표시 (EXPOSURE_NORMAL/BOTTOM 커스텀 아이콘), Blade Speed mm/s 단위 (×50 변환), **다크모드 버튼 수정**: get_button_nav_style() 추가, Manual/Print 페이지 버튼 테마 지원 |
+| 7.4 | 2025-12-30 | **다크모드 완전 지원**: 모든 페이지/다이얼로그 테마 대응. 정적 스타일 상수를 동적 함수로 전환 (get_axis_panel_style, get_icon_button_style 등 7개 추가). manual_page, setting_page, icon_button, number_dial, numeric_keypad 수정. 모든 다이얼로그 배경 WHITE→BG_PRIMARY. README/TODO 문서 업데이트 |
 
 ---
 
