@@ -165,7 +165,7 @@ class ConfirmDialog(QDialog):
         self.setFixedSize(350, 180)
         self.setStyleSheet(f"""
             QDialog {{
-                background-color: {Colors.WHITE};
+                background-color: {Colors.BG_PRIMARY};
                 border: 2px solid {Colors.BORDER};
                 border-radius: 16px;
             }}
@@ -245,7 +245,7 @@ class ZipErrorDialog(QDialog):
         self.setFixedSize(360, 180)
         self.setStyleSheet(f"""
             QDialog {{
-                background-color: {Colors.WHITE};
+                background-color: {Colors.BG_PRIMARY};
                 border: 2px solid {Colors.RED};
                 border-radius: 16px;
             }}

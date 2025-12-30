@@ -15,8 +15,8 @@ from styles.colors import Colors
 from styles.fonts import Fonts
 from styles.icons import Icons
 from styles.stylesheets import (
-    AXIS_PANEL_STYLE, AXIS_TITLE_STYLE, AXIS_VALUE_STYLE,
-    BUTTON_STOP_STYLE
+    get_axis_panel_style, get_axis_title_style, get_stop_button_style,
+    AXIS_VALUE_STYLE
 )
 
 
@@ -42,15 +42,15 @@ class AxisControlPanel(QFrame):
     
     def _setup_ui(self):
         """UI 구성"""
-        self.setStyleSheet(AXIS_PANEL_STYLE)
-        
+        self.setStyleSheet(get_axis_panel_style())
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(16)
-        
+
         # 헤더 (축 이름 - 가운데 정렬)
         self.title_label = QLabel(self._axis_name)
-        self.title_label.setStyleSheet(AXIS_TITLE_STYLE)
+        self.title_label.setStyleSheet(get_axis_title_style())
         self.title_label.setAlignment(Qt.AlignCenter)
 
         layout.addWidget(self.title_label)
@@ -92,7 +92,7 @@ class AxisControlPanel(QFrame):
         
         # 정지 버튼
         self.btn_stop = QPushButton("STOP")
-        self.btn_stop.setStyleSheet(BUTTON_STOP_STYLE)
+        self.btn_stop.setStyleSheet(get_stop_button_style())
         self.btn_stop.setFixedHeight(45)
         self.btn_stop.setCursor(Qt.PointingHandCursor)
         self.btn_stop.setIcon(Icons.get_icon(Icons.X, 16, Colors.RED))

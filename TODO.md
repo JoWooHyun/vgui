@@ -2,6 +2,11 @@
 
 ## 현재 상태
 
+**다크모드 완전 지원** (2025-12-30)
+- 모든 페이지 및 다이얼로그 다크모드 테마 지원
+- 테마 전환 시 UI 자동 새로고침
+- 테마 설정 재시작 후에도 유지
+
 **코드 리뷰 완료** (2025-12-29)
 - Critical/High 우선순위 버그 수정 완료
 - Medium 일부 항목 수정 완료 (ZIP 파일 검증, 프린트 종료 UI 개선)
@@ -150,6 +155,20 @@
 ---
 
 ## 완료된 항목 (Done)
+
+### 2025-12-30 (다크모드)
+
+- [x] 정적 스타일시트 상수를 동적 함수로 전환
+  - `get_axis_panel_style()`, `get_axis_title_style()`, `get_stop_button_style()`
+  - `get_distance_button_style()`, `get_distance_button_active_style()`
+  - `get_icon_button_style()`, `get_icon_button_active_style()`
+- [x] manual_page.py 다크모드 지원
+- [x] setting_page.py 다크모드 지원 (인라인 스타일을 동적 메서드로 전환)
+- [x] numeric_keypad.py 다이얼로그 배경 수정 (WHITE → BG_PRIMARY)
+- [x] number_dial.py DistanceSelector 동적 스타일 적용
+- [x] icon_button.py 동적 스타일 적용
+- [x] file_preview_page.py 다이얼로그 배경 수정 (ConfirmDialog, ZipErrorDialog)
+- [x] print_progress_page.py 다이얼로그 배경 수정 (CompletedDialog, StopConfirmDialog, StoppedDialog, ErrorDialog)
 
 ### 2025-12-29 (코드 리뷰)
 

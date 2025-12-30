@@ -9,7 +9,7 @@ from PySide6.QtGui import QPixmap
 from styles.colors import Colors
 from styles.icons import Icons
 from styles.stylesheets import (
-    BUTTON_ICON_STYLE, BUTTON_ICON_ACTIVE_STYLE,
+    get_icon_button_style, get_icon_button_active_style,
     get_button_control_style, get_button_home_style,
     get_tool_button_style, get_tool_button_danger_style, get_main_menu_button_style
 )
@@ -29,8 +29,8 @@ class IconButton(QPushButton):
         
         self.setFixedSize(size, size)
         self.setCursor(Qt.PointingHandCursor)
-        self.setStyleSheet(BUTTON_ICON_STYLE)
-        
+        self.setStyleSheet(get_icon_button_style())
+
         if icon_svg:
             self._update_icon()
     
@@ -52,10 +52,10 @@ class IconButton(QPushButton):
         """활성 상태 설정"""
         self._is_active = active
         if active:
-            self.setStyleSheet(BUTTON_ICON_ACTIVE_STYLE)
+            self.setStyleSheet(get_icon_button_active_style())
             self._color = Colors.CYAN
         else:
-            self.setStyleSheet(BUTTON_ICON_STYLE)
+            self.setStyleSheet(get_icon_button_style())
             self._color = Colors.NAVY
         self._update_icon()
 

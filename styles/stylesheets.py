@@ -622,9 +622,114 @@ QPushButton:pressed {{
 
 
 # ============================================================
-# 카드/패널 스타일
+# 카드/패널 스타일 (동적 함수)
 # ============================================================
 
+def get_axis_panel_style():
+    """축 패널 스타일 (동적)"""
+    return f"""
+QFrame {{
+    background-color: {Colors.BG_SECONDARY};
+    border: 2px solid {Colors.BORDER};
+    border-radius: {Radius.LG}px;
+}}
+"""
+
+def get_axis_title_style():
+    """축 타이틀 스타일 (동적)"""
+    return f"""
+QLabel {{
+    color: {Colors.NAVY};
+    font-size: 18px;
+    font-weight: 700;
+    background-color: transparent;
+    border: none;
+}}
+"""
+
+def get_stop_button_style():
+    """정지 버튼 스타일 (동적)"""
+    return f"""
+QPushButton {{
+    background-color: {Colors.RED_LIGHT};
+    border: 2px solid {Colors.RED};
+    border-radius: {Radius.MD}px;
+    color: {Colors.RED};
+    font-size: 14px;
+    font-weight: 600;
+}}
+QPushButton:pressed {{
+    background-color: #FECACA;
+    border-color: {Colors.RED_DARK};
+}}
+"""
+
+def get_distance_button_style():
+    """거리 버튼 스타일 (동적)"""
+    return f"""
+QPushButton {{
+    background-color: {Colors.BG_PRIMARY};
+    border: 2px solid {Colors.BORDER};
+    border-radius: 10px;
+    color: {Colors.TEXT_SECONDARY};
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px;
+}}
+QPushButton:pressed {{
+    border-color: {Colors.CYAN};
+    color: {Colors.CYAN};
+}}
+"""
+
+def get_distance_button_active_style():
+    """거리 버튼 활성 스타일 (동적)"""
+    return f"""
+QPushButton {{
+    background-color: {Colors.CYAN_ALPHA_10};
+    border: 2px solid {Colors.CYAN};
+    border-radius: 10px;
+    color: {Colors.CYAN};
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px;
+}}
+"""
+
+def get_icon_button_style():
+    """아이콘 버튼 스타일 (동적)"""
+    return f"""
+QPushButton {{
+    background-color: {Colors.BG_SECONDARY};
+    border: 2px solid {Colors.BORDER};
+    border-radius: {Radius.LG}px;
+    padding: 0px;
+}}
+QPushButton:pressed {{
+    background-color: {Colors.BG_TERTIARY};
+    border-color: {Colors.NAVY};
+}}
+QPushButton:disabled {{
+    background-color: {Colors.BG_TERTIARY};
+    opacity: 0.6;
+}}
+"""
+
+def get_icon_button_active_style():
+    """아이콘 버튼 활성 스타일 (동적)"""
+    return f"""
+QPushButton {{
+    background-color: {Colors.CYAN_ALPHA_10};
+    border: 2px solid {Colors.CYAN};
+    border-radius: {Radius.LG}px;
+    padding: 0px;
+}}
+QPushButton:pressed {{
+    background-color: {Colors.CYAN_ALPHA_20};
+}}
+"""
+
+# 하위 호환성을 위한 정적 상수 (동적 함수 호출)
 CARD_STYLE = f"""
 QWidget {{
     background-color: {Colors.BG_SECONDARY};

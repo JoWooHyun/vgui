@@ -47,7 +47,7 @@ class NumericKeypad(QDialog):
         """UI 구성"""
         self.setStyleSheet(f"""
             QDialog {{
-                background-color: {Colors.WHITE};
+                background-color: {Colors.BG_PRIMARY};
                 border: 2px solid {Colors.BORDER};
                 border-radius: 16px;
             }}

@@ -67,7 +67,7 @@ class CompletedDialog(QDialog):
         self.setFixedSize(300, 160)
         self.setStyleSheet(f"""
             QDialog {{
-                background-color: {Colors.WHITE};
+                background-color: {Colors.BG_PRIMARY};
                 border: 2px solid {Colors.CYAN};
                 border-radius: 16px;
             }}
@@ -122,7 +122,7 @@ class StopConfirmDialog(QDialog):
         self.setFixedSize(320, 160)
         self.setStyleSheet(f"""
             QDialog {{
-                background-color: {Colors.WHITE};
+                background-color: {Colors.BG_PRIMARY};
                 border: 2px solid {Colors.BORDER};
                 border-radius: 16px;
             }}
@@ -194,7 +194,7 @@ class StoppedDialog(QDialog):
         self.setFixedSize(300, 160)
         self.setStyleSheet(f"""
             QDialog {{
-                background-color: {Colors.WHITE};
+                background-color: {Colors.BG_PRIMARY};
                 border: 2px solid {Colors.AMBER};
                 border-radius: 16px;
             }}
@@ -249,7 +249,7 @@ class ErrorDialog(QDialog):
         self.setFixedSize(360, 180)
         self.setStyleSheet(f"""
             QDialog {{
-                background-color: {Colors.WHITE};
+                background-color: {Colors.BG_PRIMARY};
                 border: 2px solid {Colors.RED};
                 border-radius: 16px;
             }}

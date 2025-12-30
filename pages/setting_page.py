@@ -14,7 +14,7 @@ from components.numeric_keypad import NumericKeypad
 from styles.colors import Colors
 from styles.fonts import Fonts
 from styles.stylesheets import (
-    AXIS_PANEL_STYLE,
+    get_axis_panel_style,
     Radius
 )
 
@@ -38,7 +38,7 @@ class LEDPowerPanel(QFrame):
 
     def _setup_ui(self):
         """UI 구성"""
-        self.setStyleSheet(AXIS_PANEL_STYLE)
+        self.setStyleSheet(get_axis_panel_style())
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
@@ -65,19 +65,7 @@ class LEDPowerPanel(QFrame):
         self.power_btn.setFixedSize(200, 80)
         self.power_btn.setCursor(Qt.PointingHandCursor)
         self.power_btn.setFont(Fonts.mono_display())
-        self.power_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {Colors.BG_PRIMARY};
-                border: 2px solid {Colors.CYAN};
-                border-radius: {Radius.LG}px;
-                color: {Colors.NAVY};
-                font-size: 36px;
-                font-weight: 700;
-            }}
-            QPushButton:pressed {{
-                background-color: {Colors.BG_SECONDARY};
-            }}
-        """)
+        self._update_power_btn_style()
         self.power_btn.clicked.connect(self._on_power_click)
 
         power_container = QHBoxLayout()
@@ -103,6 +91,22 @@ class LEDPowerPanel(QFrame):
         layout.addLayout(btn_layout)
 
         layout.addStretch(1)
+
+    def _update_power_btn_style(self):
+        """파워 버튼 스타일 업데이트"""
+        self.power_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.BG_SECONDARY};
+                border: 2px solid {Colors.CYAN};
+                border-radius: {Radius.LG}px;
+                color: {Colors.NAVY};
+                font-size: 36px;
+                font-weight: 700;
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.BG_TERTIARY};
+            }}
+        """)
 
     def _update_toggle_style(self):
         """토글 버튼 스타일 업데이트"""
@@ -197,7 +201,7 @@ class BladePanel(QFrame):
 
     def _setup_ui(self):
         """UI 구성"""
-        self.setStyleSheet(AXIS_PANEL_STYLE)
+        self.setStyleSheet(get_axis_panel_style())
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
@@ -237,19 +241,7 @@ class BladePanel(QFrame):
         self.speed_btn.setFixedSize(200, 80)
         self.speed_btn.setCursor(Qt.PointingHandCursor)
         self.speed_btn.setFont(Fonts.mono_display())
-        self.speed_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {Colors.BG_PRIMARY};
-                border: 2px solid {Colors.CYAN};
-                border-radius: {Radius.LG}px;
-                color: {Colors.NAVY};
-                font-size: 28px;
-                font-weight: 700;
-            }}
-            QPushButton:pressed {{
-                background-color: {Colors.BG_SECONDARY};
-            }}
-        """)
+        self._update_speed_btn_style()
         self.speed_btn.clicked.connect(self._on_speed_click)
 
         speed_container = QHBoxLayout()
@@ -270,18 +262,7 @@ class BladePanel(QFrame):
         self.btn_home.setFixedSize(100, 50)
         self.btn_home.setCursor(Qt.PointingHandCursor)
         self.btn_home.setFont(Fonts.h3())
-        self.btn_home.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {Colors.BG_PRIMARY};
-                border: 2px solid {Colors.BORDER};
-                border-radius: {Radius.MD}px;
-                color: {Colors.TEXT_PRIMARY};
-                font-weight: 600;
-            }}
-            QPushButton:pressed {{
-                background-color: {Colors.BG_SECONDARY};
-            }}
-        """)
+        self.btn_home.setStyleSheet(self._get_action_btn_style())
         self.btn_home.clicked.connect(self.home_axis.emit)
 
         # MOVE 버튼
@@ -289,18 +270,7 @@ class BladePanel(QFrame):
         self.btn_move.setFixedSize(100, 50)
         self.btn_move.setCursor(Qt.PointingHandCursor)
         self.btn_move.setFont(Fonts.h3())
-        self.btn_move.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {Colors.BG_PRIMARY};
-                border: 2px solid {Colors.BORDER};
-                border-radius: {Radius.MD}px;
-                color: {Colors.TEXT_PRIMARY};
-                font-weight: 600;
-            }}
-            QPushButton:pressed {{
-                background-color: {Colors.BG_SECONDARY};
-            }}
-        """)
+        self.btn_move.setStyleSheet(self._get_action_btn_style())
         self.btn_move.clicked.connect(self.blade_move.emit)
 
         control_layout.addWidget(self.btn_home)
@@ -309,6 +279,37 @@ class BladePanel(QFrame):
         layout.addLayout(control_layout)
 
         layout.addStretch(1)
+
+    def _update_speed_btn_style(self):
+        """속도 버튼 스타일 업데이트"""
+        self.speed_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.BG_SECONDARY};
+                border: 2px solid {Colors.CYAN};
+                border-radius: {Radius.LG}px;
+                color: {Colors.NAVY};
+                font-size: 28px;
+                font-weight: 700;
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.BG_TERTIARY};
+            }}
+        """)
+
+    def _get_action_btn_style(self):
+        """액션 버튼 스타일 반환"""
+        return f"""
+            QPushButton {{
+                background-color: {Colors.BG_SECONDARY};
+                border: 2px solid {Colors.BORDER};
+                border-radius: {Radius.MD}px;
+                color: {Colors.TEXT_PRIMARY};
+                font-weight: 600;
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.BG_TERTIARY};
+            }}
+        """
 
     def _on_speed_click(self):
         """속도 값 클릭 - 키패드 열기"""

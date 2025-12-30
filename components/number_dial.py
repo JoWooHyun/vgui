@@ -213,13 +213,13 @@ class DistanceSelector(QWidget):
     
     def _update_styles(self):
         """버튼 스타일 업데이트"""
-        from styles.stylesheets import BUTTON_DISTANCE_STYLE, BUTTON_DISTANCE_ACTIVE_STYLE
-        
+        from styles.stylesheets import get_distance_button_style, get_distance_button_active_style
+
         for i, btn in enumerate(self._buttons):
             if i == self._selected_index:
-                btn.setStyleSheet(BUTTON_DISTANCE_ACTIVE_STYLE)
+                btn.setStyleSheet(get_distance_button_active_style())
             else:
-                btn.setStyleSheet(BUTTON_DISTANCE_STYLE)
+                btn.setStyleSheet(get_distance_button_style())
     
     def _select(self, index: int):
         """거리 선택"""
