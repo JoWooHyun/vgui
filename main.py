@@ -21,8 +21,39 @@ from controllers.theme_manager import get_theme_manager
 _theme_init = get_theme_manager()  # 테마 로드 및 Colors 적용
 
 from PySide6.QtWidgets import QApplication, QMainWindow, QStackedWidget
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, QThread, Signal, QObject
 from PySide6.QtGui import QCursor
+
+
+class MotorWorker(QObject):
+    """모터 작업을 백그라운드에서 실행하는 워커"""
+    finished = Signal()
+    error = Signal(str)
+
+    def __init__(self, motor, operation: str, **kwargs):
+        super().__init__()
+        self.motor = motor
+        self.operation = operation
+        self.kwargs = kwargs
+
+    def run(self):
+        """모터 작업 실행"""
+        try:
+            if self.operation == "z_move":
+                distance = self.kwargs.get("distance", 0)
+                self.motor.z_move_relative(distance)
+            elif self.operation == "z_home":
+                self.motor.z_home()
+            elif self.operation == "x_move":
+                distance = self.kwargs.get("distance", 0)
+                speed = self.kwargs.get("speed", 1500)
+                self.motor.x_move_relative(distance, speed=speed)
+            elif self.operation == "x_home":
+                self.motor.x_home()
+        except Exception as e:
+            self.error.emit(str(e))
+        finally:
+            self.finished.emit()
 
 from styles.stylesheets import get_global_style
 from pages.main_page import MainPage
@@ -122,6 +153,10 @@ class MainWindow(QMainWindow):
 
         # 프린트 워커
         self.print_worker = None
+
+        # 모터 워커 (비동기 모터 제어용)
+        self.motor_thread = None
+        self.motor_worker = None
 
         # 프로젝터 윈도우 (두 번째 모니터)
         self.projector_window = None
@@ -286,25 +321,63 @@ class MainWindow(QMainWindow):
     
     # ==================== 하드웨어 제어 ====================
 
+    def _start_motor_operation(self, operation: str, **kwargs):
+        """모터 작업을 비동기로 시작"""
+        # 이미 모터 작업 중이면 무시
+        if self.motor_thread and self.motor_thread.isRunning():
+            print(f"[Motor] 이미 작업 중, {operation} 무시")
+            return
+
+        # ManualPage UI 잠금
+        self.manual_page.set_busy(True)
+
+        # 스레드 및 워커 생성
+        self.motor_thread = QThread()
+        self.motor_worker = MotorWorker(self.motor, operation, **kwargs)
+        self.motor_worker.moveToThread(self.motor_thread)
+
+        # 시그널 연결
+        self.motor_thread.started.connect(self.motor_worker.run)
+        self.motor_worker.finished.connect(self._on_motor_finished)
+        self.motor_worker.error.connect(self._on_motor_error)
+        self.motor_worker.finished.connect(self.motor_thread.quit)
+        self.motor_worker.finished.connect(self.motor_worker.deleteLater)
+        self.motor_thread.finished.connect(self.motor_thread.deleteLater)
+
+        # 스레드 시작
+        self.motor_thread.start()
+
+    def _on_motor_finished(self):
+        """모터 작업 완료"""
+        print("[Motor] 작업 완료")
+        self.manual_page.set_busy(False)
+        self.motor_thread = None
+        self.motor_worker = None
+
+    def _on_motor_error(self, error_msg: str):
+        """모터 작업 오류"""
+        print(f"[Motor] 오류: {error_msg}")
+        self.manual_page.set_busy(False)
+
     def _move_z(self, distance: float):
-        """Z축 이동"""
+        """Z축 이동 (비동기)"""
         print(f"[Motor] Z축 이동: {distance}mm")
-        self.motor.z_move_relative(distance)
+        self._start_motor_operation("z_move", distance=distance)
 
     def _home_z(self):
-        """Z축 홈"""
+        """Z축 홈 (비동기)"""
         print("[Motor] Z축 홈으로 이동")
-        self.motor.z_home()
+        self._start_motor_operation("z_home")
 
     def _move_x(self, distance: float):
-        """X축(블레이드) 이동"""
+        """X축(블레이드) 이동 (비동기)"""
         print(f"[Motor] X축 이동: {distance}mm")
-        self.motor.x_move_relative(distance, speed=1500)  # 30mm/s
+        self._start_motor_operation("x_move", distance=distance, speed=1500)
 
     def _home_x(self):
-        """X축 홈"""
+        """X축 홈 (비동기)"""
         print("[Motor] X축 홈으로 이동")
-        self.motor.x_home()
+        self._start_motor_operation("x_home")
 
     def _emergency_stop(self):
         """비상 정지"""
