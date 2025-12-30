@@ -53,6 +53,9 @@ from workers.print_worker import PrintWorker, PrintStatus
 # 프로젝터 윈도우
 from windows.projector_window import ProjectorWindow
 
+# 키오스크 관리자
+from utils.kiosk_manager import get_kiosk_manager
+
 # 화면 설정
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 600
@@ -122,6 +125,15 @@ class MainWindow(QMainWindow):
 
         # 프로젝터 윈도우 (두 번째 모니터)
         self.projector_window = None
+
+        # 키오스크 관리자 설정
+        self.kiosk_manager = get_kiosk_manager()
+        self.kiosk_manager.set_enabled(kiosk_mode)
+        self.kiosk_manager.admin_mode_changed.connect(self._on_admin_mode_changed)
+
+        # 이벤트 필터 설치 (키오스크 모드일 때만)
+        if kiosk_mode:
+            QApplication.instance().installEventFilter(self.kiosk_manager)
 
     def _init_hardware(self):
         """하드웨어 컨트롤러 초기화"""
@@ -197,6 +209,7 @@ class MainWindow(QMainWindow):
         self.main_page.go_tool.connect(lambda: self._go_to_page(self.PAGE_TOOL))
         self.main_page.go_print.connect(lambda: self._go_to_page(self.PAGE_PRINT))
         self.main_page.go_system.connect(lambda: self._go_to_page(self.PAGE_SYSTEM))
+        self.main_page.logo_clicked.connect(self._on_logo_clicked)
         
         # 도구 페이지
         self.tool_page.go_back.connect(lambda: self._go_to_page(self.PAGE_MAIN))
@@ -643,6 +656,24 @@ class MainWindow(QMainWindow):
             self.stack.setCurrentIndex(current_index)
 
         print("[Theme] UI 새로고침 완료")
+
+    # ==================== 키오스크/관리자 모드 ====================
+
+    def _on_logo_clicked(self):
+        """로고 클릭 - 키오스크 관리자에 전달"""
+        self.kiosk_manager.on_logo_clicked()
+
+    def _on_admin_mode_changed(self, enabled: bool):
+        """관리자 모드 변경 시"""
+        if enabled:
+            # 관리자 모드 활성화 - 커서 표시
+            self.setCursor(Qt.ArrowCursor)
+            print("[Admin] 관리자 모드 - Alt+Tab, Esc 등 허용")
+        else:
+            # 관리자 모드 비활성화 - 키오스크 모드면 커서 숨김
+            if self.kiosk_manager.is_enabled:
+                self.setCursor(Qt.BlankCursor)
+            print("[Admin] 일반 모드 - 단축키 차단")
 
     def closeEvent(self, event):
         """앱 종료 시"""
