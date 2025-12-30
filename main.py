@@ -15,6 +15,11 @@ import os
 # 프로젝트 경로 추가
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# 테마 매니저를 가장 먼저 초기화 (Colors에 저장된 테마 적용)
+# 이후 임포트되는 모듈들이 올바른 테마 색상을 사용하도록 함
+from controllers.theme_manager import get_theme_manager
+_theme_init = get_theme_manager()  # 테마 로드 및 Colors 적용
+
 from PySide6.QtWidgets import QApplication, QMainWindow, QStackedWidget
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QCursor
@@ -40,7 +45,7 @@ from controllers.motor_controller import MotorController
 from controllers.dlp_controller import DLPController
 from controllers.gcode_parser import extract_print_parameters, validate_zip_file
 from controllers.settings_manager import get_settings
-from controllers.theme_manager import get_theme_manager
+# theme_manager는 이미 상단에서 임포트됨
 
 # 워커
 from workers.print_worker import PrintWorker, PrintStatus

@@ -45,7 +45,7 @@ class BasePage(QWidget):
         
         # 콘텐츠 영역
         self.content = QWidget()
-        self.content.setStyleSheet(f"background-color: {Colors.BG_PRIMARY};")
+        self.content.setStyleSheet("background-color: transparent;")
         self.content_layout = QVBoxLayout(self.content)
         self.content_layout.setContentsMargins(20, 20, 20, 20)
         self.content_layout.setSpacing(16)
@@ -55,7 +55,7 @@ class BasePage(QWidget):
         # 우측 하단 로고
         footer_widget = QWidget()
         footer_widget.setFixedHeight(44)
-        footer_widget.setStyleSheet(f"background-color: {Colors.BG_PRIMARY};")
+        footer_widget.setStyleSheet("background-color: transparent;")
 
         footer_layout = QHBoxLayout(footer_widget)
         footer_layout.setContentsMargins(0, 0, 16, 8)
@@ -68,7 +68,7 @@ class BasePage(QWidget):
             pixmap = QPixmap(LOGO_PATH)
             scaled_pixmap = pixmap.scaledToWidth(88, Qt.SmoothTransformation)
             small_logo_label.setPixmap(scaled_pixmap)
-        small_logo_label.setStyleSheet(f"background-color: {Colors.BG_PRIMARY};")
+        small_logo_label.setStyleSheet("background-color: transparent;")
 
         footer_layout.addWidget(small_logo_label)
 
