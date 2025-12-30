@@ -18,8 +18,10 @@ class MotorConfig:
     x_speed: int = 4500         # X축 이동 속도 (mm/min)
     z_home_speed: int = 300     # Z축 홈 속도
     x_home_speed: int = 4500    # X축 홈 속도
+    x_min: float = 0.0          # X축 최소 위치 (mm)
     x_max: float = 125.0        # X축 최대 위치 (mm)
-    z_max: float = 150.0        # Z축 최대 위치 (mm)
+    z_min: float = 0.0          # Z축 최소 위치 (mm)
+    z_max: float = 80.0         # Z축 최대 위치 (mm) - 실제 스펙
     drop_speed: int = 150       # Z축 하강 속도 (mm/min)
 
 
@@ -160,11 +162,24 @@ class MotorController:
             speed: 이동 속도 (mm/min), None이면 기본값
         """
         speed = speed or self.config.z_speed
-        gcode = f"G91\nG1 Z{distance} F{speed}\nG90"
-        print(f"[Motor] Z축 상대 이동: {distance}mm @ {speed}mm/min")
+
+        # 목표 위치 계산 및 제한
+        target_position = self._z_position + distance
+        target_position = max(self.config.z_min, min(target_position, self.config.z_max))
+        actual_distance = target_position - self._z_position
+
+        if actual_distance == 0:
+            print(f"[Motor] Z축 이미 한계 위치 ({self._z_position:.1f}mm) - 이동 생략")
+            return True
+
+        if abs(actual_distance) != abs(distance):
+            print(f"[Motor] Z축 이동 제한: {distance}mm → {actual_distance:.1f}mm (범위: {self.config.z_min}~{self.config.z_max}mm)")
+
+        gcode = f"G91\nG1 Z{actual_distance} F{speed}\nG90"
+        print(f"[Motor] Z축 상대 이동: {actual_distance:.1f}mm @ {speed}mm/min")
         success = self.send_gcode(gcode)
         if success:
-            self._z_position += distance
+            self._z_position = target_position
             self.wait_for_movement_complete(timeout=120)
         return success
 
@@ -177,6 +192,14 @@ class MotorController:
             speed: 이동 속도 (mm/min)
         """
         speed = speed or self.config.z_speed
+
+        # 위치 제한
+        original_position = position
+        position = max(self.config.z_min, min(position, self.config.z_max))
+
+        if position != original_position:
+            print(f"[Motor] Z축 위치 제한: {original_position:.1f}mm → {position:.1f}mm (범위: {self.config.z_min}~{self.config.z_max}mm)")
+
         gcode = f"G90\nG0 Z{position:.3f} F{speed}"
         print(f"[Motor] Z축 절대 이동: {position:.3f}mm @ {speed}mm/min")
         success = self.send_gcode(gcode)
@@ -225,11 +248,24 @@ class MotorController:
             speed: 이동 속도 (mm/min)
         """
         speed = speed or self.config.x_speed
-        gcode = f"G91\nG0 X{distance} F{speed}\nG90"
-        print(f"[Motor] X축 상대 이동: {distance}mm @ {speed}mm/min")
+
+        # 목표 위치 계산 및 제한
+        target_position = self._x_position + distance
+        target_position = max(self.config.x_min, min(target_position, self.config.x_max))
+        actual_distance = target_position - self._x_position
+
+        if actual_distance == 0:
+            print(f"[Motor] X축 이미 한계 위치 ({self._x_position:.1f}mm) - 이동 생략")
+            return True
+
+        if abs(actual_distance) != abs(distance):
+            print(f"[Motor] X축 이동 제한: {distance}mm → {actual_distance:.1f}mm (범위: {self.config.x_min}~{self.config.x_max}mm)")
+
+        gcode = f"G91\nG0 X{actual_distance} F{speed}\nG90"
+        print(f"[Motor] X축 상대 이동: {actual_distance:.1f}mm @ {speed}mm/min")
         success = self.send_gcode(gcode, timeout=300)
         if success:
-            self._x_position += distance
+            self._x_position = target_position
             # 상대 이동 후에는 홈 상태를 알 수 없음 (절대 좌표 이동 전 홈잉 필요)
             self._x_is_homed = False
             self.wait_for_movement_complete(timeout=300)
@@ -244,7 +280,13 @@ class MotorController:
             speed: 이동 속도 (mm/min)
         """
         speed = speed or self.config.x_speed
-        position = max(0, min(position, self.config.x_max))
+
+        # 위치 제한
+        original_position = position
+        position = max(self.config.x_min, min(position, self.config.x_max))
+
+        if position != original_position:
+            print(f"[Motor] X축 위치 제한: {original_position:.1f}mm → {position:.1f}mm (범위: {self.config.x_min}~{self.config.x_max}mm)")
 
         # 예상 시간 계산
         distance = abs(position - self._x_position)
