@@ -196,9 +196,14 @@ class MotorController:
 
     # ==================== X축 (블레이드) 제어 ====================
 
-    def x_home(self) -> bool:
-        """X축 홈으로 이동 (블레이드 원점)"""
-        if self._x_is_homed and self._x_position == 0.0:
+    def x_home(self, force: bool = False) -> bool:
+        """
+        X축 홈으로 이동 (블레이드 원점)
+
+        Args:
+            force: True면 캐시 상태와 관계없이 강제 홈잉
+        """
+        if not force and self._x_is_homed and self._x_position == 0.0:
             print("[Motor] X축 이미 홈 위치에 있음 - 홈잉 생략")
             return True
 
@@ -225,6 +230,8 @@ class MotorController:
         success = self.send_gcode(gcode, timeout=300)
         if success:
             self._x_position += distance
+            # 상대 이동 후에는 홈 상태를 알 수 없음 (절대 좌표 이동 전 홈잉 필요)
+            self._x_is_homed = False
             self.wait_for_movement_complete(timeout=300)
         return success
 
@@ -246,8 +253,17 @@ class MotorController:
         print(f"[Motor] X축 {position:.1f}mm 위치로 이동 시작")
         print(f"[Motor] 이동 거리: {distance:.1f}mm, 예상 소요시간: {expected_time:.1f}초")
 
-        gcode = f"G90\nG0 X{position:.1f} F{speed}"
+        # 이동 명령 전송 (G90 절대좌표 + G1 이동)
+        gcode = f"G90\nG1 X{position:.1f} F{speed}"
+        print(f"[Motor] X축 G-code: {gcode.replace(chr(10), ' | ')}")
         success = self.send_gcode(gcode, timeout=300)
+
+        if not success:
+            # 절대 이동 실패 시 상대 이동으로 대체 시도
+            print("[Motor] X축 절대 이동 실패 - 상대 이동으로 대체 시도")
+            relative_distance = position - self._x_position
+            gcode = f"G91\nG1 X{relative_distance:.1f} F{speed}\nG90"
+            success = self.send_gcode(gcode, timeout=300)
 
         if success:
             self._x_position = position

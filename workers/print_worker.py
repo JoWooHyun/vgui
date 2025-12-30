@@ -377,11 +377,16 @@ class PrintWorker(QThread):
             time.sleep(0.5)  # 시뮬레이션
             return True
 
-    def _motor_x_home(self) -> bool:
-        """X축 홈"""
+    def _motor_x_home(self, force: bool = True) -> bool:
+        """
+        X축 홈
+
+        Args:
+            force: True면 캐시 상태와 관계없이 강제 홈잉 (기본값 True)
+        """
         print("[PrintWorker] X축 홈 이동")
         if self.motor and not self.simulation:
-            return self.motor.x_home()
+            return self.motor.x_home(force=force)
         else:
             time.sleep(0.3)
             return True

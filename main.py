@@ -30,7 +30,7 @@ from pages.system_page import SystemPage
 from pages.device_info_page import DeviceInfoPage
 from pages.language_page import LanguagePage
 from pages.service_page import ServicePage
-from pages.file_preview_page import FilePreviewPage
+from pages.file_preview_page import FilePreviewPage, ZipErrorDialog
 from pages.print_progress_page import PrintProgressPage, ErrorDialog
 from pages.setting_page import SettingPage
 from pages.theme_page import ThemePage
@@ -38,7 +38,7 @@ from pages.theme_page import ThemePage
 # 하드웨어 컨트롤러
 from controllers.motor_controller import MotorController
 from controllers.dlp_controller import DLPController
-from controllers.gcode_parser import extract_print_parameters
+from controllers.gcode_parser import extract_print_parameters, validate_zip_file
 from controllers.settings_manager import get_settings
 from controllers.theme_manager import get_theme_manager
 
@@ -281,7 +281,7 @@ class MainWindow(QMainWindow):
     def _move_x(self, distance: float):
         """X축(블레이드) 이동"""
         print(f"[Motor] X축 이동: {distance}mm")
-        self.motor.x_move_relative(distance)
+        self.motor.x_move_relative(distance, speed=1500)  # 30mm/s
 
     def _home_x(self):
         """X축 홈"""
@@ -301,8 +301,19 @@ class MainWindow(QMainWindow):
             self.print_worker.stop()
     
     def _on_file_selected(self, file_path: str):
-        """파일 선택됨 -> File Preview로 이동"""
+        """파일 선택됨 -> ZIP 검증 후 File Preview로 이동"""
         print(f"[Print] 파일 선택: {file_path}")
+
+        # ZIP 파일 검증
+        validation = validate_zip_file(file_path)
+        if not validation.is_valid:
+            print(f"[Print] ZIP 검증 실패: {validation.error_message}")
+            # 오류 다이얼로그 표시 (print_page에서)
+            dialog = ZipErrorDialog(validation.error_message, self.print_page)
+            dialog.exec()
+            return  # 페이지 이동 안 함
+
+        # 검증 통과 시 File Preview로 이동
         self.file_preview_page.set_file(file_path)
         self._go_to_page(self.PAGE_FILE_PREVIEW)
     
