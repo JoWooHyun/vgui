@@ -562,7 +562,7 @@ class MainWindow(QMainWindow):
         print(f"  - 패턴: {pattern} (0x{pattern_value:02X})")
         print(f"  - 시간: {time}초")
 
-        # 프로젝터 윈도우에 패턴 표시
+        # 1. 프로젝터 윈도우에 패턴 먼저 표시 (LED OFF 상태에서)
         if self.projector_window is None:
             self.projector_window = ProjectorWindow(screen_index=1)
 
@@ -571,8 +571,10 @@ class MainWindow(QMainWindow):
             self.projector_window.show_on_screen(1)
             self.projector_window.show_test_pattern(pattern)
 
-        # 프로젝터 ON + LED ON
+        # 2. 프로젝터 ON (이미지가 표시된 상태)
         self.dlp.projector_on()
+
+        # 3. LED ON (이미지가 준비된 후 LED 켜기 - 바탕화면 노출 방지)
         self.dlp.led_on(440)
 
     def _stop_exposure(self):
@@ -590,7 +592,7 @@ class MainWindow(QMainWindow):
         print(f"[NVR] 클리닝 시작")
         print(f"  - 시간: {time}초")
 
-        # 1. 프로젝터 윈도우에 흰색 화면 표시
+        # 1. 프로젝터 윈도우에 흰색 화면 먼저 표시 (LED OFF 상태에서)
         if self.projector_window is None:
             self.projector_window = ProjectorWindow(screen_index=1)
 
@@ -599,10 +601,10 @@ class MainWindow(QMainWindow):
             self.projector_window.show_on_screen(1)
             self.projector_window.show_white_screen()
 
-        # 2. 프로젝터 ON
+        # 2. 프로젝터 ON (흰색 화면이 표시된 상태)
         self.dlp.projector_on()
 
-        # 3. LED 파워 440 설정 + LED ON
+        # 3. LED ON (이미지가 준비된 후 LED 켜기 - 바탕화면 노출 방지)
         print(f"  - LED Power: 440")
         self.dlp.led_on(440)
 
