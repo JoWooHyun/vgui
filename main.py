@@ -565,7 +565,10 @@ class MainWindow(QMainWindow):
         # 1. LED OFF 먼저 (이전 상태가 켜져 있을 수 있음)
         self.dlp.led_off()
 
-        # 2. 프로젝터 윈도우에 패턴 표시 (LED OFF 상태)
+        # 2. 프로젝터 ON (LED OFF 상태에서)
+        self.dlp.projector_on()
+
+        # 3. 프로젝터 윈도우에 패턴 표시 (LED OFF 상태)
         if self.projector_window is None:
             self.projector_window = ProjectorWindow(screen_index=1)
 
@@ -573,9 +576,6 @@ class MainWindow(QMainWindow):
         if len(screens) > 1:
             self.projector_window.show_on_screen(1)
             self.projector_window.show_test_pattern(pattern)
-
-        # 3. 프로젝터 ON
-        self.dlp.projector_on()
 
         # 4. LED ON (패턴이 준비된 후 LED 켜기)
         self.dlp.led_on(440)
@@ -598,7 +598,10 @@ class MainWindow(QMainWindow):
         # 1. LED OFF 먼저 (이전 상태가 켜져 있을 수 있음)
         self.dlp.led_off()
 
-        # 2. 프로젝터 윈도우에 흰색 화면 표시 (LED OFF 상태)
+        # 2. 프로젝터 ON (LED OFF 상태에서)
+        self.dlp.projector_on()
+
+        # 3. 프로젝터 윈도우에 흰색 화면 표시 (LED OFF 상태)
         if self.projector_window is None:
             self.projector_window = ProjectorWindow(screen_index=1)
 
@@ -606,9 +609,6 @@ class MainWindow(QMainWindow):
         if len(screens) > 1:
             self.projector_window.show_on_screen(1)
             self.projector_window.show_white_screen()
-
-        # 3. 프로젝터 ON
-        self.dlp.projector_on()
 
         # 4. LED ON (흰색 화면이 준비된 후 LED 켜기)
         print(f"  - LED Power: 440")
