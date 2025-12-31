@@ -313,7 +313,7 @@ class FilePreviewPage(BasePage):
         
         # 사용자 설정값 (기본값)
         self._blade_speed = 30   # mm/s (실제값 = 표시값 × 50)
-        self._led_power = 100    # %
+        self._led_power = 43     # % (1023 = 100%, 440 = 43%)
         
         self._setup_content()
     
@@ -401,14 +401,14 @@ class FilePreviewPage(BasePage):
         self.row_blade_speed.value_changed.connect(self._on_blade_speed_changed)
         right_layout.addWidget(self.row_blade_speed)
         
-        # LED Power (30-230% 범위, Setting 페이지와 동일)
+        # LED Power (9-100% 범위, 1023 = 100%)
         self.row_led_power = EditableRow(
             label="LED Power",
             value=self._led_power,
             unit="%",
-            min_val=30,
-            max_val=230,
-            step=5
+            min_val=9,
+            max_val=100,
+            step=1
         )
         self.row_led_power.value_changed.connect(self._on_led_power_changed)
         right_layout.addWidget(self.row_led_power)

@@ -29,10 +29,10 @@ class LEDPowerPanel(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self._power_value = 100  # 기본값 100%
+        self._power_value = 43   # 기본값 43% (440/1023 올림)
         self._is_on = False
-        self._min_power = 30    # 최소 30%
-        self._max_power = 230   # 최대 230% (1023 ≈ 232.5%)
+        self._min_power = 9     # 최소 9% (91/1023 올림)
+        self._max_power = 100   # 최대 100% (1023)
 
         self._setup_ui()
 

@@ -430,8 +430,8 @@ class MainWindow(QMainWindow):
         # 파라미터 추출
         total_layers = params.get('totalLayer', 100)
         blade_speed = params.get('bladeSpeed', 1500)
-        led_power_percent = params.get('ledPower', 100)  # 퍼센트 (100% = 440)
-        led_power = int(440 * led_power_percent / 100)   # 실제 LED 값으로 변환
+        led_power_percent = params.get('ledPower', 43)   # 퍼센트 (100% = 1023, 43% = 440)
+        led_power = int(1023 * led_power_percent / 100)  # 실제 LED 값으로 변환
         leveling_cycles = params.get('levelingCycles', 1)
 
         # 추가 파라미터 (run.gcode에서 추출된 값)
@@ -622,8 +622,8 @@ class MainWindow(QMainWindow):
 
     def _setting_led_on(self, power_percent: int):
         """Setting 페이지에서 LED ON"""
-        # 퍼센트를 NVM 값으로 변환 (100% = 440, 200% = 880)
-        led_power = int(440 * power_percent / 100)
+        # 퍼센트를 NVM 값으로 변환 (100% = 1023)
+        led_power = int(1023 * power_percent / 100)
         led_power = max(91, min(1023, led_power))  # 범위 제한
 
         print(f"[Setting] LED ON 시도")

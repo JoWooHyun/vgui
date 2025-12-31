@@ -17,7 +17,7 @@ SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
 @dataclass
 class PrintSettings:
     """프린트 관련 설정"""
-    led_power: int = 100        # LED 파워 (30-230%)
+    led_power: int = 43         # LED 파워 (9-100%, 1023=100%, 440=43%)
     blade_speed: int = 30       # Blade 속도 (10-100 mm/s)
 
 
@@ -112,8 +112,8 @@ class SettingsManager:
         return self._settings.print_settings.led_power
 
     def set_led_power(self, value: int):
-        """LED 파워 값 설정 (30-230%)"""
-        value = max(30, min(230, value))
+        """LED 파워 값 설정 (9-100%, 1023=100%)"""
+        value = max(9, min(100, value))
         self._settings.print_settings.led_power = value
         self.save()
 
