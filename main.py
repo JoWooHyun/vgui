@@ -387,10 +387,10 @@ class MainWindow(QMainWindow):
         self._start_motor_operation("x_home")
 
     def _emergency_stop(self):
-        """비상 정지"""
-        print("[EMERGENCY] 모든 동작 정지!")
-        # 모터 비상 정지
-        self.motor.emergency_stop()
+        """모든 동작 정지 (Klipper 유지)"""
+        print("[STOP] 모든 동작 정지!")
+        # 모터 현재 동작 취소 (quickstop - Klipper 유지)
+        self.motor.quickstop()
         # LED 끄기
         self.dlp.led_off()
         self.dlp.projector_off()

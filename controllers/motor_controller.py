@@ -343,8 +343,12 @@ class MotorController:
         return self.send_gcode("G28", timeout=100)
 
     def emergency_stop(self) -> bool:
-        """비상 정지"""
-        print("[Motor] 비상 정지!")
+        """
+        비상 정지 (Klipper 셧다운)
+        주의: 이 명령은 Klipper를 완전히 종료시킵니다.
+        일반적인 정지에는 quickstop()을 사용하세요.
+        """
+        print("[Motor] 비상 정지! (Klipper 셧다운)")
         try:
             response = requests.post(
                 f"{self.moonraker_url}/printer/emergency_stop",
@@ -353,6 +357,14 @@ class MotorController:
             return response.status_code == 200
         except:
             return False
+
+    def quickstop(self) -> bool:
+        """
+        현재 동작만 취소 (Klipper 유지)
+        M410: Quickstop - 현재 이동을 즉시 취소하고 Klipper는 계속 실행
+        """
+        print("[Motor] Quickstop - 현재 동작 취소")
+        return self.send_gcode("M410", timeout=5)
 
     def leveling_cycle(self, cycles: int = 1, speed: Optional[int] = None) -> bool:
         """
