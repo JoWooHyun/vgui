@@ -341,8 +341,8 @@ class MainWindow(QMainWindow):
         self.motor_worker.finished.connect(self._on_motor_finished)
         self.motor_worker.error.connect(self._on_motor_error)
         self.motor_worker.finished.connect(self.motor_thread.quit)
-        self.motor_worker.finished.connect(self.motor_worker.deleteLater)
-        self.motor_thread.finished.connect(self.motor_thread.deleteLater)
+        # 워커 삭제는 스레드 종료 후에 처리 (cross-thread 문제 방지)
+        self.motor_thread.finished.connect(self._cleanup_motor_thread)
 
         # 스레드 시작
         self.motor_thread.start()
@@ -351,8 +351,15 @@ class MainWindow(QMainWindow):
         """모터 작업 완료"""
         print("[Motor] 작업 완료")
         self.manual_page.set_busy(False)
-        self.motor_thread = None
-        self.motor_worker = None
+
+    def _cleanup_motor_thread(self):
+        """모터 스레드 정리 (스레드 종료 후 호출)"""
+        if self.motor_worker:
+            self.motor_worker.deleteLater()
+            self.motor_worker = None
+        if self.motor_thread:
+            self.motor_thread.deleteLater()
+            self.motor_thread = None
 
     def _on_motor_error(self, error_msg: str):
         """모터 작업 오류"""
