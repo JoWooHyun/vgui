@@ -573,6 +573,8 @@ class MainWindow(QMainWindow):
         if len(screens) > 1:
             self.projector_window.show_on_screen(1)
             self.projector_window.show_test_pattern(pattern)
+            # Qt 이벤트 처리 - 윈도우가 실제로 화면에 표시되도록 함
+            QApplication.processEvents()
 
         # 3. 프로젝터 ON (이미지가 준비된 상태에서 켜짐 - 바탕화면 노출 방지)
         self.dlp.projector_on()
@@ -606,6 +608,8 @@ class MainWindow(QMainWindow):
         if len(screens) > 1:
             self.projector_window.show_on_screen(1)
             self.projector_window.show_white_screen()
+            # Qt 이벤트 처리 - 윈도우가 실제로 화면에 표시되도록 함
+            QApplication.processEvents()
 
         # 3. 프로젝터 ON (이미지가 준비된 상태에서 켜짐 - 바탕화면 노출 방지)
         self.dlp.projector_on()
@@ -646,6 +650,8 @@ class MainWindow(QMainWindow):
             self.projector_window.show_on_screen(0)
 
         self.projector_window.show_test_image()  # 1.png 표시
+        # Qt 이벤트 처리 - 윈도우가 실제로 화면에 표시되도록 함
+        QApplication.processEvents()
 
         # 2. 프로젝터 ON (이미지가 준비된 상태에서 켜짐 - 바탕화면 노출 방지)
         self.dlp.projector_on()
