@@ -565,10 +565,7 @@ class MainWindow(QMainWindow):
         # 1. LED OFF 먼저 (이전 상태가 켜져 있을 수 있음)
         self.dlp.led_off()
 
-        # 2. 프로젝터 ON (LED OFF 상태에서)
-        self.dlp.projector_on()
-
-        # 3. 프로젝터 윈도우에 패턴 표시 (LED OFF 상태)
+        # 2. 프로젝터 윈도우에 패턴 표시 (프로젝터 ON 전에 미리 준비)
         if self.projector_window is None:
             self.projector_window = ProjectorWindow(screen_index=1)
 
@@ -576,6 +573,9 @@ class MainWindow(QMainWindow):
         if len(screens) > 1:
             self.projector_window.show_on_screen(1)
             self.projector_window.show_test_pattern(pattern)
+
+        # 3. 프로젝터 ON (이미지가 준비된 상태에서 켜짐 - 바탕화면 노출 방지)
+        self.dlp.projector_on()
 
         # 4. LED ON (화면 렌더링 완료 후 - 150ms 딜레이)
         QTimer.singleShot(150, lambda: self.dlp.led_on(440))
@@ -598,10 +598,7 @@ class MainWindow(QMainWindow):
         # 1. LED OFF 먼저 (이전 상태가 켜져 있을 수 있음)
         self.dlp.led_off()
 
-        # 2. 프로젝터 ON (LED OFF 상태에서)
-        self.dlp.projector_on()
-
-        # 3. 프로젝터 윈도우에 흰색 화면 표시 (LED OFF 상태)
+        # 2. 프로젝터 윈도우에 흰색 화면 표시 (프로젝터 ON 전에 미리 준비)
         if self.projector_window is None:
             self.projector_window = ProjectorWindow(screen_index=1)
 
@@ -609,6 +606,9 @@ class MainWindow(QMainWindow):
         if len(screens) > 1:
             self.projector_window.show_on_screen(1)
             self.projector_window.show_white_screen()
+
+        # 3. 프로젝터 ON (이미지가 준비된 상태에서 켜짐 - 바탕화면 노출 방지)
+        self.dlp.projector_on()
 
         # 4. LED ON (화면 렌더링 완료 후 - 150ms 딜레이)
         print(f"  - LED Power: 440")
@@ -635,7 +635,7 @@ class MainWindow(QMainWindow):
         print(f"[Setting] LED ON 시도")
         print(f"  - Power: {power_percent}% (NVM: {led_power})")
 
-        # 프로젝터 윈도우에 1.png 표시
+        # 1. 프로젝터 윈도우에 1.png 표시 (프로젝터 ON 전에 미리 준비)
         if self.projector_window is None:
             self.projector_window = ProjectorWindow(screen_index=1)
 
@@ -647,8 +647,10 @@ class MainWindow(QMainWindow):
 
         self.projector_window.show_test_image()  # 1.png 표시
 
-        # 프로젝터 ON + LED ON (화면 렌더링 완료 후 - 150ms 딜레이)
+        # 2. 프로젝터 ON (이미지가 준비된 상태에서 켜짐 - 바탕화면 노출 방지)
         self.dlp.projector_on()
+
+        # 3. LED ON (화면 렌더링 완료 후 - 150ms 딜레이)
         QTimer.singleShot(150, lambda: self.dlp.led_on(led_power))
 
     def _setting_led_off(self):
