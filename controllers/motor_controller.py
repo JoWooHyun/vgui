@@ -46,6 +46,10 @@ class MotorController:
         self._z_is_homed = False
         self._x_is_homed = False
 
+        # 재시도 설정
+        self._max_retries = 3
+        self._retry_delay = 1.0  # 초
+
     # ==================== 연결 관리 ====================
 
     def connect(self) -> bool:
@@ -71,9 +75,30 @@ class MotorController:
 
     # ==================== G-code 전송 ====================
 
+    def _ensure_connected(self) -> bool:
+        """연결 상태 확인 및 필요시 재연결"""
+        if self._is_connected:
+            # 연결 상태 검증 (빠른 ping)
+            try:
+                response = requests.get(
+                    f"{self.moonraker_url}/printer/info",
+                    timeout=3
+                )
+                if response.status_code == 200:
+                    return True
+            except:
+                pass
+
+            # 연결 끊김 감지
+            print("[Motor] 연결 끊김 감지 - 재연결 시도")
+            self._is_connected = False
+
+        # 재연결 시도
+        return self.connect()
+
     def send_gcode(self, gcode: str, timeout: Optional[int] = None) -> bool:
         """
-        G-code 명령 전송
+        G-code 명령 전송 (자동 재연결 및 재시도 포함)
 
         Args:
             gcode: G-code 문자열 (여러 줄 가능)
@@ -95,24 +120,46 @@ class MotorController:
             else:
                 timeout = 60   # 기본: 1분
 
-        try:
-            url = f"{self.moonraker_url}/printer/gcode/script"
-            response = requests.post(
-                url,
-                json={"script": gcode},
-                timeout=timeout
-            )
+        # 재시도 루프
+        for attempt in range(self._max_retries):
+            # 연결 확인
+            if not self._ensure_connected():
+                print(f"[Motor] 연결 실패 (시도 {attempt + 1}/{self._max_retries})")
+                if attempt < self._max_retries - 1:
+                    time.sleep(self._retry_delay)
+                continue
 
-            if response.status_code == 200:
-                print(f"[Motor] G-code 전송: {gcode.replace(chr(10), ' | ')} (timeout={timeout}s)")
-                return True
-            else:
-                print(f"[Motor] G-code 실패: {response.status_code}")
-                return False
+            try:
+                url = f"{self.moonraker_url}/printer/gcode/script"
+                response = requests.post(
+                    url,
+                    json={"script": gcode},
+                    timeout=timeout
+                )
 
-        except requests.exceptions.RequestException as e:
-            print(f"[Motor] G-code 전송 오류: {e}")
-            return False
+                if response.status_code == 200:
+                    print(f"[Motor] G-code 전송: {gcode.replace(chr(10), ' | ')} (timeout={timeout}s)")
+                    return True
+                else:
+                    print(f"[Motor] G-code 실패: {response.status_code}")
+                    # 4xx 에러는 재시도 의미 없음
+                    if 400 <= response.status_code < 500:
+                        return False
+
+            except requests.exceptions.ConnectionError as e:
+                print(f"[Motor] 연결 오류 (시도 {attempt + 1}/{self._max_retries}): {e}")
+                self._is_connected = False
+            except requests.exceptions.Timeout as e:
+                print(f"[Motor] 타임아웃 (시도 {attempt + 1}/{self._max_retries}): {e}")
+            except requests.exceptions.RequestException as e:
+                print(f"[Motor] G-code 전송 오류 (시도 {attempt + 1}/{self._max_retries}): {e}")
+
+            # 재시도 전 대기
+            if attempt < self._max_retries - 1:
+                time.sleep(self._retry_delay)
+
+        print(f"[Motor] G-code 전송 최종 실패: {gcode.replace(chr(10), ' | ')}")
+        return False
 
     def wait_for_movement_complete(self, timeout: int = 300) -> bool:
         """모든 모터 움직임 완료 대기 (M400)"""

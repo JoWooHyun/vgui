@@ -513,10 +513,11 @@ class PrintWorker(QThread):
         return stopped
 
     def _check_paused(self):
-        """일시정지 체크 및 대기"""
+        """일시정지 체크 및 대기 (1초마다 상태 재확인)"""
         self._mutex.lock()
         while self._is_paused and not self._is_stopped:
-            self._pause_condition.wait(self._mutex)
+            # 1초 타임아웃으로 주기적 깨어남 (spurious wakeup 및 상태 불일치 방지)
+            self._pause_condition.wait(self._mutex, 1000)
         self._mutex.unlock()
 
     def _cleanup(self):
