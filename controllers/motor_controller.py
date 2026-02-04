@@ -326,13 +326,6 @@ class MotorController:
             position: 목표 위치 (mm), 0~125
             speed: 이동 속도 (mm/min)
         """
-        # 홈잉 안 된 경우 먼저 홈잉
-        if not self._x_is_homed:
-            print("[Motor] X축 홈잉 필요 - 자동 홈잉 실행")
-            if not self.x_home(force=True):
-                print("[Motor] X축 홈잉 실패")
-                return False
-
         speed = speed or self.config.x_speed
 
         # 위치 제한
