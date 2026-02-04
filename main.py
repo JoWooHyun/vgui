@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from controllers.theme_manager import get_theme_manager
 _theme_init = get_theme_manager()  # 테마 로드 및 Colors 적용
 
-from PySide6.QtWidgets import QApplication, QMainWindow, QStackedWidget
+from PySide6.QtWidgets import QApplication, QMainWindow, QStackedWidget, QMessageBox
 from PySide6.QtCore import Qt, QTimer, QThread, Signal, QObject
 from PySide6.QtGui import QCursor
 
@@ -179,9 +179,26 @@ class MainWindow(QMainWindow):
 
         # DLP 컨트롤러
         self.dlp = DLPController(simulation=self.simulation)
-        self.dlp.initialize()
+        dlp_success = self.dlp.initialize()
+
+        # DLP 초기화 성공 시 프로젝터 ON (앱 실행 동안 계속 켜둠)
+        if dlp_success:
+            self.dlp.projector_on()
+            print("[System] 프로젝터 ON (앱 시작)")
+        else:
+            # 초기화 실패 시 경고 팝업 (QTimer로 지연 - UI 초기화 후 표시)
+            QTimer.singleShot(500, self._show_dlp_error_popup)
 
         print(f"[System] 하드웨어 초기화 완료 (시뮬레이션: {self.simulation})")
+
+    def _show_dlp_error_popup(self):
+        """DLP 연결 실패 경고 팝업"""
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Warning)
+        msg.setWindowTitle("프로젝터 연결 실패")
+        msg.setText("프로젝터 연결에 실패했습니다.\n\n전원을 껐다가 다시 켜주세요.")
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.exec()
     
     def _setup_pages(self):
         """페이지 설정"""
@@ -391,9 +408,8 @@ class MainWindow(QMainWindow):
         print("[STOP] 모든 동작 정지!")
         # 모터 현재 동작 취소 (quickstop - Klipper 유지)
         self.motor.quickstop()
-        # LED 끄기
+        # LED 끄기 (프로젝터는 끄지 않음 - 앱 실행 동안 계속 ON)
         self.dlp.led_off()
-        self.dlp.projector_off()
         # 프린트 워커 정지
         if self.print_worker and self.print_worker.isRunning():
             self.print_worker.stop()
@@ -565,7 +581,7 @@ class MainWindow(QMainWindow):
         # 1. LED OFF 먼저 (이전 상태가 켜져 있을 수 있음)
         self.dlp.led_off()
 
-        # 2. 프로젝터 윈도우에 패턴 표시 (프로젝터 ON 전에 미리 준비)
+        # 2. 프로젝터 윈도우에 패턴 표시 (프로젝터는 이미 ON 상태)
         if self.projector_window is None:
             self.projector_window = ProjectorWindow(screen_index=1)
 
@@ -573,20 +589,16 @@ class MainWindow(QMainWindow):
         if len(screens) > 1:
             self.projector_window.show_on_screen(1)
             self.projector_window.show_test_pattern(pattern)
-            # Qt 이벤트 처리 - 윈도우가 실제로 화면에 표시되도록 함
             QApplication.processEvents()
 
-        # 3. 프로젝터 ON (이미지가 준비된 상태에서 켜짐 - 바탕화면 노출 방지)
-        self.dlp.projector_on()
-
-        # 4. LED ON (화면 렌더링 완료 후 - 150ms 딜레이)
-        QTimer.singleShot(150, lambda: self.dlp.led_on(440))
+        # 3. LED ON (프로젝터는 앱 시작 시 이미 켜져 있음)
+        self.dlp.led_on(440)
 
     def _stop_exposure(self):
         """노출 테스트 정지"""
         print("[NVR] 노출 테스트 정지")
         self.dlp.led_off()
-        self.dlp.projector_off()
+        # 프로젝터는 끄지 않음 (앱 실행 동안 계속 ON)
 
         if self.projector_window:
             self.projector_window.clear_screen()
@@ -600,7 +612,7 @@ class MainWindow(QMainWindow):
         # 1. LED OFF 먼저 (이전 상태가 켜져 있을 수 있음)
         self.dlp.led_off()
 
-        # 2. 프로젝터 윈도우에 흰색 화면 표시 (프로젝터 ON 전에 미리 준비)
+        # 2. 프로젝터 윈도우에 흰색 화면 표시 (프로젝터는 이미 ON 상태)
         if self.projector_window is None:
             self.projector_window = ProjectorWindow(screen_index=1)
 
@@ -608,21 +620,17 @@ class MainWindow(QMainWindow):
         if len(screens) > 1:
             self.projector_window.show_on_screen(1)
             self.projector_window.show_white_screen()
-            # Qt 이벤트 처리 - 윈도우가 실제로 화면에 표시되도록 함
             QApplication.processEvents()
 
-        # 3. 프로젝터 ON (이미지가 준비된 상태에서 켜짐 - 바탕화면 노출 방지)
-        self.dlp.projector_on()
-
-        # 4. LED ON (화면 렌더링 완료 후 - 150ms 딜레이)
+        # 3. LED ON (프로젝터는 앱 시작 시 이미 켜져 있음)
         print(f"  - LED Power: 440")
-        QTimer.singleShot(150, lambda: self.dlp.led_on(440))
+        self.dlp.led_on(440)
 
     def _stop_clean(self):
         """클리닝 정지"""
         print("[NVR] 클리닝 정지")
         self.dlp.led_off()
-        self.dlp.projector_off()
+        # 프로젝터는 끄지 않음 (앱 실행 동안 계속 ON)
 
         if self.projector_window:
             self.projector_window.clear_screen()
@@ -639,7 +647,7 @@ class MainWindow(QMainWindow):
         print(f"[Setting] LED ON 시도")
         print(f"  - Power: {power_percent}% (NVM: {led_power})")
 
-        # 1. 프로젝터 윈도우에 1.png 표시 (프로젝터 ON 전에 미리 준비)
+        # 1. 프로젝터 윈도우에 1.png 표시 (프로젝터는 이미 ON 상태)
         if self.projector_window is None:
             self.projector_window = ProjectorWindow(screen_index=1)
 
@@ -650,20 +658,16 @@ class MainWindow(QMainWindow):
             self.projector_window.show_on_screen(0)
 
         self.projector_window.show_test_image()  # 1.png 표시
-        # Qt 이벤트 처리 - 윈도우가 실제로 화면에 표시되도록 함
         QApplication.processEvents()
 
-        # 2. 프로젝터 ON (이미지가 준비된 상태에서 켜짐 - 바탕화면 노출 방지)
-        self.dlp.projector_on()
-
-        # 3. LED ON (화면 렌더링 완료 후 - 150ms 딜레이)
-        QTimer.singleShot(150, lambda: self.dlp.led_on(led_power))
+        # 2. LED ON (프로젝터는 앱 시작 시 이미 켜져 있음)
+        self.dlp.led_on(led_power)
 
     def _setting_led_off(self):
         """Setting 페이지에서 LED OFF"""
         print("[Setting] LED OFF")
         self.dlp.led_off()
-        self.dlp.projector_off()
+        # 프로젝터는 끄지 않음 (앱 실행 동안 계속 ON)
 
         if self.projector_window:
             self.projector_window.clear_screen()
@@ -784,10 +788,10 @@ class MainWindow(QMainWindow):
         if self.projector_window:
             self.projector_window.close()
 
-        # 하드웨어 정리
-        if not self.simulation:
-            self.dlp.led_off()
-            self.dlp.projector_off()
+        # 하드웨어 정리 (LED OFF, 프로젝터 OFF)
+        self.dlp.led_off()
+        self.dlp.projector_off()
+        print("[System] 프로젝터 OFF (앱 종료)")
 
         event.accept()
 
