@@ -183,6 +183,7 @@ class MainWindow(QMainWindow):
 
         # DLP 초기화 성공 시 프로젝터 ON (앱 실행 동안 계속 켜둠)
         if dlp_success:
+            self.dlp.led_off()  # LED OFF 먼저 (이전 상태가 켜져있을 수 있음)
             self.dlp.projector_on()
             print("[System] 프로젝터 ON (앱 시작)")
         else:
