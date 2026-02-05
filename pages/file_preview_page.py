@@ -314,6 +314,7 @@ class FilePreviewPage(BasePage):
         # 사용자 설정값 (기본값)
         self._blade_speed = 30   # mm/s (실제값 = 표시값 × 50)
         self._led_power = 43     # % (1023 = 100%, 440 = 43%)
+        self._blade_cycles = 1   # 블레이드 왕복 횟수 (1~3)
         
         self._setup_content()
     
@@ -412,7 +413,19 @@ class FilePreviewPage(BasePage):
         )
         self.row_led_power.value_changed.connect(self._on_led_power_changed)
         right_layout.addWidget(self.row_led_power)
-        
+
+        # Blade Cycles (1~3회)
+        self.row_blade_cycles = EditableRow(
+            label="Blade Cycles",
+            value=self._blade_cycles,
+            unit="회",
+            min_val=1,
+            max_val=3,
+            step=1
+        )
+        self.row_blade_cycles.value_changed.connect(self._on_blade_cycles_changed)
+        right_layout.addWidget(self.row_blade_cycles)
+
         right_layout.addStretch()
         
         # 버튼들
@@ -483,7 +496,12 @@ class FilePreviewPage(BasePage):
         """LED Power 변경"""
         self._led_power = int(value)
         print(f"[Preview] LED Power: {self._led_power}%")
-    
+
+    def _on_blade_cycles_changed(self, value: float):
+        """Blade Cycles 변경"""
+        self._blade_cycles = int(value)
+        print(f"[Preview] Blade Cycles: {self._blade_cycles}회")
+
     def set_file(self, file_path: str):
         """파일 설정 및 정보 표시"""
         self._file_path = file_path
@@ -622,6 +640,7 @@ class FilePreviewPage(BasePage):
                 **self._print_params,
                 'bladeSpeed': self._blade_speed * 50,  # mm/s → mm/min 변환
                 'ledPower': self._led_power,
+                'bladeCycles': self._blade_cycles,
             }
             self.start_print.emit(self._file_path, full_params)
     
@@ -635,6 +654,7 @@ class FilePreviewPage(BasePage):
             **self._print_params,
             'bladeSpeed': self._blade_speed * 50,  # mm/s → mm/min 변환
             'ledPower': self._led_power,
+            'bladeCycles': self._blade_cycles,
         }
     
     def get_blade_speed(self) -> int:
@@ -654,3 +674,12 @@ class FilePreviewPage(BasePage):
         """LED Power 설정"""
         self._led_power = value
         self.row_led_power.set_value(value)
+
+    def get_blade_cycles(self) -> int:
+        """Blade Cycles 반환"""
+        return self._blade_cycles
+
+    def set_blade_cycles(self, value: int):
+        """Blade Cycles 설정"""
+        self._blade_cycles = max(1, min(3, value))
+        self.row_blade_cycles.set_value(self._blade_cycles)
