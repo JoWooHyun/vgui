@@ -271,12 +271,8 @@ class MotorController:
         X축 홈으로 이동 (블레이드 원점)
 
         Args:
-            force: True면 캐시 상태와 관계없이 강제 홈잉
+            force: (미사용) 항상 실제 홈잉 수행
         """
-        if not force and self._x_is_homed and self._x_position == 0.0:
-            print("[Motor] X축 이미 홈 위치에 있음 - 홈잉 생략")
-            return True
-
         print("[Motor] X축 홈 이동 시작")
         success = self.send_gcode("G28 X", timeout=120)
         if success:
