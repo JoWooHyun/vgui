@@ -298,6 +298,79 @@ class ZipErrorDialog(QDialog):
         layout.addLayout(btn_layout)
 
 
+class ToggleRow(QFrame):
+    """토글 가능한 정보 행 (클릭하면 값 전환)"""
+
+    value_changed = Signal(str)
+
+    def __init__(self, label: str, options: list, parent=None):
+        """
+        Args:
+            label: 행 라벨
+            options: [(key, display_text), ...] 형태의 선택지 리스트
+        """
+        super().__init__(parent)
+
+        self._options = options
+        self._current_index = 0
+
+        self.setFixedHeight(40)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setStyleSheet(f"""
+            QFrame {{
+                background-color: {Colors.BG_SECONDARY};
+                border: 2px solid {Colors.CYAN};
+                border-radius: 8px;
+            }}
+        """)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(12, 0, 12, 0)
+        layout.setSpacing(8)
+
+        self.lbl_label = QLabel(label)
+        self.lbl_label.setFont(Fonts.body_small())
+        self.lbl_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; background-color: transparent; border: none;")
+        self.lbl_label.setFixedWidth(110)
+
+        self.lbl_value = QLabel()
+        self.lbl_value.setFont(Fonts.body())
+        self.lbl_value.setStyleSheet(f"color: {Colors.CYAN}; background-color: transparent; border: none; font-weight: 600;")
+        self._update_display()
+
+        self.lbl_icon = QLabel()
+        self.lbl_icon.setFixedSize(20, 20)
+        self.lbl_icon.setPixmap(Icons.get_pixmap(Icons.EDIT, 18, Colors.CYAN))
+        self.lbl_icon.setStyleSheet("background-color: transparent; border: none;")
+
+        layout.addWidget(self.lbl_label)
+        layout.addWidget(self.lbl_value, 1)
+        layout.addWidget(self.lbl_icon)
+
+    def _update_display(self):
+        key, display = self._options[self._current_index]
+        self.lbl_value.setText(display)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._current_index = (self._current_index + 1) % len(self._options)
+            self._update_display()
+            key, _ = self._options[self._current_index]
+            self.value_changed.emit(key)
+        super().mousePressEvent(event)
+
+    def get_value(self) -> str:
+        key, _ = self._options[self._current_index]
+        return key
+
+    def set_value(self, key: str):
+        for i, (k, _) in enumerate(self._options):
+            if k == key:
+                self._current_index = i
+                self._update_display()
+                break
+
+
 class FilePreviewPage(BasePage):
     """파일 미리보기 페이지"""
     
@@ -315,6 +388,7 @@ class FilePreviewPage(BasePage):
         self._blade_speed = 30   # mm/s (실제값 = 표시값 × 50)
         self._led_power = 43     # % (1023 = 100%, 440 = 43%)
         self._blade_cycles = 1   # 블레이드 왕복 횟수 (1~3)
+        self._blade_mode = "roundtrip"  # 블레이드 모드: "roundtrip"(왕복) / "oneway"(편도)
         
         self._setup_content()
     
@@ -426,6 +500,14 @@ class FilePreviewPage(BasePage):
         self.row_blade_cycles.value_changed.connect(self._on_blade_cycles_changed)
         right_layout.addWidget(self.row_blade_cycles)
 
+        # Blade Mode (왕복/편도)
+        self.row_blade_mode = ToggleRow(
+            label="Blade Mode",
+            options=[("roundtrip", "왕복"), ("oneway", "편도")]
+        )
+        self.row_blade_mode.value_changed.connect(self._on_blade_mode_changed)
+        right_layout.addWidget(self.row_blade_mode)
+
         right_layout.addStretch()
         
         # 버튼들
@@ -501,6 +583,12 @@ class FilePreviewPage(BasePage):
         """Blade Cycles 변경"""
         self._blade_cycles = int(value)
         print(f"[Preview] Blade Cycles: {self._blade_cycles}회")
+
+    def _on_blade_mode_changed(self, mode: str):
+        """Blade Mode 변경"""
+        self._blade_mode = mode
+        label = "왕복" if mode == "roundtrip" else "편도"
+        print(f"[Preview] Blade Mode: {label}")
 
     def set_file(self, file_path: str):
         """파일 설정 및 정보 표시"""
@@ -641,6 +729,7 @@ class FilePreviewPage(BasePage):
                 'bladeSpeed': self._blade_speed * 50,  # mm/s → mm/min 변환
                 'ledPower': self._led_power,
                 'bladeCycles': self._blade_cycles,
+                'bladeMode': self._blade_mode,
             }
             self.start_print.emit(self._file_path, full_params)
     
@@ -655,6 +744,7 @@ class FilePreviewPage(BasePage):
             'bladeSpeed': self._blade_speed * 50,  # mm/s → mm/min 변환
             'ledPower': self._led_power,
             'bladeCycles': self._blade_cycles,
+            'bladeMode': self._blade_mode,
         }
     
     def get_blade_speed(self) -> int:
@@ -683,3 +773,13 @@ class FilePreviewPage(BasePage):
         """Blade Cycles 설정"""
         self._blade_cycles = max(1, min(3, value))
         self.row_blade_cycles.set_value(self._blade_cycles)
+
+    def get_blade_mode(self) -> str:
+        """Blade Mode 반환"""
+        return self._blade_mode
+
+    def set_blade_mode(self, mode: str):
+        """Blade Mode 설정"""
+        if mode in ("roundtrip", "oneway"):
+            self._blade_mode = mode
+            self.row_blade_mode.set_value(mode)

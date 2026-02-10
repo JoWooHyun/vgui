@@ -450,6 +450,7 @@ class MainWindow(QMainWindow):
         led_power = int(1023 * led_power_percent / 100)  # 실제 LED 값으로 변환
         leveling_cycles = params.get('levelingCycles', 1)
         blade_cycles = params.get('bladeCycles', 1)  # 매 레이어 블레이드 왕복 횟수
+        blade_mode = params.get('bladeMode', 'roundtrip')  # 블레이드 모드 (왕복/편도)
 
         # 추가 파라미터 (run.gcode에서 추출된 값)
         estimated_time = int(params.get('estimatedPrintTime', 0))  # 초 단위
@@ -511,7 +512,8 @@ class MainWindow(QMainWindow):
             blade_speed=blade_speed,
             led_power=led_power,
             leveling_cycles=leveling_cycles,
-            blade_cycles=blade_cycles
+            blade_cycles=blade_cycles,
+            blade_mode=blade_mode
         )
 
     def _on_progress_updated(self, current: int, total: int):
