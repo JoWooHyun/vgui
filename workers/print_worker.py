@@ -586,8 +586,9 @@ class PrintWorker(QThread):
         # X축만 홈 복귀 (Z축은 현재 위치 유지 - 안전을 위해)
         self._motor_x_home()
 
-        # Klipper에 프린트 종료 알림
+        # Klipper 일시정지 상태 초기화 + 프린트 종료 알림
         if self.motor and not self.simulation:
+            self.motor.klipper_clear_pause()
             self.motor.klipper_cancel()
 
         self._set_status(PrintStatus.IDLE)
