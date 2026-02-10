@@ -409,6 +409,32 @@ class MotorController:
         print("[Motor] Quickstop - 현재 동작 취소")
         return self.send_gcode("M410", timeout=5)
 
+    def klipper_pause(self) -> bool:
+        """Klipper에 일시정지 알림 (idle timeout 방지)"""
+        print("[Motor] Klipper PAUSE")
+        try:
+            response = requests.post(
+                f"{self.moonraker_url}/printer/gcode/script",
+                json={"script": "PAUSE"},
+                timeout=10
+            )
+            return response.status_code == 200
+        except:
+            return False
+
+    def klipper_resume(self) -> bool:
+        """Klipper에 재개 알림"""
+        print("[Motor] Klipper RESUME")
+        try:
+            response = requests.post(
+                f"{self.moonraker_url}/printer/gcode/script",
+                json={"script": "RESUME"},
+                timeout=10
+            )
+            return response.status_code == 200
+        except:
+            return False
+
     def leveling_cycle(self, cycles: int = 1, speed: Optional[int] = None) -> bool:
         """
         레진 평탄화 사이클

@@ -373,6 +373,13 @@ class PrintWorker(QThread):
         # 이미지 클리어
         self.clear_image.emit()
 
+        # LED OFF 후 일시정지/정지 체크
+        if self._check_stopped():
+            return True
+        self._check_paused()
+        if self._check_stopped():
+            return True
+
         # 6. Z축 리프트
         if not self._motor_z_move(z_position + lift_height, lift_speed):
             self.error_occurred.emit(f"레이어 {layer_idx}: Z축 리프트 실패")
@@ -516,7 +523,10 @@ class PrintWorker(QThread):
 
     def _wait_exposure(self, duration: float):
         """
-        노광 대기 (일시정지/정지 체크하면서)
+        노광 대기 (정지만 체크, 일시정지는 무시)
+
+        노광 중에는 LED가 켜져있으므로 일시정지하면 안 됨.
+        노광 완료 후 LED OFF → 일시정지 체크는 _process_layer에서 처리.
 
         Args:
             duration: 노광 시간 (초)
@@ -525,10 +535,6 @@ class PrintWorker(QThread):
         interval = 0.1  # 100ms 간격으로 체크
 
         while elapsed < duration:
-            if self._check_stopped():
-                return
-
-            self._check_paused()
             if self._check_stopped():
                 return
 
@@ -543,11 +549,24 @@ class PrintWorker(QThread):
         return stopped
 
     def _check_paused(self):
-        """일시정지 체크 및 대기 (1초마다 상태 재확인)"""
+        """일시정지 체크 및 대기 (Klipper pause/resume 연동)"""
         self._mutex.lock()
-        while self._is_paused and not self._is_stopped:
-            # 1초 타임아웃으로 주기적 깨어남 (spurious wakeup 및 상태 불일치 방지)
-            self._pause_condition.wait(self._mutex, 1000)
+        if self._is_paused and not self._is_stopped:
+            # Klipper에 일시정지 알림 (idle timeout 방지)
+            self._mutex.unlock()
+            if self.motor and not self.simulation:
+                self.motor.klipper_pause()
+            self._mutex.lock()
+
+            while self._is_paused and not self._is_stopped:
+                self._pause_condition.wait(self._mutex, 1000)
+
+            # 재개 시 Klipper에 알림
+            if not self._is_stopped:
+                self._mutex.unlock()
+                if self.motor and not self.simulation:
+                    self.motor.klipper_resume()
+                self._mutex.lock()
         self._mutex.unlock()
 
     def _cleanup(self):
