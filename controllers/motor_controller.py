@@ -435,6 +435,32 @@ class MotorController:
         except:
             return False
 
+    def klipper_cancel(self) -> bool:
+        """Klipper에 프린트 취소 알림"""
+        print("[Motor] Klipper CANCEL_PRINT")
+        try:
+            response = requests.post(
+                f"{self.moonraker_url}/printer/gcode/script",
+                json={"script": "CANCEL_PRINT"},
+                timeout=10
+            )
+            return response.status_code == 200
+        except:
+            return False
+
+    def klipper_clear_pause(self) -> bool:
+        """Klipper 일시정지 상태 초기화 (새 프린트 시작 전 호출)"""
+        print("[Motor] Klipper CLEAR_PAUSE")
+        try:
+            response = requests.post(
+                f"{self.moonraker_url}/printer/gcode/script",
+                json={"script": "CLEAR_PAUSE"},
+                timeout=10
+            )
+            return response.status_code == 200
+        except:
+            return False
+
     def leveling_cycle(self, cycles: int = 1, speed: Optional[int] = None) -> bool:
         """
         레진 평탄화 사이클

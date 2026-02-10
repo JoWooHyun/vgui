@@ -223,6 +223,8 @@ class PrintWorker(QThread):
 
             if self.motor:
                 self.motor.connect()
+                # 이전 일시정지 상태 초기화
+                self.motor.klipper_clear_pause()
 
         # Z축 홈
         if self._check_stopped():
@@ -583,6 +585,10 @@ class PrintWorker(QThread):
 
         # X축만 홈 복귀 (Z축은 현재 위치 유지 - 안전을 위해)
         self._motor_x_home()
+
+        # Klipper에 프린트 종료 알림
+        if self.motor and not self.simulation:
+            self.motor.klipper_cancel()
 
         self._set_status(PrintStatus.IDLE)
         print("[PrintWorker] 정리 완료")
