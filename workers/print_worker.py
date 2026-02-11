@@ -568,6 +568,7 @@ class PrintWorker(QThread):
                 self._mutex.unlock()
                 if self.motor and not self.simulation:
                     self.motor.klipper_resume()
+                    time.sleep(2.0)  # Klipper RESUME 처리 완료 대기
                 self._mutex.lock()
         self._mutex.unlock()
 
