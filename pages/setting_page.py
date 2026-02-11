@@ -193,9 +193,9 @@ class BladePanel(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self._speed_value = 30  # 기본값 30 mm/s
-        self._min_speed = 10    # 최소 10 mm/s
-        self._max_speed = 100   # 최대 100 mm/s
+        self._speed_value = 5   # 기본값 5 mm/s (리드스크류)
+        self._min_speed = 1     # 최소 1 mm/s
+        self._max_speed = 15    # 최대 15 mm/s
 
         self._setup_ui()
 

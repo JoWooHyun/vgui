@@ -385,7 +385,7 @@ class FilePreviewPage(BasePage):
         self._print_params = {}
         
         # 사용자 설정값 (기본값)
-        self._blade_speed = 30   # mm/s (실제값 = 표시값 × 50)
+        self._blade_speed = 5    # mm/s (실제값 = 표시값 × 60, 리드스크류)
         self._led_power = 43     # % (1023 = 100%, 440 = 43%)
         self._blade_cycles = 1   # 블레이드 왕복 횟수 (1~3)
         self._blade_mode = "roundtrip"  # 블레이드 모드: "roundtrip"(왕복) / "oneway"(편도)
@@ -464,14 +464,14 @@ class FilePreviewPage(BasePage):
         right_layout.addSpacing(8)
         
         # 수정 가능한 행들
-        # Blade Speed (mm/s, 실제값 = 표시값 × 50)
+        # Blade Speed (mm/s, 실제값 = 표시값 × 60, 리드스크류)
         self.row_blade_speed = EditableRow(
             label="Blade Speed",
             value=self._blade_speed,
             unit="mm/s",
-            min_val=10,
-            max_val=100,
-            step=5
+            min_val=1,
+            max_val=15,
+            step=1
         )
         self.row_blade_speed.value_changed.connect(self._on_blade_speed_changed)
         right_layout.addWidget(self.row_blade_speed)
@@ -572,7 +572,7 @@ class FilePreviewPage(BasePage):
     def _on_blade_speed_changed(self, value: float):
         """Blade Speed 변경"""
         self._blade_speed = int(value)
-        print(f"[Preview] Blade Speed: {self._blade_speed} mm/s (실제: {self._blade_speed * 50} mm/min)")
+        print(f"[Preview] Blade Speed: {self._blade_speed} mm/s (실제: {self._blade_speed * 60} mm/min)")
     
     def _on_led_power_changed(self, value: float):
         """LED Power 변경"""
@@ -726,7 +726,7 @@ class FilePreviewPage(BasePage):
             # 사용자 설정값 포함한 전체 파라미터
             full_params = {
                 **self._print_params,
-                'bladeSpeed': self._blade_speed * 50,  # mm/s → mm/min 변환
+                'bladeSpeed': self._blade_speed * 60,  # mm/s → mm/min 변환
                 'ledPower': self._led_power,
                 'bladeCycles': self._blade_cycles,
                 'bladeMode': self._blade_mode,
@@ -741,7 +741,7 @@ class FilePreviewPage(BasePage):
         """프린트 파라미터 반환"""
         return {
             **self._print_params,
-            'bladeSpeed': self._blade_speed * 50,  # mm/s → mm/min 변환
+            'bladeSpeed': self._blade_speed * 60,  # mm/s → mm/min 변환
             'ledPower': self._led_power,
             'bladeCycles': self._blade_cycles,
             'bladeMode': self._blade_mode,

@@ -45,7 +45,7 @@ class PrintJob:
     """프린트 작업 정보"""
     file_path: str
     params: PrintParameters
-    blade_speed: int = 1500
+    blade_speed: int = 300   # mm/min (리드스크류)
     led_power: int = 440
     leveling_cycles: int = 1
     blade_cycles: int = 1  # 매 레이어 블레이드 왕복 횟수
@@ -116,7 +116,7 @@ class PrintWorker(QThread):
     # ==================== 제어 메서드 ====================
 
     def start_print(self, file_path: str, params: Dict[str, Any],
-                   blade_speed: int = 1500, led_power: int = 440,
+                   blade_speed: int = 300, led_power: int = 440,
                    leveling_cycles: int = 1, blade_cycles: int = 1,
                    blade_mode: str = "roundtrip"):
         """
@@ -438,7 +438,7 @@ class PrintWorker(QThread):
             time.sleep(0.1)
             return True
 
-    def _motor_x_move(self, position: float, speed: int = 4500) -> bool:
+    def _motor_x_move(self, position: float, speed: int = 300) -> bool:
         """X축 이동"""
         if self.motor and not self.simulation:
             return self.motor.x_move_absolute(position, speed)

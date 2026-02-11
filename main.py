@@ -46,7 +46,7 @@ class MotorWorker(QObject):
                 self.motor.z_home()
             elif self.operation == "x_move":
                 distance = self.kwargs.get("distance", 0)
-                speed = self.kwargs.get("speed", 1500)
+                speed = self.kwargs.get("speed", 300)
                 self.motor.x_move_relative(distance, speed=speed)
             elif self.operation == "x_home":
                 self.motor.x_home()
@@ -396,7 +396,7 @@ class MainWindow(QMainWindow):
     def _move_x(self, distance: float):
         """X축(블레이드) 이동 (비동기)"""
         print(f"[Motor] X축 이동: {distance}mm")
-        self._start_motor_operation("x_move", distance=distance, speed=1500)
+        self._start_motor_operation("x_move", distance=distance, speed=300)
 
     def _home_x(self):
         """X축 홈 (비동기)"""
@@ -445,7 +445,7 @@ class MainWindow(QMainWindow):
 
         # 파라미터 추출
         total_layers = params.get('totalLayer', 100)
-        blade_speed = params.get('bladeSpeed', 1500)
+        blade_speed = params.get('bladeSpeed', 300)
         led_power_percent = params.get('ledPower', 43)   # 퍼센트 (100% = 1023, 43% = 440)
         led_power = int(1023 * led_power_percent / 100)  # 실제 LED 값으로 변환
         leveling_cycles = params.get('levelingCycles', 1)

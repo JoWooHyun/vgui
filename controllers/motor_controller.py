@@ -15,9 +15,9 @@ from dataclasses import dataclass
 class MotorConfig:
     """모터 설정"""
     z_speed: int = 300          # Z축 이동 속도 (mm/min)
-    x_speed: int = 4500         # X축 이동 속도 (mm/min)
+    x_speed: int = 300          # X축 이동 속도 (mm/min) - 리드스크류
     z_home_speed: int = 300     # Z축 홈 속도
-    x_home_speed: int = 4500    # X축 홈 속도
+    x_home_speed: int = 300     # X축 홈 속도 - 리드스크류
     x_min: float = 0.0          # X축 최소 위치 (mm)
     x_max: float = 125.0        # X축 최대 위치 (mm)
     z_min: float = 0.0          # Z축 최소 위치 (mm)

@@ -18,7 +18,7 @@ SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
 class PrintSettings:
     """프린트 관련 설정"""
     led_power: int = 43         # LED 파워 (9-100%, 1023=100%, 440=43%)
-    blade_speed: int = 30       # Blade 속도 (10-100 mm/s)
+    blade_speed: int = 5        # Blade 속도 (1-15 mm/s, 리드스크류)
 
 
 @dataclass
@@ -72,7 +72,7 @@ class SettingsManager:
             print_data = data.get('print_settings', {})
             self._settings.print_settings = PrintSettings(
                 led_power=print_data.get('led_power', 100),
-                blade_speed=print_data.get('blade_speed', 30)
+                blade_speed=print_data.get('blade_speed', 5)
             )
 
             # 기타 설정 로드
