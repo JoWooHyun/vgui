@@ -683,7 +683,7 @@ class MainWindow(QMainWindow):
         self.motor.x_home()
 
     def _setting_blade_move(self):
-        """Setting 페이지에서 Blade Move (0→100 또는 100→0)"""
+        """Setting 페이지에서 Blade Move (140→0 또는 0→140)"""
         # 현재 X 위치 확인
         _, x_pos = self.motor.get_position()
 
@@ -693,12 +693,12 @@ class MainWindow(QMainWindow):
 
         print(f"[Setting] Blade Move (현재: {x_pos:.1f}mm, 속도: {blade_speed_mms}mm/s)")
 
-        if x_pos < 50:  # 0에 가까우면 100으로
-            print("[Setting] Blade 0 → 100mm 이동")
-            self.motor.x_move_absolute(100, blade_speed)
-        else:  # 100에 가까우면 0으로
-            print("[Setting] Blade 100 → 0mm 이동")
+        if x_pos > 70:  # 140에 가까우면 0으로
+            print("[Setting] Blade 140 → 0mm 이동")
             self.motor.x_move_absolute(0, blade_speed)
+        else:  # 0에 가까우면 140으로
+            print("[Setting] Blade 0 → 140mm 이동")
+            self.motor.x_move_absolute(140, blade_speed)
 
     # ==================== 설정 저장/동기화 ====================
 

@@ -19,7 +19,7 @@ class MotorConfig:
     z_home_speed: int = 300     # Z축 홈 속도
     x_home_speed: int = 300     # X축 홈 속도 - 리드스크류
     x_min: float = 0.0          # X축 최소 위치 (mm)
-    x_max: float = 125.0        # X축 최대 위치 (mm)
+    x_max: float = 150.0        # X축 최대 위치 (mm) - printer.cfg position_max
     z_min: float = 0.0          # Z축 최소 위치 (mm)
     z_max: float = 80.0         # Z축 최대 위치 (mm) - 실제 스펙
     drop_speed: int = 150       # Z축 하강 속도 (mm/min)
@@ -471,7 +471,7 @@ class MotorController:
 
         Flow:
             1. Z축 0.1mm 이동
-            2. X축 0 → 125 → 0 왕복 (N회)
+            2. X축 140 → 0 → 140 왕복 (N회)
             3. Z축 홈 복귀
         """
         if cycles <= 0:
@@ -493,22 +493,22 @@ class MotorController:
         for cycle in range(cycles):
             print(f"\n[Motor] --- 평탄화 {cycle + 1}/{cycles}회 ---")
 
-            # 2-1. 0mm → 125mm 이동
-            print("[Motor] X축 0mm → 125mm 이동")
-            if not self.x_to_end(speed):
-                print("[Motor] ❌ X축 125mm 이동 실패 - 평탄화 중단")
+            # 2-1. 140mm → 0mm 이동
+            print("[Motor] X축 140mm → 0mm 이동")
+            if not self.x_move_absolute(0, speed):
+                print("[Motor] ❌ X축 0mm 이동 실패 - 평탄화 중단")
                 return False
-            print("[Motor] ✅ X축 125mm 도착")
+            print("[Motor] ✅ X축 0mm 도착")
 
             # 안정화 대기
             time.sleep(0.2)
 
-            # 2-2. 125mm → 0mm 이동 (일반 이동 명령)
-            print("[Motor] X축 125mm → 0mm 이동")
-            if not self.x_to_home(speed):
-                print("[Motor] ❌ X축 0mm 이동 실패 - 평탄화 중단")
+            # 2-2. 0mm → 140mm 이동
+            print("[Motor] X축 0mm → 140mm 이동")
+            if not self.x_move_absolute(140, speed):
+                print("[Motor] ❌ X축 140mm 이동 실패 - 평탄화 중단")
                 return False
-            print("[Motor] ✅ X축 0mm 도착")
+            print("[Motor] ✅ X축 140mm 도착")
 
             # 안정화 대기
             time.sleep(0.2)
