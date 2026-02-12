@@ -631,33 +631,54 @@ class PrintProgressPage(BasePage):
             secs = seconds % 60
             return f"{minutes:02d}:{secs:02d}"
 
-    def _calculate_total_time(self, gcode_time: int, total_layers: int,
-                               blade_speed: int) -> int:
-        """총 예상 시간 계산 (블레이드 시간 포함)
+    def _calculate_total_time(self, total_layers: int, blade_speed: int,
+                               blade_cycles: int, bottom_layer_count: int,
+                               bottom_exposure: float, normal_exposure: float,
+                               lift_height: float, lift_speed: int,
+                               drop_speed: int) -> int:
+        """총 예상 시간 계산
 
         Args:
-            gcode_time: run.gcode의 예상 시간 (초)
             total_layers: 총 레이어 수
-            blade_speed: 블레이드 속도 (Gcode값, GUI = blade_speed / 50)
+            blade_speed: 블레이드 속도 (mm/min)
+            blade_cycles: 블레이드 왕복 횟수
+            bottom_layer_count: 바닥 레이어 수
+            bottom_exposure: 바닥 노광 시간 (초)
+            normal_exposure: 일반 노광 시간 (초)
+            lift_height: 리프트 높이 (mm)
+            lift_speed: 리프트 속도 (mm/min)
+            drop_speed: 하강 속도 (mm/min)
 
         Returns:
             총 예상 시간 (초)
         """
-        BLADE_ROUND_TRIP = 250.0  # mm (0→125→0 왕복)
+        BLADE_DISTANCE = 280.0  # mm (140→0→140 왕복)
 
-        # Gcode값을 GUI값(mm/s)으로 변환
-        blade_speed_mm_s = blade_speed / 50.0
-
+        # 블레이드 속도 (mm/min → mm/s)
+        blade_speed_mm_s = blade_speed / 60.0
         if blade_speed_mm_s <= 0:
-            blade_speed_mm_s = 30.0  # 기본값
+            blade_speed_mm_s = 5.0
 
-        # 블레이드 1회 왕복 시간
-        blade_time_per_layer = BLADE_ROUND_TRIP / blade_speed_mm_s
+        # 블레이드 1회 왕복 시간 × 사이클 수
+        blade_time = (BLADE_DISTANCE / blade_speed_mm_s) * blade_cycles
 
-        # 총 블레이드 시간
-        total_blade_time = blade_time_per_layer * total_layers
+        # Z축 리프트 + 하강 시간
+        lift_speed_mm_s = lift_speed / 60.0 if lift_speed > 0 else 5.0
+        drop_speed_mm_s = drop_speed / 60.0 if drop_speed > 0 else 2.5
+        z_lift_time = lift_height / lift_speed_mm_s
+        z_drop_time = lift_height / drop_speed_mm_s
+        z_time = z_lift_time + z_drop_time
 
-        return int(gcode_time + total_blade_time)
+        # 바닥 레이어 시간
+        bottom_time_per_layer = blade_time + bottom_exposure + z_time
+        total_bottom_time = bottom_time_per_layer * bottom_layer_count
+
+        # 일반 레이어 시간
+        normal_layers = max(0, total_layers - bottom_layer_count)
+        normal_time_per_layer = blade_time + normal_exposure + z_time
+        total_normal_time = normal_time_per_layer * normal_layers
+
+        return int(total_bottom_time + total_normal_time)
 
     # === Public API (Worker에서 호출) ===
     
@@ -665,7 +686,9 @@ class PrintProgressPage(BasePage):
                        total_layers: int, blade_speed: int, led_power: int,
                        estimated_time: int = 0, layer_height: float = 0.0,
                        bottom_exposure: float = 0.0, normal_exposure: float = 0.0,
-                       bottom_layer_count: int = 0):
+                       bottom_layer_count: int = 0, blade_cycles: int = 1,
+                       lift_height: float = 5.0, lift_speed: int = 65,
+                       drop_speed: int = 150):
         """프린트 정보 설정 (시작 시 호출)
 
         Args:
@@ -674,11 +697,15 @@ class PrintProgressPage(BasePage):
             total_layers: 총 레이어 수
             blade_speed: 블레이드 속도 (mm/min)
             led_power: LED 파워 (%)
-            estimated_time: 예상 시간 (초)
+            estimated_time: 예상 시간 (초, 미사용)
             layer_height: 레이어 높이 (mm)
             bottom_exposure: 바닥 노출 시간 (초)
             normal_exposure: 일반 노출 시간 (초)
             bottom_layer_count: 바닥 레이어 개수
+            blade_cycles: 블레이드 왕복 횟수
+            lift_height: Z축 리프트 높이 (mm)
+            lift_speed: Z축 리프트 속도 (mm/min)
+            drop_speed: Z축 하강 속도 (mm/min)
         """
         self._file_path = file_path
         self._total_layers = total_layers
@@ -699,9 +726,11 @@ class PrintProgressPage(BasePage):
         else:
             self.lbl_layer_image.setPixmap(Icons.get_pixmap(Icons.FILE, 64, Colors.TEXT_DISABLED))
 
-        # 총 예상 시간 계산 (블레이드 시간 포함)
+        # 총 예상 시간 계산 (블레이드 + 노광 + Z축 시간)
         total_estimated_time = self._calculate_total_time(
-            estimated_time, total_layers, blade_speed
+            total_layers, blade_speed, blade_cycles,
+            bottom_layer_count, bottom_exposure, normal_exposure,
+            lift_height, lift_speed, drop_speed
         )
         self._total_estimated_time = total_estimated_time
 
@@ -717,7 +746,7 @@ class PrintProgressPage(BasePage):
 
         # 오른쪽 열: 설정 정보
         self.row_bottom_layers.set_value(f"{bottom_layer_count}" if bottom_layer_count > 0 else "-")
-        self.row_blade_speed.set_value(f"{blade_speed / 50:.0f} mm/s")  # mm/min을 mm/s로 표시
+        self.row_blade_speed.set_value(f"{blade_speed / 60:.0f} mm/s")  # mm/min을 mm/s로 표시
         self.row_led_power.set_value(f"{led_power} %")
 
         self.progress_bar.setValue(0)

@@ -458,6 +458,9 @@ class MainWindow(QMainWindow):
         bottom_exposure = float(params.get('bottomLayerExposureTime', 0.0))
         normal_exposure = float(params.get('normalExposureTime', 0.0))
         bottom_layer_count = int(params.get('bottomLayerCount', 0))
+        lift_height = float(params.get('normalLayerLiftHeight', 5.0))
+        lift_speed = int(params.get('normalLayerLiftSpeed', 65))
+        drop_speed = int(params.get('normalDropSpeed', 150))
 
         # Print Progress 페이지로 정보 전달 및 이동
         self.print_progress_page.set_print_info(
@@ -470,7 +473,11 @@ class MainWindow(QMainWindow):
             layer_height=layer_height,
             bottom_exposure=bottom_exposure,
             normal_exposure=normal_exposure,
-            bottom_layer_count=bottom_layer_count
+            bottom_layer_count=bottom_layer_count,
+            blade_cycles=blade_cycles,
+            lift_height=lift_height,
+            lift_speed=lift_speed,
+            drop_speed=drop_speed
         )
         self._go_to_page(self.PAGE_PRINT_PROGRESS)
 
