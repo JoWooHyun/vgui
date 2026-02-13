@@ -566,6 +566,44 @@ class MotorController:
             pass
         return 'unknown'
 
+    def get_klipper_state(self) -> str:
+        """Klipper 자체 상태 조회 (ready, shutdown, error, startup 등)"""
+        try:
+            response = requests.get(
+                f"{self.moonraker_url}/printer/info",
+                timeout=5
+            )
+            if response.status_code == 200:
+                data = response.json()
+                state = data.get('result', {}).get('state', 'unknown')
+                print(f"[Motor] Klipper 상태: {state}")
+                return state
+        except:
+            pass
+        return 'unknown'
+
+    def firmware_restart(self) -> bool:
+        """Klipper 펌웨어 재시작 (shutdown 복구용)"""
+        print("[Motor] Klipper FIRMWARE_RESTART")
+        try:
+            response = requests.post(
+                f"{self.moonraker_url}/printer/firmware_restart",
+                timeout=30
+            )
+            if response.status_code == 200:
+                # 재시작 후 ready 상태가 될 때까지 대기
+                for _ in range(30):  # 최대 15초 대기
+                    time.sleep(0.5)
+                    state = self.get_klipper_state()
+                    if state == "ready":
+                        print("[Motor] Klipper 재시작 완료 (ready)")
+                        return True
+                print("[Motor] Klipper 재시작 타임아웃")
+                return False
+            return False
+        except:
+            return False
+
 
 # 테스트용
 if __name__ == "__main__":

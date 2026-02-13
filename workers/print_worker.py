@@ -563,14 +563,53 @@ class PrintWorker(QThread):
             while self._is_paused and not self._is_stopped:
                 self._pause_condition.wait(self._mutex, 1000)
 
-            # 재개 시 Klipper에 알림
+            # 재개 시 Klipper 상태 확인 및 복구
             if not self._is_stopped:
                 self._mutex.unlock()
                 if self.motor and not self.simulation:
-                    self.motor.klipper_resume()
-                    time.sleep(2.0)  # Klipper RESUME 처리 완료 대기
+                    self._recover_klipper()
                 self._mutex.lock()
         self._mutex.unlock()
+
+    def _recover_klipper(self):
+        """Klipper 상태 확인 후 복구 (일시정지 재개 시 호출)"""
+        state = self.motor.get_klipper_state()
+
+        if state == "shutdown":
+            # idle_timeout으로 shutdown된 경우 → 펌웨어 재시작 + 재홈잉
+            print("[PrintWorker] Klipper shutdown 감지 → 복구 시작")
+            if not self.motor.firmware_restart():
+                print("[PrintWorker] Klipper 재시작 실패")
+                self.error_occurred.emit("Klipper 재시작 실패 - 프린터를 재부팅해주세요")
+                self._mutex.lock()
+                self._is_stopped = True
+                self._mutex.unlock()
+                return
+
+            # 재홈잉 (shutdown 후 위치 정보 소실)
+            print("[PrintWorker] 재홈잉 시작")
+            if not self.motor.z_home():
+                print("[PrintWorker] Z축 재홈잉 실패")
+                self.error_occurred.emit("Z축 재홈잉 실패")
+                self._mutex.lock()
+                self._is_stopped = True
+                self._mutex.unlock()
+                return
+            if not self.motor.x_home():
+                print("[PrintWorker] X축 재홈잉 실패")
+                self.error_occurred.emit("X축 재홈잉 실패")
+                self._mutex.lock()
+                self._is_stopped = True
+                self._mutex.unlock()
+                return
+
+            print("[PrintWorker] Klipper 복구 완료")
+            # CLEAR_PAUSE 후 진행
+            self.motor.klipper_clear_pause()
+        else:
+            # 정상 상태 → RESUME 후 진행
+            self.motor.klipper_resume()
+            time.sleep(2.0)  # Klipper RESUME 처리 완료 대기
 
     def _cleanup(self):
         """정리 (STOP 또는 완료 시)"""
