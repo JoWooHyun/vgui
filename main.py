@@ -50,6 +50,16 @@ class MotorWorker(QObject):
                 self.motor.x_move_relative(distance, speed=speed)
             elif self.operation == "x_home":
                 self.motor.x_home()
+            elif self.operation == "pump_home":
+                self.motor.pump_home()
+            elif self.operation == "pump_fill":
+                distance = self.kwargs.get("distance", 10)
+                self.motor.pump_fill(distance)
+            elif self.operation == "pump_fill_home":
+                self.motor.pump_fill_to_home()
+            elif self.operation == "pump_push":
+                distance = self.kwargs.get("distance", 1)
+                self.motor.pump_push(distance)
         except Exception as e:
             self.error.emit(str(e))
         finally:
@@ -251,9 +261,15 @@ class MainWindow(QMainWindow):
         self.file_preview_page.set_led_power(saved_led_power)
         self.file_preview_page.set_blade_speed(saved_blade_speed)
 
+        # Pump 설정 적용
+        saved_pump_distance = self.settings.get_pump_dispense_distance()
+        self.setting_page.set_pump_dispense_distance(saved_pump_distance)
+        self.file_preview_page.set_pump_dispense_distance(saved_pump_distance)
+
         print(f"[System] 저장된 설정 적용:")
         print(f"  - LED Power: {saved_led_power}%")
         print(f"  - Blade Speed: {saved_blade_speed}mm/s")
+        print(f"  - Pump Dispense: {saved_pump_distance}mm")
 
     def _connect_signals(self):
         """시그널 연결"""
@@ -279,6 +295,11 @@ class MainWindow(QMainWindow):
         self.setting_page.blade_move.connect(self._setting_blade_move)
         self.setting_page.led_power_changed.connect(self._on_led_power_changed)
         self.setting_page.blade_speed_changed.connect(self._on_blade_speed_changed)
+        self.setting_page.pump_home.connect(self._setting_pump_home)
+        self.setting_page.pump_fill.connect(self._setting_pump_fill)
+        self.setting_page.pump_fill_home.connect(self._setting_pump_fill_home)
+        self.setting_page.pump_push.connect(self._setting_pump_push)
+        self.setting_page.pump_dispense_set.connect(self._on_pump_dispense_set)
         
         # 매뉴얼 페이지
         self.manual_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TOOL))
@@ -368,6 +389,8 @@ class MainWindow(QMainWindow):
         """모터 작업 완료"""
         print("[Motor] 작업 완료")
         self.manual_page.set_busy(False)
+        # 펌프 위치 업데이트
+        self.setting_page.update_pump_position(self.motor.pump_get_position())
 
     def _cleanup_motor_thread(self):
         """모터 스레드 정리 (스레드 종료 후 호출)"""
@@ -410,6 +433,8 @@ class MainWindow(QMainWindow):
         self.motor.quickstop()
         # LED 끄기 (프로젝터는 끄지 않음 - 앱 실행 동안 계속 ON)
         self.dlp.led_off()
+        # 펌프 비활성화
+        self.motor.pump_disable()
         # 프린트 워커 정지
         if self.print_worker and self.print_worker.isRunning():
             self.print_worker.stop()
@@ -451,6 +476,7 @@ class MainWindow(QMainWindow):
         leveling_cycles = params.get('levelingCycles', 1)
         blade_cycles = params.get('bladeCycles', 1)  # 매 레이어 블레이드 왕복 횟수
         blade_mode = params.get('bladeMode', 'roundtrip')  # 블레이드 모드 (왕복/편도)
+        pump_dispense_distance = float(params.get('pumpDispenseDistance', 0.0))  # 펌프 토출 거리 (mm)
 
         # 추가 파라미터 (run.gcode에서 추출된 값)
         estimated_time = int(params.get('estimatedPrintTime', 0))  # 초 단위
@@ -503,6 +529,7 @@ class MainWindow(QMainWindow):
         self.print_worker.print_completed.connect(self._on_print_completed)
         self.print_worker.print_stopped.connect(self._on_print_stopped_by_worker)
         self.print_worker.error_occurred.connect(self._on_print_error)
+        self.print_worker.resin_low.connect(self._on_resin_low)
 
         # 프로젝터 윈도우에 이미지 표시 연결
         if self.projector_window:
@@ -520,7 +547,8 @@ class MainWindow(QMainWindow):
             led_power=led_power,
             leveling_cycles=leveling_cycles,
             blade_cycles=blade_cycles,
-            blade_mode=blade_mode
+            blade_mode=blade_mode,
+            pump_dispense_distance=pump_dispense_distance
         )
 
     def _on_progress_updated(self, current: int, total: int):
@@ -706,6 +734,38 @@ class MainWindow(QMainWindow):
         else:  # 0에 가까우면 140으로
             print("[Setting] Blade 0 → 140mm 이동")
             self.motor.x_move_absolute(140, blade_speed)
+
+    # ==================== Pump 제어 ====================
+
+    def _setting_pump_home(self):
+        """Setting 페이지에서 Pump Home"""
+        print("[Setting] Pump Home")
+        self._start_motor_operation("pump_home")
+
+    def _setting_pump_fill(self, distance: float):
+        """Setting 페이지에서 Pump Fill"""
+        print(f"[Setting] Pump Fill: {distance}mm")
+        self._start_motor_operation("pump_fill", distance=distance)
+
+    def _setting_pump_fill_home(self):
+        """Setting 페이지에서 Pump Fill to Home"""
+        print("[Setting] Pump Fill to Home")
+        self._start_motor_operation("pump_fill_home")
+
+    def _setting_pump_push(self, distance: float):
+        """Setting 페이지에서 Pump Push"""
+        print(f"[Setting] Pump Push: {distance}mm")
+        self._start_motor_operation("pump_push", distance=distance)
+
+    def _on_pump_dispense_set(self, distance: float):
+        """Pump 토출 거리 설정 변경"""
+        print(f"[Setting] Pump Dispense Distance: {distance}mm")
+        self.settings.set_pump_dispense_distance(distance)
+        self.file_preview_page.set_pump_dispense_distance(distance)
+
+    def _on_resin_low(self):
+        """레진 부족 경고 (프린트는 계속 진행)"""
+        print("[Print] 레진 부족 경고! 시린지를 확인해주세요.")
 
     # ==================== 설정 저장/동기화 ====================
 

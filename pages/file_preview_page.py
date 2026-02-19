@@ -65,16 +65,18 @@ class EditableRow(QFrame):
     
     value_changed = Signal(float)
     
-    def __init__(self, label: str, value: float, unit: str, 
-                 min_val: float, max_val: float, step: float = 1.0, parent=None):
+    def __init__(self, label: str, value: float, unit: str,
+                 min_val: float, max_val: float, step: float = 1.0,
+                 allow_decimal: bool = False, parent=None):
         super().__init__(parent)
-        
+
         self._value = value
         self._unit = unit
         self._min = min_val
         self._max = max_val
         self._step = step
         self._label = label
+        self._allow_decimal = allow_decimal
         
         self.setFixedHeight(40)
         self.setCursor(Qt.PointingHandCursor)
@@ -133,7 +135,7 @@ class EditableRow(QFrame):
             unit=self._unit,
             min_val=self._min,
             max_val=self._max,
-            allow_decimal=False,
+            allow_decimal=self._allow_decimal,
             parent=self.window()
         )
         keypad.value_confirmed.connect(self._on_value_confirmed)
@@ -389,7 +391,8 @@ class FilePreviewPage(BasePage):
         self._led_power = 43     # % (1023 = 100%, 440 = 43%)
         self._blade_cycles = 1   # 블레이드 왕복 횟수 (1~3)
         self._blade_mode = "roundtrip"  # 블레이드 모드: "roundtrip"(왕복) / "oneway"(편도)
-        
+        self._pump_dispense_distance = 0.0  # 레이어당 펌프 토출 거리 (mm, 0=비활성)
+
         self._setup_content()
     
     def _setup_content(self):
@@ -508,6 +511,19 @@ class FilePreviewPage(BasePage):
         self.row_blade_mode.value_changed.connect(self._on_blade_mode_changed)
         right_layout.addWidget(self.row_blade_mode)
 
+        # Pump Distance (레이어당 토출 거리 mm, 0=비활성)
+        self.row_pump_distance = EditableRow(
+            label="Pump Dist.",
+            value=self._pump_dispense_distance,
+            unit="mm",
+            min_val=0,
+            max_val=50,
+            step=1,
+            allow_decimal=True
+        )
+        self.row_pump_distance.value_changed.connect(self._on_pump_distance_changed)
+        right_layout.addWidget(self.row_pump_distance)
+
         right_layout.addStretch()
         
         # 버튼들
@@ -589,6 +605,11 @@ class FilePreviewPage(BasePage):
         self._blade_mode = mode
         label = "왕복" if mode == "roundtrip" else "편도"
         print(f"[Preview] Blade Mode: {label}")
+
+    def _on_pump_distance_changed(self, value: float):
+        """Pump Distance 변경"""
+        self._pump_dispense_distance = value
+        print(f"[Preview] Pump Distance: {self._pump_dispense_distance}mm")
 
     def set_file(self, file_path: str):
         """파일 설정 및 정보 표시"""
@@ -730,6 +751,7 @@ class FilePreviewPage(BasePage):
                 'ledPower': self._led_power,
                 'bladeCycles': self._blade_cycles,
                 'bladeMode': self._blade_mode,
+                'pumpDispenseDistance': self._pump_dispense_distance,
             }
             self.start_print.emit(self._file_path, full_params)
     
@@ -745,6 +767,7 @@ class FilePreviewPage(BasePage):
             'ledPower': self._led_power,
             'bladeCycles': self._blade_cycles,
             'bladeMode': self._blade_mode,
+            'pumpDispenseDistance': self._pump_dispense_distance,
         }
     
     def get_blade_speed(self) -> int:
@@ -783,3 +806,12 @@ class FilePreviewPage(BasePage):
         if mode in ("roundtrip", "oneway"):
             self._blade_mode = mode
             self.row_blade_mode.set_value(mode)
+
+    def get_pump_dispense_distance(self) -> float:
+        """Pump Distance 반환"""
+        return self._pump_dispense_distance
+
+    def set_pump_dispense_distance(self, value: float):
+        """Pump Distance 설정"""
+        self._pump_dispense_distance = max(0.0, min(50.0, value))
+        self.row_pump_distance.set_value(self._pump_dispense_distance)

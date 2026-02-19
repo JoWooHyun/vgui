@@ -19,6 +19,7 @@ class PrintSettings:
     """프린트 관련 설정"""
     led_power: int = 43         # LED 파워 (9-100%, 1023=100%, 440=43%)
     blade_speed: int = 5        # Blade 속도 (1-15 mm/s, 리드스크류)
+    pump_dispense_distance: float = 10.0  # 레이어당 펌프 토출 거리 (mm)
 
 
 @dataclass
@@ -72,7 +73,8 @@ class SettingsManager:
             print_data = data.get('print_settings', {})
             self._settings.print_settings = PrintSettings(
                 led_power=print_data.get('led_power', 100),
-                blade_speed=print_data.get('blade_speed', 5)
+                blade_speed=print_data.get('blade_speed', 5),
+                pump_dispense_distance=print_data.get('pump_dispense_distance', 10.0)
             )
 
             # 기타 설정 로드
@@ -82,6 +84,7 @@ class SettingsManager:
             print(f"[Settings] 설정 로드 완료: {SETTINGS_FILE}")
             print(f"  - LED Power: {self._settings.print_settings.led_power}%")
             print(f"  - Blade Speed: {self._settings.print_settings.blade_speed}mm/s")
+            print(f"  - Pump Dispense: {self._settings.print_settings.pump_dispense_distance}mm")
 
         except Exception as e:
             print(f"[Settings] 설정 로드 실패: {e}")
@@ -129,6 +132,18 @@ class SettingsManager:
         self._settings.print_settings.blade_speed = value
         self.save()
 
+    # ==================== Pump Dispense ====================
+
+    def get_pump_dispense_distance(self) -> float:
+        """펌프 토출 거리 반환 (mm)"""
+        return self._settings.print_settings.pump_dispense_distance
+
+    def set_pump_dispense_distance(self, value: float):
+        """펌프 토출 거리 설정 (mm)"""
+        value = max(0.0, min(50.0, value))
+        self._settings.print_settings.pump_dispense_distance = value
+        self.save()
+
     # ==================== Language ====================
 
     def get_language(self) -> str:
@@ -163,6 +178,8 @@ class SettingsManager:
             return self._settings.print_settings.led_power
         elif key == "blade_speed":
             return self._settings.print_settings.blade_speed
+        elif key == "pump_dispense_distance":
+            return self._settings.print_settings.pump_dispense_distance
         return default
 
     def set(self, key: str, value):
@@ -175,6 +192,8 @@ class SettingsManager:
             self._settings.print_settings.led_power = value
         elif key == "blade_speed":
             self._settings.print_settings.blade_speed = value
+        elif key == "pump_dispense_distance":
+            self._settings.print_settings.pump_dispense_distance = value
         self.save()
 
 

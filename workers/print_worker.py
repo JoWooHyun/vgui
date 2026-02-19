@@ -50,6 +50,7 @@ class PrintJob:
     leveling_cycles: int = 1
     blade_cycles: int = 1  # 매 레이어 블레이드 왕복 횟수
     blade_mode: str = "roundtrip"  # "roundtrip"(왕복) / "oneway"(편도)
+    pump_dispense_distance: float = 0.0  # 레이어당 펌프 토출 거리 (mm, 0=비활성)
 
 
 class PrintWorker(QThread):
@@ -76,6 +77,9 @@ class PrintWorker(QThread):
     # 이미지 표시 요청 시그널 (ProjectorWindow로 전달)
     show_image = Signal(object)  # QPixmap
     clear_image = Signal()
+
+    # 레진 부족 경고 시그널
+    resin_low = Signal()
 
     def __init__(self,
                  motor: Optional[MotorController] = None,
@@ -118,7 +122,8 @@ class PrintWorker(QThread):
     def start_print(self, file_path: str, params: Dict[str, Any],
                    blade_speed: int = 300, led_power: int = 440,
                    leveling_cycles: int = 1, blade_cycles: int = 1,
-                   blade_mode: str = "roundtrip"):
+                   blade_mode: str = "roundtrip",
+                   pump_dispense_distance: float = 0.0):
         """
         프린트 시작
 
@@ -149,7 +154,8 @@ class PrintWorker(QThread):
             led_power=led_power,
             leveling_cycles=leveling_cycles,
             blade_cycles=blade_cycles,
-            blade_mode=blade_mode
+            blade_mode=blade_mode,
+            pump_dispense_distance=pump_dispense_distance
         )
 
         # 플래그 초기화
@@ -214,6 +220,7 @@ class PrintWorker(QThread):
         print(f"  - 총 레이어: {params.totalLayer}")
         print(f"  - 블레이드 속도: {job.blade_speed} mm/min")
         print(f"  - LED 파워: {job.led_power}")
+        print(f"  - 펌프 토출: {job.pump_dispense_distance}mm/레이어")
 
         # 컨트롤러 설정 (시뮬레이션 모드가 아닐 때)
         # 주의: DLP는 main.py에서 이미 초기화됨, 다시 초기화하면 안됨
@@ -241,6 +248,16 @@ class PrintWorker(QThread):
             self.error_occurred.emit("X축 홈 이동 실패")
             self._is_stopped = True
             return
+
+        # 레진 펌프 활성화 (토출 거리가 설정된 경우)
+        if job.pump_dispense_distance > 0:
+            if self._check_stopped():
+                return
+            if not self._motor_pump_enable():
+                self.error_occurred.emit("레진 펌프 활성화 실패")
+                self._is_stopped = True
+                return
+            print(f"[PrintWorker] 레진 자동 공급 활성: {job.pump_dispense_distance}mm/레이어")
 
         # 2. 레진 평탄화
         if job.leveling_cycles > 0:
@@ -321,6 +338,13 @@ class PrintWorker(QThread):
             self.error_occurred.emit(f"레이어 {layer_idx}: Z축 이동 실패")
             self._is_stopped = True
             return False
+
+        # 1.5. 레진 토출 (블레이드 이동 전)
+        if job.pump_dispense_distance > 0:
+            if not self._motor_pump_dispense(job.pump_dispense_distance):
+                self.error_occurred.emit(f"레이어 {layer_idx}: 레진 공급 실패")
+                self._is_stopped = True
+                return False
 
         # 2. X축 블레이드 이동 (blade_mode에 따라 분기, 홈=150mm쪽)
         if job.blade_mode == "oneway":
@@ -444,6 +468,35 @@ class PrintWorker(QThread):
             return self.motor.x_move_absolute(position, speed)
         else:
             time.sleep(0.2)
+            return True
+
+    def _motor_pump_enable(self) -> bool:
+        """레진 펌프 활성화"""
+        print("[PrintWorker] 레진 펌프 활성화")
+        if self.motor and not self.simulation:
+            return self.motor.pump_enable()
+        else:
+            return True  # 시뮬레이션
+
+    def _motor_pump_disable(self) -> bool:
+        """레진 펌프 비활성화"""
+        print("[PrintWorker] 레진 펌프 비활성화")
+        if self.motor and not self.simulation:
+            return self.motor.pump_disable()
+        else:
+            return True  # 시뮬레이션
+
+    def _motor_pump_dispense(self, distance: float) -> bool:
+        """레진 토출 + 부족 경고"""
+        print(f"[PrintWorker] 레진 토출: {distance:.1f}mm")
+        if self.motor and not self.simulation:
+            success = self.motor.pump_dispense(distance)
+            if success and self.motor.pump_is_low():
+                print("[PrintWorker] 레진 부족 경고!")
+                self.resin_low.emit()
+            return success
+        else:
+            time.sleep(0.3)  # 시뮬레이션
             return True
 
     def _dlp_projector_on(self):
@@ -625,6 +678,9 @@ class PrintWorker(QThread):
 
         # X축만 홈 복귀 (Z축은 현재 위치 유지 - 안전을 위해)
         self._motor_x_home()
+
+        # 레진 펌프 비활성화
+        self._motor_pump_disable()
 
         # Klipper 일시정지 상태 초기화 + 프린트 종료 알림
         if self.motor and not self.simulation:

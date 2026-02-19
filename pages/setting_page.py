@@ -341,8 +341,177 @@ class BladePanel(QFrame):
         self.speed_btn.setText(f"{self._speed_value} mm/s")
 
 
+class PumpPanel(QFrame):
+    """레진 펌프 (시린지) 설정 패널"""
+
+    pump_home = Signal()           # HOME 초기화
+    pump_fill = Signal(float)      # FILL (거리 mm)
+    pump_fill_home = Signal()      # FILL HOME (홈까지)
+    pump_push = Signal(float)      # PUSH (거리 mm)
+    pump_dispense_set = Signal(float)  # 토출 거리 설정
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._position = 0.0       # 현재 위치
+        self._max_position = 200.0
+        self._dispense_distance = 10.0  # 기본 토출 거리
+        self._setup_ui()
+
+    def _setup_ui(self):
+        """UI 구성"""
+        self.setStyleSheet(get_axis_panel_style())
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(8)
+
+        # 타이틀
+        title = QLabel("PUMP SET")
+        title.setStyleSheet(f"""
+            QLabel {{
+                color: {Colors.NAVY};
+                font-size: 18px;
+                font-weight: 700;
+                background-color: transparent;
+                border: none;
+            }}
+        """)
+        title.setAlignment(Qt.AlignCenter)
+        layout.addWidget(title)
+
+        # 위치 표시
+        self.lbl_position = QLabel(f"0.0 / {self._max_position:.0f} mm")
+        self.lbl_position.setAlignment(Qt.AlignCenter)
+        self.lbl_position.setFont(Fonts.body())
+        self.lbl_position.setStyleSheet(f"""
+            QLabel {{
+                color: {Colors.CYAN};
+                font-weight: 600;
+                background-color: transparent;
+                border: none;
+            }}
+        """)
+        layout.addWidget(self.lbl_position)
+
+        # HOME 버튼
+        self.btn_home = QPushButton("HOME")
+        self.btn_home.setFixedHeight(36)
+        self.btn_home.setCursor(Qt.PointingHandCursor)
+        self.btn_home.setFont(Fonts.body_small())
+        self.btn_home.setStyleSheet(self._get_action_btn_style())
+        self.btn_home.clicked.connect(self.pump_home.emit)
+        layout.addWidget(self.btn_home)
+
+        # FILL 섹션
+        fill_label = QLabel("FILL")
+        fill_label.setAlignment(Qt.AlignCenter)
+        fill_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; font-size: 12px; background: transparent; border: none;")
+        layout.addWidget(fill_label)
+
+        fill_layout = QHBoxLayout()
+        fill_layout.setSpacing(6)
+        for text, dist in [("1cm", 10), ("5cm", 50), ("10cm", 100), ("MAX", -1)]:
+            btn = QPushButton(text)
+            btn.setFixedHeight(32)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setFont(Fonts.body_small())
+            btn.setStyleSheet(self._get_action_btn_style())
+            if dist == -1:
+                btn.clicked.connect(self.pump_fill_home.emit)
+            else:
+                btn.clicked.connect(lambda checked, d=dist: self.pump_fill.emit(float(d)))
+            fill_layout.addWidget(btn)
+        layout.addLayout(fill_layout)
+
+        # PUSH 섹션
+        push_label = QLabel("PUSH")
+        push_label.setAlignment(Qt.AlignCenter)
+        push_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; font-size: 12px; background: transparent; border: none;")
+        layout.addWidget(push_label)
+
+        push_layout = QHBoxLayout()
+        push_layout.setSpacing(6)
+        for text, dist in [("1mm", 1), ("10mm", 10), ("20mm", 20)]:
+            btn = QPushButton(text)
+            btn.setFixedHeight(32)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setFont(Fonts.body_small())
+            btn.setStyleSheet(self._get_action_btn_style())
+            btn.clicked.connect(lambda checked, d=dist: self.pump_push.emit(float(d)))
+            push_layout.addWidget(btn)
+        layout.addLayout(push_layout)
+
+        layout.addStretch(1)
+
+        # 확인 버튼 (토출 거리 설정)
+        self.btn_confirm = QPushButton(f"SET: {self._dispense_distance:.0f}mm")
+        self.btn_confirm.setFixedHeight(40)
+        self.btn_confirm.setCursor(Qt.PointingHandCursor)
+        self.btn_confirm.setFont(Fonts.body())
+        self.btn_confirm.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.CYAN};
+                border: none;
+                border-radius: {Radius.MD}px;
+                color: {Colors.WHITE};
+                font-weight: 600;
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.CYAN_DARK};
+            }}
+        """)
+        self.btn_confirm.clicked.connect(self._on_confirm_click)
+        layout.addWidget(self.btn_confirm)
+
+    def _get_action_btn_style(self):
+        return f"""
+            QPushButton {{
+                background-color: {Colors.BG_SECONDARY};
+                border: 2px solid {Colors.BORDER};
+                border-radius: {Radius.MD}px;
+                color: {Colors.TEXT_PRIMARY};
+                font-weight: 600;
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.BG_TERTIARY};
+            }}
+        """
+
+    def _on_confirm_click(self):
+        """확인 버튼 - 토출 거리 설정 키패드"""
+        keypad = NumericKeypad(
+            title="Dispense Distance",
+            value=self._dispense_distance,
+            unit="mm",
+            min_val=0,
+            max_val=50,
+            allow_decimal=True,
+            parent=self.window()
+        )
+        keypad.value_confirmed.connect(self._on_dispense_confirmed)
+        keypad.exec()
+
+    def _on_dispense_confirmed(self, value: float):
+        """토출 거리 확정"""
+        self._dispense_distance = value
+        self.btn_confirm.setText(f"SET: {self._dispense_distance:.0f}mm")
+        self.pump_dispense_set.emit(self._dispense_distance)
+
+    def update_position(self, position: float):
+        """위치 표시 업데이트"""
+        self._position = position
+        self.lbl_position.setText(f"{self._position:.1f} / {self._max_position:.0f} mm")
+
+    def get_dispense_distance(self) -> float:
+        return self._dispense_distance
+
+    def set_dispense_distance(self, value: float):
+        self._dispense_distance = max(0.0, min(50.0, value))
+        self.btn_confirm.setText(f"SET: {self._dispense_distance:.0f}mm")
+
+
 class SettingPage(BasePage):
-    """설정 페이지 (LED Power + Blade)"""
+    """설정 페이지 (LED Power + Blade + Pump)"""
 
     # LED 시그널
     led_power_changed = Signal(int)
@@ -354,13 +523,20 @@ class SettingPage(BasePage):
     blade_move = Signal()  # MOVE 버튼 클릭
     blade_home = Signal()
 
+    # Pump 시그널
+    pump_home = Signal()
+    pump_fill = Signal(float)
+    pump_fill_home = Signal()
+    pump_push = Signal(float)
+    pump_dispense_set = Signal(float)
+
     def __init__(self, parent=None):
         super().__init__("Setting", show_back=True, parent=parent)
         self._setup_content()
 
     def _setup_content(self):
         """콘텐츠 구성"""
-        # 2열 레이아웃
+        # 3열 레이아웃
         panels_layout = QHBoxLayout()
         panels_layout.setSpacing(20)
 
@@ -376,8 +552,17 @@ class SettingPage(BasePage):
         self.blade_panel.blade_move.connect(self.blade_move.emit)
         self.blade_panel.home_axis.connect(self.blade_home.emit)
 
+        # Pump 패널
+        self.pump_panel = PumpPanel()
+        self.pump_panel.pump_home.connect(self.pump_home.emit)
+        self.pump_panel.pump_fill.connect(self.pump_fill.emit)
+        self.pump_panel.pump_fill_home.connect(self.pump_fill_home.emit)
+        self.pump_panel.pump_push.connect(self.pump_push.emit)
+        self.pump_panel.pump_dispense_set.connect(self.pump_dispense_set.emit)
+
         panels_layout.addWidget(self.led_panel)
         panels_layout.addWidget(self.blade_panel)
+        panels_layout.addWidget(self.pump_panel)
 
         self.content_layout.addLayout(panels_layout)
 
@@ -396,3 +581,15 @@ class SettingPage(BasePage):
     def set_blade_speed(self, value: int):
         """Blade 속도 값 설정"""
         self.blade_panel.set_speed(value)
+
+    def get_pump_dispense_distance(self) -> float:
+        """Pump 토출 거리 반환"""
+        return self.pump_panel.get_dispense_distance()
+
+    def set_pump_dispense_distance(self, value: float):
+        """Pump 토출 거리 설정"""
+        self.pump_panel.set_dispense_distance(value)
+
+    def update_pump_position(self, position: float):
+        """Pump 위치 표시 업데이트"""
+        self.pump_panel.update_position(position)
