@@ -433,8 +433,6 @@ class MainWindow(QMainWindow):
         self.motor.quickstop()
         # LED 끄기 (프로젝터는 끄지 않음 - 앱 실행 동안 계속 ON)
         self.dlp.led_off()
-        # 펌프 비활성화
-        self.motor.pump_disable()
         # 프린트 워커 정지
         if self.print_worker and self.print_worker.isRunning():
             self.print_worker.stop()

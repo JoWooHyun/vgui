@@ -249,16 +249,6 @@ class PrintWorker(QThread):
             self._is_stopped = True
             return
 
-        # 레진 펌프 활성화 (토출 거리가 설정된 경우)
-        if job.pump_dispense_distance > 0:
-            if self._check_stopped():
-                return
-            if not self._motor_pump_enable():
-                self.error_occurred.emit("레진 펌프 활성화 실패")
-                self._is_stopped = True
-                return
-            print(f"[PrintWorker] 레진 자동 공급 활성: {job.pump_dispense_distance}mm/레이어")
-
         # 2. 레진 평탄화
         if job.leveling_cycles > 0:
             self._set_status(PrintStatus.LEVELING)
@@ -470,22 +460,6 @@ class PrintWorker(QThread):
             time.sleep(0.2)
             return True
 
-    def _motor_pump_enable(self) -> bool:
-        """레진 펌프 활성화"""
-        print("[PrintWorker] 레진 펌프 활성화")
-        if self.motor and not self.simulation:
-            return self.motor.pump_enable()
-        else:
-            return True  # 시뮬레이션
-
-    def _motor_pump_disable(self) -> bool:
-        """레진 펌프 비활성화"""
-        print("[PrintWorker] 레진 펌프 비활성화")
-        if self.motor and not self.simulation:
-            return self.motor.pump_disable()
-        else:
-            return True  # 시뮬레이션
-
     def _motor_pump_dispense(self, distance: float) -> bool:
         """레진 토출 + 부족 경고"""
         print(f"[PrintWorker] 레진 토출: {distance:.1f}mm")
@@ -678,9 +652,6 @@ class PrintWorker(QThread):
 
         # X축만 홈 복귀 (Z축은 현재 위치 유지 - 안전을 위해)
         self._motor_x_home()
-
-        # 레진 펌프 비활성화
-        self._motor_pump_disable()
 
         # Klipper 일시정지 상태 초기화 + 프린트 종료 알림
         if self.motor and not self.simulation:

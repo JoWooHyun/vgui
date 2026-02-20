@@ -52,7 +52,6 @@ class MotorController:
         self._x_is_homed = False
 
         # 펌프 상태
-        self._pump_enabled = False
         self._pump_position: float = 0.0  # 현재 플런저 위치 (0=Tip쪽, 200=홈쪽)
 
         # 재시도 설정
@@ -122,12 +121,12 @@ class MotorController:
                 timeout = 300  # X축 이동: 5분
             elif "G1" in gcode and "X" in gcode:
                 timeout = 300
+            elif "G0" in gcode and "Y" in gcode:
+                timeout = 300  # Y축(펌프) 이동: 5분
             elif "G28" in gcode:
                 timeout = 120  # 홈잉: 120초
             elif "M400" in gcode:
                 timeout = 300  # M400 대기: 5분
-            elif "MANUAL_STEPPER" in gcode:
-                timeout = 300  # 펌프 명령: 5분 (홈잉+이동 포함)
             else:
                 timeout = 60   # 기본: 1분
 
@@ -389,56 +388,34 @@ class MotorController:
         """X축 홈(0mm)으로 이동 (G0 이동, G28 아님)"""
         return self.x_move_absolute(0, speed)
 
-    # ==================== 펌프 (시린지) 제어 ====================
-
-    def pump_enable(self) -> bool:
-        """레진 펌프 모터 활성화"""
-        print("[Motor] 레진 펌프 활성화")
-        success = self.send_gcode("MANUAL_STEPPER STEPPER=pump_y ENABLE=1", timeout=10)
-        if success:
-            self._pump_enabled = True
-        return success
-
-    def pump_disable(self) -> bool:
-        """레진 펌프 모터 비활성화"""
-        print("[Motor] 레진 펌프 비활성화")
-        success = self.send_gcode("MANUAL_STEPPER STEPPER=pump_y ENABLE=0", timeout=10)
-        if success:
-            self._pump_enabled = False
-        return success
+    # ==================== 펌프 (시린지 Y축) 제어 ====================
 
     def pump_home(self) -> bool:
         """
-        펌프 홈잉 (좌표 확정)
+        펌프 홈잉 (G28 Y → 좌표 설정 → Tip쪽으로 이동)
 
         Flow:
-            1. 활성화
-            2. 플런저 최후방으로 이동 (엔드스톱)
-            3. SET_POSITION=200 (홈=최후방=200mm)
-            4. 200mm 전진 → 위치=0 (Tip쪽)
+            1. G28 Y (엔드스톱까지 이동)
+            2. G92 Y200 (현재 위치를 200mm로 설정)
+            3. G0 Y0 (200mm 전진 → Tip쪽, 위치=0)
         """
         print("[Motor] 펌프 홈잉 시작")
 
-        # 1. 활성화
-        if not self.pump_enable():
-            return False
-
-        # 2. 엔드스톱까지 후퇴 (STOP_ON_ENDSTOP=1)
-        print("[Motor] 펌프: 엔드스톱까지 후퇴")
-        gcode = "MANUAL_STEPPER STEPPER=pump_y SET_POSITION=0 MOVE=-210 SPEED=5 STOP_ON_ENDSTOP=1"
-        if not self.send_gcode(gcode, timeout=300):
-            print("[Motor] 펌프 홈잉 실패: 엔드스톱 후퇴")
+        # 1. Y축 홈잉 (엔드스톱)
+        print("[Motor] 펌프: G28 Y (엔드스톱)")
+        if not self.send_gcode("G28 Y", timeout=300):
+            print("[Motor] 펌프 홈잉 실패: G28 Y")
             return False
         self.wait_for_movement_complete(timeout=300)
 
-        # 3. 현재 위치를 200mm로 설정 (홈=최후방)
-        if not self.send_gcode("MANUAL_STEPPER STEPPER=pump_y SET_POSITION=200", timeout=10):
+        # 2. 현재 위치를 200mm로 설정 (홈=최후방)
+        if not self.send_gcode("G92 Y200", timeout=10):
             return False
 
-        # 4. 200mm 전진 → Tip쪽 (위치=0)
-        print("[Motor] 펌프: 200mm 전진 (Tip쪽으로)")
-        if not self.send_gcode("MANUAL_STEPPER STEPPER=pump_y MOVE=0 SPEED=5", timeout=300):
-            print("[Motor] 펌프 홈잉 실패: 전진")
+        # 3. 200mm 전진 → Tip쪽 (위치=0)
+        print("[Motor] 펌프: Y0으로 이동 (Tip쪽)")
+        if not self.send_gcode(f"G90\nG0 Y0 F{self.config.pump_speed}", timeout=300):
+            print("[Motor] 펌프 홈잉 실패: Y0 이동")
             return False
         self.wait_for_movement_complete(timeout=300)
 
@@ -465,7 +442,7 @@ class MotorController:
             return True
 
         print(f"[Motor] 펌프 FILL: {actual:.1f}mm 후퇴 (현재:{self._pump_position:.1f} → 목표:{target:.1f}mm)")
-        gcode = f"MANUAL_STEPPER STEPPER=pump_y MOVE={target:.1f} SPEED={self.config.pump_speed}"
+        gcode = f"G90\nG0 Y{target:.1f} F{self.config.pump_speed}"
         success = self.send_gcode(gcode, timeout=300)
         if success:
             self.wait_for_movement_complete(timeout=300)
@@ -496,7 +473,7 @@ class MotorController:
             return True
 
         print(f"[Motor] 펌프 PUSH: {actual:.1f}mm 전진 (현재:{self._pump_position:.1f} → 목표:{target:.1f}mm)")
-        gcode = f"MANUAL_STEPPER STEPPER=pump_y MOVE={target:.1f} SPEED={self.config.pump_speed}"
+        gcode = f"G90\nG0 Y{target:.1f} F{self.config.pump_speed}"
         success = self.send_gcode(gcode, timeout=300)
         if success:
             self.wait_for_movement_complete(timeout=300)
