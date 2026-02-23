@@ -306,6 +306,8 @@ class MainWindow(QMainWindow):
         self.manual_page.z_home.connect(self._home_z)
         self.manual_page.x_move.connect(self._move_x)
         self.manual_page.x_home.connect(self._home_x)
+        self.manual_page.y_move.connect(self._move_y)
+        self.manual_page.y_home.connect(self._home_y)
         
         # 프린트 페이지
         self.print_page.go_back.connect(lambda: self._go_to_page(self.PAGE_MAIN))
@@ -424,6 +426,20 @@ class MainWindow(QMainWindow):
         """X축 홈 (비동기)"""
         print("[Motor] X축 홈으로 이동")
         self._start_motor_operation("x_home")
+
+    def _move_y(self, distance: float):
+        """Y축(펌프) 이동 (비동기) - 양수=Fill, 음수=Push"""
+        if distance > 0:
+            print(f"[Motor] Y축 펌프 Fill: {distance}mm")
+            self._start_motor_operation("pump_fill", distance=distance)
+        elif distance < 0:
+            print(f"[Motor] Y축 펌프 Push: {abs(distance)}mm")
+            self._start_motor_operation("pump_push", distance=abs(distance))
+
+    def _home_y(self):
+        """Y축(펌프) 홈 (비동기)"""
+        print("[Motor] Y축 펌프 홈으로 이동")
+        self._start_motor_operation("pump_home")
 
     def _emergency_stop(self):
         """모든 동작 정지 (Klipper 유지)"""
