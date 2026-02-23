@@ -104,7 +104,7 @@ class KioskManager(QObject):
 
         # 3초 타이머 리셋
         self._logo_click_timer.stop()
-        self._logo_click_timer.start(3000)
+        self._logo_click_timer.start(5000)
 
         print(f"[Kiosk] 로고 클릭: {self._logo_click_count}/5")
 
@@ -116,7 +116,7 @@ class KioskManager(QObject):
     def _reset_logo_clicks(self):
         """로고 클릭 카운터 리셋"""
         if self._logo_click_count > 0:
-            print(f"[Kiosk] 로고 클릭 리셋 (3초 타임아웃)")
+            print(f"[Kiosk] 로고 클릭 리셋 (5초 타임아웃)")
         self._logo_click_count = 0
 
     def toggle_admin_mode(self):

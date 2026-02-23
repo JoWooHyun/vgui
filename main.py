@@ -67,7 +67,7 @@ class MotorWorker(QObject):
 
 from styles.stylesheets import get_global_style
 from pages.main_page import MainPage
-from pages.tool_page import ToolPage
+from pages.tool_page import ToolPage, SimpleAlert
 from pages.manual_page import ManualPage
 from pages.print_page import PrintPage
 from pages.exposure_page import ExposurePage
@@ -838,11 +838,15 @@ class MainWindow(QMainWindow):
             # 관리자 모드 활성화 - 커서 표시
             self.setCursor(Qt.ArrowCursor)
             print("[Admin] 관리자 모드 - Alt+Tab, Esc 등 허용")
+            alert = SimpleAlert("관리자 모드 활성화", self)
+            alert.exec()
         else:
             # 관리자 모드 비활성화 - 키오스크 모드면 커서 숨김
             if self.kiosk_manager.is_enabled:
                 self.setCursor(Qt.BlankCursor)
             print("[Admin] 일반 모드 - 단축키 차단")
+            alert = SimpleAlert("관리자 모드 해제", self)
+            alert.exec()
 
     def closeEvent(self, event):
         """앱 종료 시"""
