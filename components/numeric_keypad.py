@@ -37,7 +37,7 @@ class NumericKeypad(QDialog):
             self._input_str = str(int(value))
         
         self.setWindowTitle(title)
-        self.setFixedSize(350, 420)
+        self.setFixedSize(350, 470)
         self.setModal(True)
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Dialog)
         
@@ -91,7 +91,7 @@ class NumericKeypad(QDialog):
         # 숫자 키패드 그리드
         grid_layout = QGridLayout()
         grid_layout.setHorizontalSpacing(8)
-        grid_layout.setVerticalSpacing(16)
+        grid_layout.setVerticalSpacing(24)
         
         # 숫자 버튼 스타일 (흰색 배경 + 시안 테두리)
         num_btn_style = f"""

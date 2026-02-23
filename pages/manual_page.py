@@ -87,9 +87,10 @@ class AxisControlPanel(QFrame):
         control_layout.addWidget(self.btn_home)
         control_layout.addWidget(self.btn_positive)
         control_layout.addWidget(self.btn_negative)
-        
+
         layout.addLayout(control_layout)
-    
+        layout.addStretch()
+
     def _on_move_positive(self):
         """양의 방향 이동"""
         distance = self.distance_selector.get_selected_distance()
@@ -161,6 +162,7 @@ class PumpControlPanel(QFrame):
         control_layout.addWidget(self.btn_negative)
 
         layout.addLayout(control_layout)
+        layout.addStretch()
 
     def _open_keypad(self):
         """NumericKeypad 열어서 거리 입력"""
@@ -233,9 +235,9 @@ class ManualPage(BasePage):
         self.y_panel.move_negative.connect(lambda d: self.y_move.emit(-d))
         self.y_panel.home_axis.connect(self.y_home.emit)
 
-        panels_layout.addWidget(self.z_panel, alignment=Qt.AlignTop)
-        panels_layout.addWidget(self.x_panel, alignment=Qt.AlignTop)
-        panels_layout.addWidget(self.y_panel, alignment=Qt.AlignTop)
+        panels_layout.addWidget(self.z_panel)
+        panels_layout.addWidget(self.x_panel)
+        panels_layout.addWidget(self.y_panel)
         
         self.content_layout.addLayout(panels_layout)
     
