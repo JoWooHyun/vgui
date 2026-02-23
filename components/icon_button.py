@@ -9,9 +9,10 @@ from PySide6.QtGui import QPixmap
 from styles.colors import Colors
 from styles.icons import Icons
 from styles.stylesheets import (
+    Radius,
     get_icon_button_style, get_icon_button_active_style,
     get_button_control_style, get_button_home_style,
-    get_tool_button_style, get_tool_button_danger_style, get_main_menu_button_style
+    get_main_menu_button_style
 )
 
 
@@ -125,32 +126,63 @@ class ToolButton(QPushButton):
         self.setCursor(Qt.PointingHandCursor)
 
         if is_danger:
-            base_style = get_tool_button_danger_style()
             self._color = Colors.RED
+            border_color = Colors.RED
+            text_color = Colors.RED
+            pressed_bg = Colors.RED_LIGHT
         else:
-            base_style = get_tool_button_style()
             self._color = Colors.NAVY
+            border_color = Colors.BORDER
+            text_color = Colors.NAVY
+            pressed_bg = Colors.BG_TERTIARY
 
-        # 아이콘 위 + 텍스트 아래 세로 배치
-        self.setStyleSheet(base_style + f"""
+        self.setStyleSheet(f"""
             QPushButton {{
-                text-align: bottom;
-                padding-top: 15px;
-                padding-bottom: 20px;
+                background-color: {Colors.BG_SECONDARY};
+                border: 2px solid {border_color};
+                border-radius: {Radius.LG}px;
+            }}
+            QPushButton:pressed {{
+                background-color: {pressed_bg};
+                border-color: {Colors.CYAN};
             }}
         """)
 
-        self._setup_content()
+        self._setup_content(text_color)
 
-    def _setup_content(self):
-        """버튼 내용 구성"""
-        # 아이콘 설정
-        icon = Icons.get_icon(self._icon_svg, 40, self._color)
-        self.setIcon(icon)
-        self.setIconSize(QSize(40, 40))
+    def _setup_content(self, text_color):
+        """버튼 내용 구성 - 아이콘 중앙 + 텍스트 하단"""
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 15)
+        layout.setSpacing(8)
 
-        # 텍스트 설정
-        self.setText(self._text)
+        layout.addStretch(1)
+
+        # 아이콘 (중앙)
+        icon_label = QLabel()
+        icon_label.setAlignment(Qt.AlignCenter)
+        icon_label.setStyleSheet("background: transparent; border: none;")
+        pixmap = Icons.get_pixmap(self._icon_svg, 48, self._color)
+        icon_label.setPixmap(pixmap)
+        layout.addWidget(icon_label, alignment=Qt.AlignCenter)
+
+        layout.addStretch(0)
+
+        # 텍스트 (아이콘 바로 아래)
+        text_label = QLabel(self._text)
+        text_label.setAlignment(Qt.AlignCenter)
+        text_label.setStyleSheet(f"""
+            QLabel {{
+                color: {text_color};
+                font-size: 16px;
+                font-weight: 600;
+                background: transparent;
+                border: none;
+            }}
+        """)
+        layout.addWidget(text_label, alignment=Qt.AlignCenter)
+
+        layout.addStretch(1)
 
 
 class LabeledIconButton(QWidget):
