@@ -84,6 +84,9 @@ class ToolPage(BasePage):
         super().__init__("Tool", show_back=True, parent=parent)
         self._setup_content()
 
+    # 3x2 그리드 때의 버튼 크기 유지
+    BUTTON_SIZE = (200, 200)
+
     def _setup_content(self):
         """콘텐츠 구성"""
         self.content_layout.addStretch(1)
@@ -95,25 +98,25 @@ class ToolPage(BasePage):
 
         # Manual 버튼
         self.btn_manual = ToolButton("Manual", Icons.MOVE)
-        self.btn_manual.setMinimumHeight(140)
+        self.btn_manual.setFixedSize(*self.BUTTON_SIZE)
         self.btn_manual.clicked.connect(self.go_manual.emit)
         row.addWidget(self.btn_manual)
 
         # Exposure 버튼
         self.btn_exposure = ToolButton("Exposure", Icons.SQUARE)
-        self.btn_exposure.setMinimumHeight(140)
+        self.btn_exposure.setFixedSize(*self.BUTTON_SIZE)
         self.btn_exposure.clicked.connect(self.go_exposure.emit)
         row.addWidget(self.btn_exposure)
 
         # Clean 버튼
         self.btn_clean = ToolButton("Clean", Icons.SQUARE_HALF)
-        self.btn_clean.setMinimumHeight(140)
+        self.btn_clean.setFixedSize(*self.BUTTON_SIZE)
         self.btn_clean.clicked.connect(self.go_clean.emit)
         row.addWidget(self.btn_clean)
 
         # Setting 버튼
         self.btn_setting = ToolButton("Setting", Icons.CALIBRATION)
-        self.btn_setting.setMinimumHeight(140)
+        self.btn_setting.setFixedSize(*self.BUTTON_SIZE)
         self.btn_setting.clicked.connect(self.go_setting.emit)
         row.addWidget(self.btn_setting)
 

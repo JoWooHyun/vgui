@@ -112,7 +112,7 @@ class MainMenuButton(QPushButton):
 
 
 class ToolButton(QPushButton):
-    """도구 메뉴 버튼 (아이콘 + 텍스트)"""
+    """도구 메뉴 버튼 (아이콘 중앙 + 하단 텍스트)"""
 
     def __init__(self, text: str, icon_svg: str, is_danger: bool = False,
                  parent=None):
@@ -125,11 +125,20 @@ class ToolButton(QPushButton):
         self.setCursor(Qt.PointingHandCursor)
 
         if is_danger:
-            self.setStyleSheet(get_tool_button_danger_style())
+            base_style = get_tool_button_danger_style()
             self._color = Colors.RED
         else:
-            self.setStyleSheet(get_tool_button_style())
+            base_style = get_tool_button_style()
             self._color = Colors.NAVY
+
+        # 아이콘 위 + 텍스트 아래 세로 배치
+        self.setStyleSheet(base_style + f"""
+            QPushButton {{
+                text-align: bottom;
+                padding-top: 15px;
+                padding-bottom: 20px;
+            }}
+        """)
 
         self._setup_content()
 
