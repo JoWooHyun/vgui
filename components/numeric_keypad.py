@@ -92,36 +92,21 @@ class NumericKeypad(QDialog):
         grid_layout = QGridLayout()
         grid_layout.setSpacing(8)
         
-        # 숫자 버튼 스타일
+        # 숫자 버튼 스타일 (흰색 배경 + 시안 테두리)
         num_btn_style = f"""
             QPushButton {{
-                background-color: {Colors.NAVY};
-                color: {Colors.WHITE};
-                border: none;
+                background-color: {Colors.WHITE};
+                color: {Colors.NAVY};
+                border: 2px solid {Colors.CYAN};
                 border-radius: 8px;
                 font-size: 20px;
                 font-weight: bold;
             }}
             QPushButton:pressed {{
-                background-color: {Colors.NAVY_LIGHT};
+                background-color: {Colors.CYAN_ALPHA_10};
             }}
         """
-        
-        # 기능 버튼 스타일 (Backspace)
-        func_btn_style = f"""
-            QPushButton {{
-                background-color: {Colors.AMBER};
-                color: {Colors.WHITE};
-                border: none;
-                border-radius: 8px;
-                font-size: 18px;
-                font-weight: bold;
-            }}
-            QPushButton:pressed {{
-                background-color: #E68A00;
-            }}
-        """
-        
+
         # Clear 버튼 스타일
         clear_btn_style = f"""
             QPushButton {{
@@ -149,14 +134,14 @@ class NumericKeypad(QDialog):
             col = (i - 1) % 3
             grid_layout.addWidget(btn, row, col)
         
-        # 4번째 줄: [⌫] [0] [C] 또는 [.]
-        # Backspace
-        btn_backspace = QPushButton("⌫")
-        btn_backspace.setFixedSize(70, 55)
-        btn_backspace.setCursor(Qt.PointingHandCursor)
-        btn_backspace.setStyleSheet(func_btn_style)
-        btn_backspace.clicked.connect(self._backspace)
-        grid_layout.addWidget(btn_backspace, 3, 0)
+        # 4번째 줄: [C] [0] [.] 또는 [C]
+        # Clear
+        btn_clear = QPushButton("C")
+        btn_clear.setFixedSize(70, 55)
+        btn_clear.setCursor(Qt.PointingHandCursor)
+        btn_clear.setStyleSheet(clear_btn_style)
+        btn_clear.clicked.connect(self._clear)
+        grid_layout.addWidget(btn_clear, 3, 0)
         
         # 0
         btn_zero = QPushButton("0")
@@ -166,7 +151,7 @@ class NumericKeypad(QDialog):
         btn_zero.clicked.connect(lambda: self._append_digit("0"))
         grid_layout.addWidget(btn_zero, 3, 1)
         
-        # Clear 또는 소수점
+        # 소수점 버튼 (소수점 허용 시만 표시)
         if self._allow_decimal:
             btn_dot = QPushButton(".")
             btn_dot.setFixedSize(70, 55)
@@ -174,13 +159,6 @@ class NumericKeypad(QDialog):
             btn_dot.setStyleSheet(num_btn_style)
             btn_dot.clicked.connect(lambda: self._append_digit("."))
             grid_layout.addWidget(btn_dot, 3, 2)
-        else:
-            btn_clear = QPushButton("C")
-            btn_clear.setFixedSize(70, 55)
-            btn_clear.setCursor(Qt.PointingHandCursor)
-            btn_clear.setStyleSheet(clear_btn_style)
-            btn_clear.clicked.connect(self._clear)
-            grid_layout.addWidget(btn_clear, 3, 2)
         
         # 그리드를 중앙 정렬
         grid_wrapper = QHBoxLayout()
@@ -256,12 +234,6 @@ class NumericKeypad(QDialog):
         else:
             self._input_str += digit
         
-        self._update_display()
-    
-    def _backspace(self):
-        """마지막 문자 삭제"""
-        if self._input_str:
-            self._input_str = self._input_str[:-1]
         self._update_display()
     
     def _clear(self):
