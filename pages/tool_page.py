@@ -3,7 +3,7 @@ VERICOM DLP 3D Printer GUI - Tool Page
 """
 
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QGridLayout,
+    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QDialog, QLabel, QPushButton
 )
 from PySide6.QtCore import Signal, Qt
@@ -79,56 +79,45 @@ class ToolPage(BasePage):
     go_exposure = Signal()
     go_clean = Signal()
     go_setting = Signal()
-    stop_all = Signal()
-    
+
     def __init__(self, parent=None):
         super().__init__("Tool", show_back=True, parent=parent)
         self._setup_content()
-    
+
     def _setup_content(self):
         """콘텐츠 구성"""
-        # 그리드 레이아웃 (3×2)
-        grid = QGridLayout()
-        grid.setSpacing(16)
-        grid.setContentsMargins(40, 10, 40, 10)
-        
+        self.content_layout.addStretch(1)
+
+        # 가로 나열 레이아웃
+        row = QHBoxLayout()
+        row.setSpacing(20)
+        row.addStretch()
+
         # Manual 버튼
         self.btn_manual = ToolButton("Manual", Icons.MOVE)
+        self.btn_manual.setMinimumHeight(140)
         self.btn_manual.clicked.connect(self.go_manual.emit)
-        
+        row.addWidget(self.btn_manual)
+
         # Exposure 버튼
         self.btn_exposure = ToolButton("Exposure", Icons.SQUARE)
+        self.btn_exposure.setMinimumHeight(140)
         self.btn_exposure.clicked.connect(self.go_exposure.emit)
-        
+        row.addWidget(self.btn_exposure)
+
         # Clean 버튼
         self.btn_clean = ToolButton("Clean", Icons.SQUARE_HALF)
+        self.btn_clean.setMinimumHeight(140)
         self.btn_clean.clicked.connect(self.go_clean.emit)
-        
-        # STOP 버튼 (일반 스타일)
-        self.btn_stop = ToolButton("STOP", Icons.STOP_CIRCLE, is_danger=False)
-        self.btn_stop.clicked.connect(self.stop_all.emit)
-        
+        row.addWidget(self.btn_clean)
+
         # Setting 버튼
         self.btn_setting = ToolButton("Setting", Icons.CALIBRATION)
+        self.btn_setting.setMinimumHeight(140)
         self.btn_setting.clicked.connect(self.go_setting.emit)
-        
-        # Back 버튼
-        self.btn_back = ToolButton("Back", Icons.ARROW_LEFT)
-        self.btn_back.clicked.connect(self.go_back.emit)
-        
-        # 그리드에 배치
-        grid.addWidget(self.btn_manual, 0, 0)
-        grid.addWidget(self.btn_exposure, 0, 1)
-        grid.addWidget(self.btn_clean, 0, 2)
-        grid.addWidget(self.btn_stop, 1, 0)
-        grid.addWidget(self.btn_setting, 1, 1)
-        grid.addWidget(self.btn_back, 1, 2)
-        
-        # 모든 버튼 크기 동일하게
-        for i in range(grid.count()):
-            widget = grid.itemAt(i).widget()
-            if widget:
-                widget.setMinimumHeight(140)
-        
-        self.content_layout.addLayout(grid)
+        row.addWidget(self.btn_setting)
+
+        row.addStretch()
+        self.content_layout.addLayout(row)
+        self.content_layout.addStretch(2)
 

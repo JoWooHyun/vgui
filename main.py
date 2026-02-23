@@ -285,7 +285,6 @@ class MainWindow(QMainWindow):
         self.tool_page.go_exposure.connect(lambda: self._go_to_page(self.PAGE_EXPOSURE))
         self.tool_page.go_clean.connect(lambda: self._go_to_page(self.PAGE_CLEAN))
         self.tool_page.go_setting.connect(lambda: self._go_to_page(self.PAGE_SETTING))
-        self.tool_page.stop_all.connect(self._emergency_stop)
 
         # 설정 페이지
         self.setting_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TOOL))
