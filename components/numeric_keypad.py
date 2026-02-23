@@ -90,8 +90,8 @@ class NumericKeypad(QDialog):
         
         # 숫자 키패드 그리드
         grid_layout = QGridLayout()
-        grid_layout.setHorizontalSpacing(16)
-        grid_layout.setVerticalSpacing(8)
+        grid_layout.setHorizontalSpacing(8)
+        grid_layout.setVerticalSpacing(16)
         
         # 숫자 버튼 스타일 (흰색 배경 + 시안 테두리)
         num_btn_style = f"""
