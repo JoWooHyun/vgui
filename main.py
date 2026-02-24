@@ -71,6 +71,7 @@ from pages.tool_page import ToolPage, SimpleAlert
 from pages.manual_page import ManualPage
 from pages.print_page import PrintPage
 from pages.exposure_page import ExposurePage
+from pages.leveling_page import LevelingPage
 from pages.system_page import SystemPage
 from pages.device_info_page import DeviceInfoPage
 from pages.language_page import LanguagePage
@@ -125,6 +126,7 @@ class MainWindow(QMainWindow):
     PAGE_PRINT_PROGRESS = 10
     PAGE_SETTING = 11
     PAGE_THEME = 12
+    PAGE_LEVELING = 13
 
     def __init__(self, kiosk_mode: bool = False, simulation: bool = True):
         super().__init__()
@@ -226,6 +228,7 @@ class MainWindow(QMainWindow):
         self.print_progress_page = PrintProgressPage()
         self.setting_page = SettingPage()
         self.theme_page = ThemePage()
+        self.leveling_page = LevelingPage()
 
         # 스택에 추가
         self.stack.addWidget(self.main_page)         # 0
@@ -241,6 +244,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.print_progress_page) # 10
         self.stack.addWidget(self.setting_page)      # 11
         self.stack.addWidget(self.theme_page)        # 12
+        self.stack.addWidget(self.leveling_page)    # 13
 
         self.setCentralWidget(self.stack)
 
@@ -279,6 +283,7 @@ class MainWindow(QMainWindow):
         self.tool_page.go_back.connect(lambda: self._go_to_page(self.PAGE_MAIN))
         self.tool_page.go_manual.connect(lambda: self._go_to_page(self.PAGE_MANUAL))
         self.tool_page.go_exposure.connect(lambda: self._go_to_page(self.PAGE_EXPOSURE))
+        self.tool_page.go_leveling.connect(self._go_to_leveling)
         self.tool_page.go_setting.connect(lambda: self._go_to_page(self.PAGE_SETTING))
 
         # 설정 페이지
@@ -312,7 +317,13 @@ class MainWindow(QMainWindow):
         self.exposure_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TOOL))
         self.exposure_page.exposure_start.connect(self._start_exposure)
         self.exposure_page.exposure_stop.connect(self._stop_exposure)
-        
+
+        # 레벨링 페이지
+        self.leveling_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TOOL))
+        self.leveling_page.z_home.connect(self._leveling_z_home)
+        self.leveling_page.x_home.connect(self._leveling_x_home)
+        self.leveling_page.x_move.connect(self._leveling_x_move)
+
         # 시스템 페이지
         self.system_page.go_back.connect(lambda: self._go_to_page(self.PAGE_MAIN))
         self.system_page.go_device_info.connect(lambda: self._go_to_page(self.PAGE_DEVICE_INFO))
@@ -382,6 +393,9 @@ class MainWindow(QMainWindow):
         self.manual_page.set_busy(False)
         # 펌프 위치 업데이트
         self.setting_page.update_pump_position(self.motor.pump_get_position())
+        # 레벨링 페이지 콜백
+        if self.stack.currentIndex() == self.PAGE_LEVELING:
+            self.leveling_page.on_motor_finished()
 
     def _cleanup_motor_thread(self):
         """모터 스레드 정리 (스레드 종료 후 호출)"""
@@ -430,6 +444,28 @@ class MainWindow(QMainWindow):
         """Y축(펌프) 홈 (비동기)"""
         print("[Motor] Y축 펌프 홈으로 이동")
         self._start_motor_operation("pump_home")
+
+    # ==================== Leveling 페이지 제어 ====================
+
+    def _go_to_leveling(self):
+        """레벨링 페이지로 이동 (진입 시 초기화)"""
+        self.leveling_page.reset()
+        self._go_to_page(self.PAGE_LEVELING)
+
+    def _leveling_z_home(self):
+        """레벨링: Z축 홈"""
+        print("[Leveling] Z축 홈으로 이동")
+        self._start_motor_operation("z_home")
+
+    def _leveling_x_home(self):
+        """레벨링: X축 홈"""
+        print("[Leveling] X축 홈으로 이동")
+        self._start_motor_operation("x_home")
+
+    def _leveling_x_move(self, distance: float, speed: int):
+        """레벨링: X축 이동"""
+        print(f"[Leveling] X축 {distance}mm 이동 (속도: {speed}mm/s)")
+        self._start_motor_operation("x_move", distance=distance, speed=speed)
 
     def _emergency_stop(self):
         """모든 동작 정지 (Klipper 유지)"""

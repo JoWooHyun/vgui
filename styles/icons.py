@@ -429,6 +429,46 @@ class Icons:
     </svg>
     """
 
+    # ========== Leveling Icons ==========
+
+    LEVEL = """
+    <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <line x1="2" y1="18" x2="22" y2="18"/>
+        <path d="M12 6l-6 8h12z"/>
+        <line x1="12" y1="10" x2="12" y2="14"/>
+        <circle cx="12" cy="9" r="1" fill="{color}" stroke="none"/>
+    </svg>
+    """
+
+    HOME_Z = """
+    <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 19V5"/>
+        <path d="M5 12l7-7 7 7"/>
+        <text x="20" y="22" font-size="8" font-weight="bold" fill="{color}" stroke="none" font-family="Arial">Z</text>
+    </svg>
+    """
+
+    HOME_X = """
+    <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5"/>
+        <path d="M12 5l-7 7 7 7"/>
+        <text x="18" y="22" font-size="8" font-weight="bold" fill="{color}" stroke="none" font-family="Arial">X</text>
+    </svg>
+    """
+
+    X_MOVE = """
+    <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 12h14"/>
+        <path d="M15 8l4 4-4 4"/>
+        <text x="1" y="22" font-size="8" font-weight="bold" fill="{color}" stroke="none" font-family="Arial">X</text>
+        <text x="13" y="22" font-size="7" fill="{color}" stroke="none" font-family="Arial">75</text>
+    </svg>
+    """
+
     # ========== Print Info Icons ==========
 
     STACK = """

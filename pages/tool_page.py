@@ -77,6 +77,7 @@ class ToolPage(BasePage):
     # 페이지 전환 시그널
     go_manual = Signal()
     go_exposure = Signal()
+    go_leveling = Signal()
     go_setting = Signal()
 
     def __init__(self, parent=None):
@@ -106,6 +107,12 @@ class ToolPage(BasePage):
         self.btn_exposure.setFixedSize(*self.BUTTON_SIZE)
         self.btn_exposure.clicked.connect(self.go_exposure.emit)
         row.addWidget(self.btn_exposure)
+
+        # Leveling 버튼
+        self.btn_leveling = ToolButton("Leveling", Icons.LEVEL)
+        self.btn_leveling.setFixedSize(*self.BUTTON_SIZE)
+        self.btn_leveling.clicked.connect(self.go_leveling.emit)
+        row.addWidget(self.btn_leveling)
 
         # Setting 버튼
         self.btn_setting = ToolButton("Setting", Icons.CALIBRATION)
