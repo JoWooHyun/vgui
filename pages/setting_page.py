@@ -45,7 +45,7 @@ class LEDPowerPanel(QFrame):
         layout.setSpacing(16)
 
         # 타이틀 (border 없음)
-        self.title_label = QLabel("LED POWER SET")
+        self.title_label = QLabel("LED SET")
         self.title_label.setStyleSheet(f"""
             QLabel {{
                 color: {Colors.NAVY};
@@ -59,6 +59,19 @@ class LEDPowerPanel(QFrame):
         layout.addWidget(self.title_label)
 
         layout.addStretch(1)
+
+        # Power 라벨
+        power_label = QLabel("Power")
+        power_label.setAlignment(Qt.AlignCenter)
+        power_label.setStyleSheet(f"""
+            QLabel {{
+                color: {Colors.TEXT_SECONDARY};
+                font-size: 14px;
+                background-color: transparent;
+                border: none;
+            }}
+        """)
+        layout.addWidget(power_label)
 
         # 파워 값 표시 (클릭 가능)
         self.power_btn = QPushButton(f"{self._power_value}%")
@@ -360,8 +373,8 @@ class PumpPanel(QFrame):
         self.setStyleSheet(get_axis_panel_style())
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(15, 15, 15, 15)
-        layout.setSpacing(8)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(16)
 
         # 타이틀
         title = QLabel("PUMP SET")
@@ -377,26 +390,26 @@ class PumpPanel(QFrame):
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
 
-        # HOME 버튼
-        self.btn_home = QPushButton("HOME")
-        self.btn_home.setFixedHeight(36)
-        self.btn_home.setCursor(Qt.PointingHandCursor)
-        self.btn_home.setFont(Fonts.body_small())
-        self.btn_home.setStyleSheet(self._get_action_btn_style())
-        self.btn_home.clicked.connect(self.pump_home.emit)
-        layout.addWidget(self.btn_home)
+        layout.addStretch(1)
 
         # FILL 섹션
-        fill_label = QLabel("FILL")
+        fill_label = QLabel("Fill")
         fill_label.setAlignment(Qt.AlignCenter)
-        fill_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; font-size: 12px; background: transparent; border: none;")
+        fill_label.setStyleSheet(f"""
+            QLabel {{
+                color: {Colors.TEXT_SECONDARY};
+                font-size: 14px;
+                background-color: transparent;
+                border: none;
+            }}
+        """)
         layout.addWidget(fill_label)
 
         fill_layout = QHBoxLayout()
         fill_layout.setSpacing(6)
         for text, dist in [("1cm", 10), ("5cm", 50), ("10cm", 100), ("MAX", -1)]:
             btn = QPushButton(text)
-            btn.setFixedHeight(32)
+            btn.setFixedHeight(36)
             btn.setCursor(Qt.PointingHandCursor)
             btn.setFont(Fonts.body_small())
             btn.setStyleSheet(self._get_action_btn_style())
@@ -408,16 +421,23 @@ class PumpPanel(QFrame):
         layout.addLayout(fill_layout)
 
         # PUSH 섹션
-        push_label = QLabel("PUSH")
+        push_label = QLabel("Push")
         push_label.setAlignment(Qt.AlignCenter)
-        push_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; font-size: 12px; background: transparent; border: none;")
+        push_label.setStyleSheet(f"""
+            QLabel {{
+                color: {Colors.TEXT_SECONDARY};
+                font-size: 14px;
+                background-color: transparent;
+                border: none;
+            }}
+        """)
         layout.addWidget(push_label)
 
         push_layout = QHBoxLayout()
         push_layout.setSpacing(6)
         for text, dist in [("1mm", 1), ("10mm", 10), ("20mm", 20)]:
             btn = QPushButton(text)
-            btn.setFixedHeight(32)
+            btn.setFixedHeight(36)
             btn.setCursor(Qt.PointingHandCursor)
             btn.setFont(Fonts.body_small())
             btn.setStyleSheet(self._get_action_btn_style())
@@ -427,11 +447,23 @@ class PumpPanel(QFrame):
 
         layout.addStretch(1)
 
-        # 확인 버튼 (토출 거리 설정)
+        # 하단 제어 버튼들 (HOME + SET)
+        bottom_layout = QHBoxLayout()
+        bottom_layout.setSpacing(8)
+
+        # HOME 버튼
+        self.btn_home = QPushButton("HOME")
+        self.btn_home.setFixedHeight(44)
+        self.btn_home.setCursor(Qt.PointingHandCursor)
+        self.btn_home.setFont(Fonts.h3())
+        self.btn_home.setStyleSheet(self._get_action_btn_style())
+        self.btn_home.clicked.connect(self.pump_home.emit)
+
+        # SET 버튼 (토출 거리 설정)
         self.btn_confirm = QPushButton(f"SET: {self._dispense_distance:.0f}mm")
-        self.btn_confirm.setFixedHeight(40)
+        self.btn_confirm.setFixedHeight(44)
         self.btn_confirm.setCursor(Qt.PointingHandCursor)
-        self.btn_confirm.setFont(Fonts.body())
+        self.btn_confirm.setFont(Fonts.h3())
         self.btn_confirm.setStyleSheet(f"""
             QPushButton {{
                 background-color: {Colors.CYAN};
@@ -445,7 +477,10 @@ class PumpPanel(QFrame):
             }}
         """)
         self.btn_confirm.clicked.connect(self._on_confirm_click)
-        layout.addWidget(self.btn_confirm)
+
+        bottom_layout.addWidget(self.btn_home)
+        bottom_layout.addWidget(self.btn_confirm)
+        layout.addLayout(bottom_layout)
 
     def _get_action_btn_style(self):
         return f"""
