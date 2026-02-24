@@ -77,7 +77,6 @@ class ToolPage(BasePage):
     # 페이지 전환 시그널
     go_manual = Signal()
     go_exposure = Signal()
-    go_clean = Signal()
     go_setting = Signal()
 
     def __init__(self, parent=None):
@@ -107,12 +106,6 @@ class ToolPage(BasePage):
         self.btn_exposure.setFixedSize(*self.BUTTON_SIZE)
         self.btn_exposure.clicked.connect(self.go_exposure.emit)
         row.addWidget(self.btn_exposure)
-
-        # Clean 버튼
-        self.btn_clean = ToolButton("Clean", Icons.SQUARE_HALF)
-        self.btn_clean.setFixedSize(*self.BUTTON_SIZE)
-        self.btn_clean.clicked.connect(self.go_clean.emit)
-        row.addWidget(self.btn_clean)
 
         # Setting 버튼
         self.btn_setting = ToolButton("Setting", Icons.CALIBRATION)

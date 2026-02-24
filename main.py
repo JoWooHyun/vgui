@@ -71,7 +71,6 @@ from pages.tool_page import ToolPage, SimpleAlert
 from pages.manual_page import ManualPage
 from pages.print_page import PrintPage
 from pages.exposure_page import ExposurePage
-from pages.clean_page import CleanPage
 from pages.system_page import SystemPage
 from pages.device_info_page import DeviceInfoPage
 from pages.language_page import LanguagePage
@@ -118,15 +117,14 @@ class MainWindow(QMainWindow):
     PAGE_MANUAL = 2
     PAGE_PRINT = 3
     PAGE_EXPOSURE = 4
-    PAGE_CLEAN = 5
-    PAGE_SYSTEM = 6
-    PAGE_DEVICE_INFO = 7
-    PAGE_LANGUAGE = 8
-    PAGE_SERVICE = 9
-    PAGE_FILE_PREVIEW = 10
-    PAGE_PRINT_PROGRESS = 11
-    PAGE_SETTING = 12
-    PAGE_THEME = 13
+    PAGE_SYSTEM = 5
+    PAGE_DEVICE_INFO = 6
+    PAGE_LANGUAGE = 7
+    PAGE_SERVICE = 8
+    PAGE_FILE_PREVIEW = 9
+    PAGE_PRINT_PROGRESS = 10
+    PAGE_SETTING = 11
+    PAGE_THEME = 12
 
     def __init__(self, kiosk_mode: bool = False, simulation: bool = True):
         super().__init__()
@@ -220,7 +218,6 @@ class MainWindow(QMainWindow):
         self.manual_page = ManualPage()
         self.print_page = PrintPage()
         self.exposure_page = ExposurePage()
-        self.clean_page = CleanPage()
         self.system_page = SystemPage()
         self.device_info_page = DeviceInfoPage()
         self.language_page = LanguagePage()
@@ -236,15 +233,14 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.manual_page)       # 2
         self.stack.addWidget(self.print_page)        # 3
         self.stack.addWidget(self.exposure_page)     # 4
-        self.stack.addWidget(self.clean_page)        # 5
-        self.stack.addWidget(self.system_page)       # 6
-        self.stack.addWidget(self.device_info_page)  # 7
-        self.stack.addWidget(self.language_page)     # 8
-        self.stack.addWidget(self.service_page)      # 9
-        self.stack.addWidget(self.file_preview_page) # 10
-        self.stack.addWidget(self.print_progress_page) # 11
-        self.stack.addWidget(self.setting_page)      # 12
-        self.stack.addWidget(self.theme_page)        # 13
+        self.stack.addWidget(self.system_page)       # 5
+        self.stack.addWidget(self.device_info_page)  # 6
+        self.stack.addWidget(self.language_page)     # 7
+        self.stack.addWidget(self.service_page)      # 8
+        self.stack.addWidget(self.file_preview_page) # 9
+        self.stack.addWidget(self.print_progress_page) # 10
+        self.stack.addWidget(self.setting_page)      # 11
+        self.stack.addWidget(self.theme_page)        # 12
 
         self.setCentralWidget(self.stack)
 
@@ -283,7 +279,6 @@ class MainWindow(QMainWindow):
         self.tool_page.go_back.connect(lambda: self._go_to_page(self.PAGE_MAIN))
         self.tool_page.go_manual.connect(lambda: self._go_to_page(self.PAGE_MANUAL))
         self.tool_page.go_exposure.connect(lambda: self._go_to_page(self.PAGE_EXPOSURE))
-        self.tool_page.go_clean.connect(lambda: self._go_to_page(self.PAGE_CLEAN))
         self.tool_page.go_setting.connect(lambda: self._go_to_page(self.PAGE_SETTING))
 
         # 설정 페이지
@@ -317,11 +312,6 @@ class MainWindow(QMainWindow):
         self.exposure_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TOOL))
         self.exposure_page.exposure_start.connect(self._start_exposure)
         self.exposure_page.exposure_stop.connect(self._stop_exposure)
-        
-        # 클리닝 페이지
-        self.clean_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TOOL))
-        self.clean_page.clean_start.connect(self._start_clean)
-        self.clean_page.clean_stop.connect(self._stop_clean)
         
         # 시스템 페이지
         self.system_page.go_back.connect(lambda: self._go_to_page(self.PAGE_MAIN))
@@ -624,10 +614,8 @@ class MainWindow(QMainWindow):
     
     def _start_exposure(self, pattern: str, time: float):
         """노출 테스트 시작"""
-        pattern_value = self.exposure_page.get_pattern_value()
-
         print(f"[NVR] 노출 테스트 시작")
-        print(f"  - 패턴: {pattern} (0x{pattern_value:02X})")
+        print(f"  - 패턴: {pattern}")
         print(f"  - 시간: {time}초")
 
         # 1. LED OFF 먼저 (이전 상태가 켜져 있을 수 있음)
@@ -640,7 +628,14 @@ class MainWindow(QMainWindow):
         screens = QApplication.screens()
         if len(screens) > 1:
             self.projector_window.show_on_screen(1)
-            self.projector_window.show_test_pattern(pattern)
+
+            if pattern == "clean":
+                self.projector_window.show_white_screen()
+            elif pattern == "test_image":
+                self.projector_window.show_test_image()
+            else:
+                self.projector_window.show_test_pattern(pattern)
+
             QApplication.processEvents()
 
         # 3. LED ON (프로젝터는 앱 시작 시 이미 켜져 있음)
@@ -649,38 +644,6 @@ class MainWindow(QMainWindow):
     def _stop_exposure(self):
         """노출 테스트 정지"""
         print("[NVR] 노출 테스트 정지")
-        self.dlp.led_off()
-        # 프로젝터는 끄지 않음 (앱 실행 동안 계속 ON)
-
-        if self.projector_window:
-            self.projector_window.clear_screen()
-            self.projector_window.close()
-
-    def _start_clean(self, time: float):
-        """클리닝 시작"""
-        print(f"[NVR] 클리닝 시작")
-        print(f"  - 시간: {time}초")
-
-        # 1. LED OFF 먼저 (이전 상태가 켜져 있을 수 있음)
-        self.dlp.led_off()
-
-        # 2. 프로젝터 윈도우에 흰색 화면 표시 (프로젝터는 이미 ON 상태)
-        if self.projector_window is None:
-            self.projector_window = ProjectorWindow(screen_index=1)
-
-        screens = QApplication.screens()
-        if len(screens) > 1:
-            self.projector_window.show_on_screen(1)
-            self.projector_window.show_white_screen()
-            QApplication.processEvents()
-
-        # 3. LED ON (프로젝터는 앱 시작 시 이미 켜져 있음)
-        print(f"  - LED Power: 440")
-        self.dlp.led_on(440)
-
-    def _stop_clean(self):
-        """클리닝 정지"""
-        print("[NVR] 클리닝 정지")
         self.dlp.led_off()
         # 프로젝터는 끄지 않음 (앱 실행 동안 계속 ON)
 
