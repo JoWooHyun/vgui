@@ -46,50 +46,54 @@ class AxisControlPanel(QFrame):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(16)
+        layout.setSpacing(0)
+
+        layout.addStretch(1)
 
         # 헤더 (축 이름 - 가운데 정렬)
         self.title_label = QLabel(self._axis_name)
         self.title_label.setStyleSheet(get_axis_title_style())
         self.title_label.setAlignment(Qt.AlignCenter)
-
         layout.addWidget(self.title_label)
-        
+
+        layout.addStretch(1)
+
         # 거리 선택기
         if self._distances:
             self.distance_selector = DistanceSelector(distances=self._distances)
         else:
             self.distance_selector = DistanceSelector()
         layout.addWidget(self.distance_selector)
-        
+
+        layout.addStretch(1)
+
         # 제어 버튼들
         control_layout = QHBoxLayout()
         control_layout.setSpacing(12)
         control_layout.setAlignment(Qt.AlignCenter)
-        
+
         # 홈 버튼
         self.btn_home = HomeButton(70, 28)
         self.btn_home.clicked.connect(self.home_axis.emit)
-        
+
         # 방향 버튼들
         if self._is_horizontal:
-            # 수평 (좌우)
             self.btn_negative = ControlButton(Icons.CHEVRON_LEFT, 70, 28)
             self.btn_positive = ControlButton(Icons.CHEVRON_RIGHT, 70, 28)
         else:
-            # 수직 (상하)
             self.btn_positive = ControlButton(Icons.CHEVRON_UP, 70, 28)
             self.btn_negative = ControlButton(Icons.CHEVRON_DOWN, 70, 28)
-        
+
         self.btn_positive.clicked.connect(self._on_move_positive)
         self.btn_negative.clicked.connect(self._on_move_negative)
-        
+
         control_layout.addWidget(self.btn_home)
         control_layout.addWidget(self.btn_positive)
         control_layout.addWidget(self.btn_negative)
 
         layout.addLayout(control_layout)
-        layout.addStretch()
+
+        layout.addStretch(1)
 
     def _on_move_positive(self):
         """양의 방향 이동"""
@@ -124,13 +128,17 @@ class PumpControlPanel(QFrame):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(16)
+        layout.setSpacing(0)
+
+        layout.addStretch(1)
 
         # 헤더 (축 이름)
         self.title_label = QLabel("Y Axis (Pump)")
         self.title_label.setStyleSheet(get_axis_title_style())
         self.title_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.title_label)
+
+        layout.addStretch(1)
 
         # 거리 표시 버튼 (탭하면 NumericKeypad 열림)
         self.btn_distance = QPushButton(f"{self._current_distance} mm")
@@ -139,6 +147,8 @@ class PumpControlPanel(QFrame):
         self.btn_distance.setStyleSheet(get_distance_button_active_style())
         self.btn_distance.clicked.connect(self._open_keypad)
         layout.addWidget(self.btn_distance)
+
+        layout.addStretch(1)
 
         # 제어 버튼들
         control_layout = QHBoxLayout()
@@ -162,7 +172,8 @@ class PumpControlPanel(QFrame):
         control_layout.addWidget(self.btn_negative)
 
         layout.addLayout(control_layout)
-        layout.addStretch()
+
+        layout.addStretch(1)
 
     def _open_keypad(self):
         """NumericKeypad 열어서 거리 입력"""
