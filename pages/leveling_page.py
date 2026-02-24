@@ -191,7 +191,7 @@ class LevelingPage(BasePage):
         elif self._step == 1:
             self.x_home.emit()
         elif self._step == 2:
-            self.x_move.emit(75.0, 10)
+            self.x_move.emit(75.0, 600)  # 10mm/s = 600mm/min
 
     def on_motor_finished(self):
         """모터 작업 완료 시 main.py에서 호출"""
