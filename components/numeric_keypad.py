@@ -93,18 +93,19 @@ class NumericKeypad(QDialog):
         grid_layout.setHorizontalSpacing(8)
         grid_layout.setVerticalSpacing(24)
         
-        # 숫자 버튼 스타일 (흰색 배경 + 시안 테두리)
+        # 숫자 버튼 스타일 (테마 연동)
         num_btn_style = f"""
             QPushButton {{
-                background-color: {Colors.WHITE};
+                background-color: {Colors.BG_SECONDARY};
                 color: {Colors.NAVY};
-                border: 2px solid {Colors.CYAN};
+                border: 2px solid {Colors.NAVY};
                 border-radius: 8px;
                 font-size: 20px;
                 font-weight: bold;
             }}
             QPushButton:pressed {{
-                background-color: {Colors.CYAN_ALPHA_10};
+                background-color: {Colors.BG_TERTIARY};
+                border-color: {Colors.CYAN};
             }}
         """
 
