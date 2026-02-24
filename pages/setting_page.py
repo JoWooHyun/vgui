@@ -58,7 +58,7 @@ class LEDPowerPanel(QFrame):
         self.title_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.title_label)
 
-        layout.addStretch(1)
+        layout.addStretch(3)
 
         # Power 라벨
         power_label = QLabel("Power")
@@ -87,23 +87,16 @@ class LEDPowerPanel(QFrame):
         power_container.addStretch()
         layout.addLayout(power_container)
 
-        layout.addStretch(1)
+        layout.addStretch(3)
 
-        # ON/OFF 토글 버튼 (하나만 표시)
-        btn_layout = QHBoxLayout()
-        btn_layout.setAlignment(Qt.AlignCenter)
-
+        # ON/OFF 토글 버튼
         self.btn_toggle = QPushButton("ON")
-        self.btn_toggle.setFixedSize(120, 50)
+        self.btn_toggle.setFixedHeight(44)
         self.btn_toggle.setCursor(Qt.PointingHandCursor)
         self.btn_toggle.setFont(Fonts.h3())
         self.btn_toggle.clicked.connect(self._on_toggle_click)
         self._update_toggle_style()
-
-        btn_layout.addWidget(self.btn_toggle)
-        layout.addLayout(btn_layout)
-
-        layout.addStretch(1)
+        layout.addWidget(self.btn_toggle)
 
     def _update_power_btn_style(self):
         """파워 버튼 스타일 업데이트"""
@@ -234,9 +227,9 @@ class BladePanel(QFrame):
         self.title_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.title_label)
 
-        layout.addStretch(1)
+        layout.addStretch(3)
 
-        # Speed 라벨 (border 없음)
+        # Speed 라벨
         speed_label = QLabel("Speed")
         speed_label.setAlignment(Qt.AlignCenter)
         speed_label.setStyleSheet(f"""
@@ -263,24 +256,21 @@ class BladePanel(QFrame):
         speed_container.addStretch()
         layout.addLayout(speed_container)
 
-        layout.addStretch(1)
+        layout.addStretch(3)
 
         # 제어 버튼들 (HOME, MOVE)
         control_layout = QHBoxLayout()
-        control_layout.setSpacing(12)
-        control_layout.setAlignment(Qt.AlignCenter)
+        control_layout.setSpacing(8)
 
-        # 홈 버튼
         self.btn_home = QPushButton("HOME")
-        self.btn_home.setFixedSize(100, 50)
+        self.btn_home.setFixedHeight(44)
         self.btn_home.setCursor(Qt.PointingHandCursor)
         self.btn_home.setFont(Fonts.h3())
         self.btn_home.setStyleSheet(self._get_action_btn_style())
         self.btn_home.clicked.connect(self.home_axis.emit)
 
-        # MOVE 버튼
         self.btn_move = QPushButton("MOVE")
-        self.btn_move.setFixedSize(100, 50)
+        self.btn_move.setFixedHeight(44)
         self.btn_move.setCursor(Qt.PointingHandCursor)
         self.btn_move.setFont(Fonts.h3())
         self.btn_move.setStyleSheet(self._get_action_btn_style())
@@ -290,8 +280,6 @@ class BladePanel(QFrame):
         control_layout.addWidget(self.btn_move)
 
         layout.addLayout(control_layout)
-
-        layout.addStretch(1)
 
     def _update_speed_btn_style(self):
         """속도 버튼 스타일 업데이트"""
@@ -390,7 +378,7 @@ class PumpPanel(QFrame):
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
 
-        layout.addStretch(1)
+        layout.addStretch(3)
 
         # FILL 섹션
         fill_label = QLabel("Fill")
@@ -445,7 +433,7 @@ class PumpPanel(QFrame):
             push_layout.addWidget(btn)
         layout.addLayout(push_layout)
 
-        layout.addStretch(1)
+        layout.addStretch(3)
 
         # 하단 제어 버튼들 (HOME + SET)
         bottom_layout = QHBoxLayout()
