@@ -323,6 +323,8 @@ class MainWindow(QMainWindow):
         self.leveling_page.z_home.connect(self._leveling_z_home)
         self.leveling_page.x_home.connect(self._leveling_x_home)
         self.leveling_page.x_move.connect(self._leveling_x_move)
+        self.leveling_page.pump_home.connect(self._priming_pump_home)
+        self.leveling_page.pump_fill.connect(self._priming_pump_fill)
 
         # 시스템 페이지
         self.system_page.go_back.connect(lambda: self._go_to_page(self.PAGE_MAIN))
@@ -464,8 +466,18 @@ class MainWindow(QMainWindow):
 
     def _leveling_x_move(self, distance: float, speed: int):
         """레벨링: X축 이동"""
-        print(f"[Leveling] X축 {distance}mm 이동 (속도: {speed}mm/s)")
+        print(f"[Leveling] X축 {distance}mm 이동 (속도: {speed}mm/min)")
         self._start_motor_operation("x_move", distance=distance, speed=speed)
+
+    def _priming_pump_home(self):
+        """프라이밍: 펌프 홈"""
+        print("[Priming] 펌프 홈으로 이동")
+        self._start_motor_operation("pump_home")
+
+    def _priming_pump_fill(self, distance: float):
+        """프라이밍: 펌프 Fill"""
+        print(f"[Priming] 펌프 Fill {distance}mm")
+        self._start_motor_operation("pump_fill", distance=distance)
 
     def _emergency_stop(self):
         """모든 동작 정지 (Klipper 유지)"""

@@ -469,6 +469,28 @@ class Icons:
     </svg>
     """
 
+    # ========== Priming Icons ==========
+
+    PUMP_HOME = """
+    <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="4" width="12" height="14" rx="2"/>
+        <line x1="12" y1="18" x2="12" y2="22"/>
+        <line x1="9" y1="22" x2="15" y2="22"/>
+        <path d="M9 1h6"/>
+        <path d="M12 1v3"/>
+    </svg>
+    """
+
+    PUMP_FILL = """
+    <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="8" width="12" height="14" rx="2"/>
+        <line x1="12" y1="8" x2="12" y2="2"/>
+        <path d="M8 5l4-3 4 3"/>
+    </svg>
+    """
+
     # ========== Print Info Icons ==========
 
     STACK = """
