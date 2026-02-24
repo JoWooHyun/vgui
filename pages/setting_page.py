@@ -560,9 +560,9 @@ class SettingPage(BasePage):
         self.pump_panel.pump_push.connect(self.pump_push.emit)
         self.pump_panel.pump_dispense_set.connect(self.pump_dispense_set.emit)
 
-        panels_layout.addWidget(self.led_panel)
-        panels_layout.addWidget(self.blade_panel)
-        panels_layout.addWidget(self.pump_panel)
+        panels_layout.addWidget(self.led_panel, 1)
+        panels_layout.addWidget(self.blade_panel, 1)
+        panels_layout.addWidget(self.pump_panel, 1)
 
         self.content_layout.addLayout(panels_layout)
 
