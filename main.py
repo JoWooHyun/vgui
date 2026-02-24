@@ -394,8 +394,6 @@ class MainWindow(QMainWindow):
         """모터 작업 완료"""
         print("[Motor] 작업 완료")
         self.manual_page.set_busy(False)
-        # 펌프 위치 업데이트
-        self.setting_page.update_pump_position(self.motor.pump_get_position())
         # 레벨링 페이지 콜백
         if self.stack.currentIndex() == self.PAGE_LEVELING:
             self.leveling_page.on_motor_finished()

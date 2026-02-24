@@ -352,8 +352,6 @@ class PumpPanel(QFrame):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._position = 0.0       # 현재 위치
-        self._max_position = 200.0
         self._dispense_distance = 10.0  # 기본 토출 거리
         self._setup_ui()
 
@@ -378,20 +376,6 @@ class PumpPanel(QFrame):
         """)
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
-
-        # 위치 표시
-        self.lbl_position = QLabel(f"0.0 / {self._max_position:.0f} mm")
-        self.lbl_position.setAlignment(Qt.AlignCenter)
-        self.lbl_position.setFont(Fonts.body())
-        self.lbl_position.setStyleSheet(f"""
-            QLabel {{
-                color: {Colors.CYAN};
-                font-weight: 600;
-                background-color: transparent;
-                border: none;
-            }}
-        """)
-        layout.addWidget(self.lbl_position)
 
         # HOME 버튼
         self.btn_home = QPushButton("HOME")
@@ -497,11 +481,6 @@ class PumpPanel(QFrame):
         self.btn_confirm.setText(f"SET: {self._dispense_distance:.0f}mm")
         self.pump_dispense_set.emit(self._dispense_distance)
 
-    def update_position(self, position: float):
-        """위치 표시 업데이트"""
-        self._position = position
-        self.lbl_position.setText(f"{self._position:.1f} / {self._max_position:.0f} mm")
-
     def get_dispense_distance(self) -> float:
         return self._dispense_distance
 
@@ -590,6 +569,3 @@ class SettingPage(BasePage):
         """Pump 토출 거리 설정"""
         self.pump_panel.set_dispense_distance(value)
 
-    def update_pump_position(self, position: float):
-        """Pump 위치 표시 업데이트"""
-        self.pump_panel.update_position(position)
