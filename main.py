@@ -324,7 +324,8 @@ class MainWindow(QMainWindow):
         self.leveling_page.x_home.connect(self._leveling_x_home)
         self.leveling_page.x_move.connect(self._leveling_x_move)
         self.leveling_page.pump_home.connect(self._priming_pump_home)
-        self.leveling_page.pump_fill.connect(self._priming_pump_fill)
+        self.leveling_page.pump_push.connect(self._priming_pump_push)
+        self.leveling_page.pump_fill_home.connect(self._priming_pump_fill_home)
 
         # 시스템 페이지
         self.system_page.go_back.connect(lambda: self._go_to_page(self.PAGE_MAIN))
@@ -470,14 +471,19 @@ class MainWindow(QMainWindow):
         self._start_motor_operation("x_move", distance=distance, speed=speed)
 
     def _priming_pump_home(self):
-        """프라이밍: 펌프 홈"""
+        """프라이밍: 펌프 홈 (플런저 초기화 / 레진 흡입)"""
         print("[Priming] 펌프 홈으로 이동")
         self._start_motor_operation("pump_home")
 
-    def _priming_pump_fill(self, distance: float):
-        """프라이밍: 펌프 Fill"""
-        print(f"[Priming] 펌프 Fill {distance}mm")
-        self._start_motor_operation("pump_fill", distance=distance)
+    def _priming_pump_push(self, distance: float):
+        """프라이밍: 펌프 Push (플런저 앞으로 밀기)"""
+        print(f"[Priming] 펌프 Push {distance}mm")
+        self._start_motor_operation("pump_push", distance=distance)
+
+    def _priming_pump_fill_home(self):
+        """프라이밍: 펌프 Fill to Home (레진 흡입)"""
+        print("[Priming] 펌프 Fill to Home (레진 흡입)")
+        self._start_motor_operation("pump_fill_home")
 
     def _emergency_stop(self):
         """모든 동작 정지 (Klipper 유지)"""
