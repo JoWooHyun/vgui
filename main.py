@@ -50,16 +50,12 @@ class MotorWorker(QObject):
                 self.motor.x_move_relative(distance, speed=speed)
             elif self.operation == "x_home":
                 self.motor.x_home()
-            elif self.operation == "pump_home":
-                self.motor.pump_home()
-            elif self.operation == "pump_fill":
-                distance = self.kwargs.get("distance", 10)
-                self.motor.pump_fill(distance)
-            elif self.operation == "pump_fill_home":
-                self.motor.pump_fill_to_home()
-            elif self.operation == "pump_push":
-                distance = self.kwargs.get("distance", 1)
-                self.motor.pump_push(distance)
+            elif self.operation == "valve_test":
+                import time
+                duration = self.kwargs.get("duration", 1.0)
+                self.motor.valve_on()
+                time.sleep(duration)
+                self.motor.valve_off()
         except Exception as e:
             self.error.emit(str(e))
         finally:
@@ -261,15 +257,15 @@ class MainWindow(QMainWindow):
         self.file_preview_page.set_led_power(saved_led_power)
         self.file_preview_page.set_blade_speed(saved_blade_speed)
 
-        # Pump 설정 적용
-        saved_pump_distance = self.settings.get_pump_dispense_distance()
-        self.setting_page.set_pump_dispense_distance(saved_pump_distance)
-        self.file_preview_page.set_pump_dispense_distance(saved_pump_distance)
+        # Valve 설정 적용
+        saved_valve_time = self.settings.get_valve_time()
+        self.setting_page.set_valve_time(saved_valve_time)
+        self.file_preview_page.set_valve_time(saved_valve_time)
 
         print(f"[System] 저장된 설정 적용:")
         print(f"  - LED Power: {saved_led_power}%")
         print(f"  - Blade Speed: {saved_blade_speed}mm/s")
-        print(f"  - Pump Dispense: {saved_pump_distance}mm")
+        print(f"  - Valve Time: {saved_valve_time}s")
 
     def _connect_signals(self):
         """시그널 연결"""
@@ -294,11 +290,8 @@ class MainWindow(QMainWindow):
         self.setting_page.blade_move.connect(self._setting_blade_move)
         self.setting_page.led_power_changed.connect(self._on_led_power_changed)
         self.setting_page.blade_speed_changed.connect(self._on_blade_speed_changed)
-        self.setting_page.pump_home.connect(self._setting_pump_home)
-        self.setting_page.pump_fill.connect(self._setting_pump_fill)
-        self.setting_page.pump_fill_home.connect(self._setting_pump_fill_home)
-        self.setting_page.pump_push.connect(self._setting_pump_push)
-        self.setting_page.pump_dispense_set.connect(self._on_pump_dispense_set)
+        self.setting_page.valve_time_changed.connect(self._on_valve_time_changed)
+        self.setting_page.valve_test.connect(self._on_valve_test)
         
         # 매뉴얼 페이지
         self.manual_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TOOL))
@@ -306,8 +299,6 @@ class MainWindow(QMainWindow):
         self.manual_page.z_home.connect(self._home_z)
         self.manual_page.x_move.connect(self._move_x)
         self.manual_page.x_home.connect(self._home_x)
-        self.manual_page.y_move.connect(self._move_y)
-        self.manual_page.y_home.connect(self._home_y)
         
         # 프린트 페이지
         self.print_page.go_back.connect(lambda: self._go_to_page(self.PAGE_MAIN))
@@ -323,9 +314,6 @@ class MainWindow(QMainWindow):
         self.leveling_page.z_home.connect(self._leveling_z_home)
         self.leveling_page.x_home.connect(self._leveling_x_home)
         self.leveling_page.x_move.connect(self._leveling_x_move)
-        self.leveling_page.pump_home.connect(self._priming_pump_home)
-        self.leveling_page.pump_push.connect(self._priming_pump_push)
-        self.leveling_page.pump_fill_home.connect(self._priming_pump_fill_home)
 
         # 시스템 페이지
         self.system_page.go_back.connect(lambda: self._go_to_page(self.PAGE_MAIN))
@@ -432,20 +420,6 @@ class MainWindow(QMainWindow):
         print("[Motor] X축 홈으로 이동")
         self._start_motor_operation("x_home")
 
-    def _move_y(self, distance: float):
-        """Y축(펌프) 이동 (비동기) - 양수=Fill, 음수=Push"""
-        if distance > 0:
-            print(f"[Motor] Y축 펌프 Fill: {distance}mm")
-            self._start_motor_operation("pump_fill", distance=distance)
-        elif distance < 0:
-            print(f"[Motor] Y축 펌프 Push: {abs(distance)}mm")
-            self._start_motor_operation("pump_push", distance=abs(distance))
-
-    def _home_y(self):
-        """Y축(펌프) 홈 (비동기)"""
-        print("[Motor] Y축 펌프 홈으로 이동")
-        self._start_motor_operation("pump_home")
-
     # ==================== Leveling 페이지 제어 ====================
 
     def _go_to_leveling(self):
@@ -467,21 +441,6 @@ class MainWindow(QMainWindow):
         """레벨링: X축 이동"""
         print(f"[Leveling] X축 {distance}mm 이동 (속도: {speed}mm/min)")
         self._start_motor_operation("x_move", distance=distance, speed=speed)
-
-    def _priming_pump_home(self):
-        """프라이밍: 펌프 홈 (플런저 초기화 / 레진 흡입)"""
-        print("[Priming] 펌프 홈으로 이동")
-        self._start_motor_operation("pump_home")
-
-    def _priming_pump_push(self, distance: float):
-        """프라이밍: 펌프 Push (플런저 앞으로 밀기)"""
-        print(f"[Priming] 펌프 Push {distance}mm")
-        self._start_motor_operation("pump_push", distance=distance)
-
-    def _priming_pump_fill_home(self):
-        """프라이밍: 펌프 Fill to Home (레진 흡입)"""
-        print("[Priming] 펌프 Fill to Home (레진 흡입)")
-        self._start_motor_operation("pump_fill_home")
 
     def _emergency_stop(self):
         """모든 동작 정지 (Klipper 유지)"""
@@ -531,7 +490,7 @@ class MainWindow(QMainWindow):
         leveling_cycles = params.get('levelingCycles', 1)
         blade_cycles = params.get('bladeCycles', 1)  # 매 레이어 블레이드 왕복 횟수
         blade_mode = params.get('bladeMode', 'roundtrip')  # 블레이드 모드 (왕복/편도)
-        pump_dispense_distance = float(params.get('pumpDispenseDistance', 0.0))  # 펌프 토출 거리 (mm)
+        valve_time = float(params.get('valveTime', 0.0))  # 밸브 열림 시간 (초)
 
         # 추가 파라미터 (run.gcode에서 추출된 값)
         estimated_time = int(params.get('estimatedPrintTime', 0))  # 초 단위
@@ -584,7 +543,6 @@ class MainWindow(QMainWindow):
         self.print_worker.print_completed.connect(self._on_print_completed)
         self.print_worker.print_stopped.connect(self._on_print_stopped_by_worker)
         self.print_worker.error_occurred.connect(self._on_print_error)
-        self.print_worker.resin_low.connect(self._on_resin_low)
 
         # 프로젝터 윈도우에 이미지 표시 연결
         if self.projector_window:
@@ -603,7 +561,7 @@ class MainWindow(QMainWindow):
             leveling_cycles=leveling_cycles,
             blade_cycles=blade_cycles,
             blade_mode=blade_mode,
-            pump_dispense_distance=pump_dispense_distance
+            valve_time=valve_time
         )
 
     def _on_progress_updated(self, current: int, total: int):
@@ -763,37 +721,18 @@ class MainWindow(QMainWindow):
             print("[Setting] Blade 0 → 140mm 이동")
             self.motor.x_move_absolute(140, blade_speed)
 
-    # ==================== Pump 제어 ====================
+    # ==================== Valve 제어 ====================
 
-    def _setting_pump_home(self):
-        """Setting 페이지에서 Pump Home"""
-        print("[Setting] Pump Home")
-        self._start_motor_operation("pump_home")
+    def _on_valve_time_changed(self, time_val: float):
+        """Valve 시간 설정 변경"""
+        print(f"[Setting] Valve Time: {time_val}s")
+        self.settings.set_valve_time(time_val)
+        self.file_preview_page.set_valve_time(time_val)
 
-    def _setting_pump_fill(self, distance: float):
-        """Setting 페이지에서 Pump Fill"""
-        print(f"[Setting] Pump Fill: {distance}mm")
-        self._start_motor_operation("pump_fill", distance=distance)
-
-    def _setting_pump_fill_home(self):
-        """Setting 페이지에서 Pump Fill to Home"""
-        print("[Setting] Pump Fill to Home")
-        self._start_motor_operation("pump_fill_home")
-
-    def _setting_pump_push(self, distance: float):
-        """Setting 페이지에서 Pump Push"""
-        print(f"[Setting] Pump Push: {distance}mm")
-        self._start_motor_operation("pump_push", distance=distance)
-
-    def _on_pump_dispense_set(self, distance: float):
-        """Pump 토출 거리 설정 변경"""
-        print(f"[Setting] Pump Dispense Distance: {distance}mm")
-        self.settings.set_pump_dispense_distance(distance)
-        self.file_preview_page.set_pump_dispense_distance(distance)
-
-    def _on_resin_low(self):
-        """레진 부족 경고 (프린트는 계속 진행)"""
-        print("[Print] 레진 부족 경고! 시린지를 확인해주세요.")
+    def _on_valve_test(self, duration: float):
+        """Valve TEST: 설정 시간만큼 밸브 열고 닫기"""
+        print(f"[Setting] Valve Test: {duration}s")
+        self._start_motor_operation("valve_test", duration=duration)
 
     # ==================== 설정 저장/동기화 ====================
 

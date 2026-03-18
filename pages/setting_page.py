@@ -342,18 +342,17 @@ class BladePanel(QFrame):
         self.speed_btn.setText(f"{self._speed_value} mm/s")
 
 
-class PumpPanel(QFrame):
-    """레진 펌프 (시린지) 설정 패널"""
+class ValvePanel(QFrame):
+    """솔레노이드 밸브 설정 패널"""
 
-    pump_home = Signal()           # HOME 초기화
-    pump_fill = Signal(float)      # FILL (거리 mm)
-    pump_fill_home = Signal()      # FILL HOME (홈까지)
-    pump_push = Signal(float)      # PUSH (거리 mm)
-    pump_dispense_set = Signal(float)  # 토출 거리 설정
+    valve_time_changed = Signal(float)  # 밸브 시간 변경
+    valve_test = Signal(float)          # TEST 버튼 (설정 시간만큼 밸브 열기)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._dispense_distance = 10.0  # 기본 토출 거리
+        self._valve_time = 0.0   # 기본값 0초 (비활성)
+        self._min_time = 0.0
+        self._max_time = 10.0
         self._setup_ui()
 
     def _setup_ui(self):
@@ -365,7 +364,7 @@ class PumpPanel(QFrame):
         layout.setSpacing(16)
 
         # 타이틀
-        title = QLabel("PUMP SET")
+        title = QLabel("VALVE SET")
         title.setStyleSheet(f"""
             QLabel {{
                 color: {Colors.NAVY};
@@ -380,10 +379,10 @@ class PumpPanel(QFrame):
 
         layout.addStretch(3)
 
-        # FILL 섹션
-        fill_label = QLabel("Fill")
-        fill_label.setAlignment(Qt.AlignCenter)
-        fill_label.setStyleSheet(f"""
+        # Time 라벨
+        time_label = QLabel("Time")
+        time_label.setAlignment(Qt.AlignCenter)
+        time_label.setStyleSheet(f"""
             QLabel {{
                 color: {Colors.TEXT_SECONDARY};
                 font-size: 14px;
@@ -391,87 +390,42 @@ class PumpPanel(QFrame):
                 border: none;
             }}
         """)
-        layout.addWidget(fill_label)
+        layout.addWidget(time_label)
 
-        fill_layout = QHBoxLayout()
-        fill_layout.setSpacing(6)
-        for text, dist in [("1cm", 10), ("5cm", 50), ("10cm", 100), ("MAX", -1)]:
-            btn = QPushButton(text)
-            btn.setFixedHeight(36)
-            btn.setCursor(Qt.PointingHandCursor)
-            btn.setFont(Fonts.body_small())
-            btn.setStyleSheet(self._get_action_btn_style())
-            if dist == -1:
-                btn.clicked.connect(self.pump_fill_home.emit)
-            else:
-                btn.clicked.connect(lambda checked, d=dist: self.pump_fill.emit(float(d)))
-            fill_layout.addWidget(btn)
-        layout.addLayout(fill_layout)
-
-        # PUSH 섹션
-        push_label = QLabel("Push")
-        push_label.setAlignment(Qt.AlignCenter)
-        push_label.setStyleSheet(f"""
-            QLabel {{
-                color: {Colors.TEXT_SECONDARY};
-                font-size: 14px;
-                background-color: transparent;
-                border: none;
+        # 시간 값 표시 (클릭 가능)
+        self.time_btn = QPushButton(f"{self._valve_time:.1f} s")
+        self.time_btn.setFixedSize(200, 80)
+        self.time_btn.setCursor(Qt.PointingHandCursor)
+        self.time_btn.setFont(Fonts.mono_display())
+        self.time_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.BG_SECONDARY};
+                border: 2px solid {Colors.CYAN};
+                border-radius: {Radius.LG}px;
+                color: {Colors.NAVY};
+                font-size: 36px;
+                font-weight: 700;
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.BG_TERTIARY};
             }}
         """)
-        layout.addWidget(push_label)
+        self.time_btn.clicked.connect(self._on_time_click)
 
-        push_layout = QHBoxLayout()
-        push_layout.setSpacing(6)
-        for text, dist in [("1mm", 1), ("10mm", 10), ("20mm", 20)]:
-            btn = QPushButton(text)
-            btn.setFixedHeight(36)
-            btn.setCursor(Qt.PointingHandCursor)
-            btn.setFont(Fonts.body_small())
-            btn.setStyleSheet(self._get_action_btn_style())
-            btn.clicked.connect(lambda checked, d=dist: self.pump_push.emit(float(d)))
-            push_layout.addWidget(btn)
-        layout.addLayout(push_layout)
+        time_container = QHBoxLayout()
+        time_container.addStretch()
+        time_container.addWidget(self.time_btn)
+        time_container.addStretch()
+        layout.addLayout(time_container)
 
         layout.addStretch(3)
 
-        # 하단 제어 버튼들 (HOME + SET)
-        bottom_layout = QHBoxLayout()
-        bottom_layout.setSpacing(8)
-
-        # HOME 버튼
-        self.btn_home = QPushButton("HOME")
-        self.btn_home.setFixedHeight(44)
-        self.btn_home.setCursor(Qt.PointingHandCursor)
-        self.btn_home.setFont(Fonts.h3())
-        self.btn_home.setStyleSheet(self._get_action_btn_style())
-        self.btn_home.clicked.connect(self.pump_home.emit)
-
-        # SET 버튼 (토출 거리 설정)
-        self.btn_confirm = QPushButton(f"SET: {self._dispense_distance:.0f}mm")
-        self.btn_confirm.setFixedHeight(44)
-        self.btn_confirm.setCursor(Qt.PointingHandCursor)
-        self.btn_confirm.setFont(Fonts.h3())
-        self.btn_confirm.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {Colors.CYAN};
-                border: none;
-                border-radius: {Radius.MD}px;
-                color: {Colors.WHITE};
-                font-weight: 600;
-            }}
-            QPushButton:pressed {{
-                background-color: {Colors.CYAN_DARK};
-            }}
-        """)
-        self.btn_confirm.clicked.connect(self._on_confirm_click)
-
-        bottom_layout.addWidget(self.btn_home)
-        bottom_layout.addWidget(self.btn_confirm)
-        layout.addLayout(bottom_layout)
-
-    def _get_action_btn_style(self):
-        return f"""
+        # TEST 버튼
+        self.btn_test = QPushButton("TEST")
+        self.btn_test.setFixedHeight(44)
+        self.btn_test.setCursor(Qt.PointingHandCursor)
+        self.btn_test.setFont(Fonts.h3())
+        self.btn_test.setStyleSheet(f"""
             QPushButton {{
                 background-color: {Colors.BG_SECONDARY};
                 border: 2px solid {Colors.BORDER};
@@ -482,38 +436,45 @@ class PumpPanel(QFrame):
             QPushButton:pressed {{
                 background-color: {Colors.BG_TERTIARY};
             }}
-        """
+        """)
+        self.btn_test.clicked.connect(self._on_test_click)
+        layout.addWidget(self.btn_test)
 
-    def _on_confirm_click(self):
-        """확인 버튼 - 토출 거리 설정 키패드"""
+    def _on_time_click(self):
+        """시간 값 클릭 - 키패드 열기"""
         keypad = NumericKeypad(
-            title="Dispense Distance",
-            value=self._dispense_distance,
-            unit="mm",
-            min_val=0,
-            max_val=50,
+            title="Valve Time",
+            value=self._valve_time,
+            unit="s",
+            min_val=self._min_time,
+            max_val=self._max_time,
             allow_decimal=True,
             parent=self.window()
         )
-        keypad.value_confirmed.connect(self._on_dispense_confirmed)
+        keypad.value_confirmed.connect(self._on_time_confirmed)
         keypad.exec()
 
-    def _on_dispense_confirmed(self, value: float):
-        """토출 거리 확정"""
-        self._dispense_distance = value
-        self.btn_confirm.setText(f"SET: {self._dispense_distance:.0f}mm")
-        self.pump_dispense_set.emit(self._dispense_distance)
+    def _on_time_confirmed(self, value: float):
+        """시간 값 확정"""
+        self._valve_time = value
+        self.time_btn.setText(f"{self._valve_time:.1f} s")
+        self.valve_time_changed.emit(self._valve_time)
 
-    def get_dispense_distance(self) -> float:
-        return self._dispense_distance
+    def _on_test_click(self):
+        """TEST 버튼 - 설정 시간만큼 밸브 열기"""
+        if self._valve_time > 0:
+            self.valve_test.emit(self._valve_time)
 
-    def set_dispense_distance(self, value: float):
-        self._dispense_distance = max(0.0, min(50.0, value))
-        self.btn_confirm.setText(f"SET: {self._dispense_distance:.0f}mm")
+    def get_valve_time(self) -> float:
+        return self._valve_time
+
+    def set_valve_time(self, value: float):
+        self._valve_time = max(self._min_time, min(self._max_time, value))
+        self.time_btn.setText(f"{self._valve_time:.1f} s")
 
 
 class SettingPage(BasePage):
-    """설정 페이지 (LED Power + Blade + Pump)"""
+    """설정 페이지 (LED Power + Blade + Valve)"""
 
     # LED 시그널
     led_power_changed = Signal(int)
@@ -525,12 +486,9 @@ class SettingPage(BasePage):
     blade_move = Signal()  # MOVE 버튼 클릭
     blade_home = Signal()
 
-    # Pump 시그널
-    pump_home = Signal()
-    pump_fill = Signal(float)
-    pump_fill_home = Signal()
-    pump_push = Signal(float)
-    pump_dispense_set = Signal(float)
+    # Valve 시그널
+    valve_time_changed = Signal(float)
+    valve_test = Signal(float)
 
     def __init__(self, parent=None):
         super().__init__("Setting", show_back=True, parent=parent)
@@ -554,17 +512,14 @@ class SettingPage(BasePage):
         self.blade_panel.blade_move.connect(self.blade_move.emit)
         self.blade_panel.home_axis.connect(self.blade_home.emit)
 
-        # Pump 패널
-        self.pump_panel = PumpPanel()
-        self.pump_panel.pump_home.connect(self.pump_home.emit)
-        self.pump_panel.pump_fill.connect(self.pump_fill.emit)
-        self.pump_panel.pump_fill_home.connect(self.pump_fill_home.emit)
-        self.pump_panel.pump_push.connect(self.pump_push.emit)
-        self.pump_panel.pump_dispense_set.connect(self.pump_dispense_set.emit)
+        # Valve 패널
+        self.valve_panel = ValvePanel()
+        self.valve_panel.valve_time_changed.connect(self.valve_time_changed.emit)
+        self.valve_panel.valve_test.connect(self.valve_test.emit)
 
         panels_layout.addWidget(self.led_panel, 1)
         panels_layout.addWidget(self.blade_panel, 1)
-        panels_layout.addWidget(self.pump_panel, 1)
+        panels_layout.addWidget(self.valve_panel, 1)
 
         self.content_layout.addLayout(panels_layout)
 
@@ -584,11 +539,11 @@ class SettingPage(BasePage):
         """Blade 속도 값 설정"""
         self.blade_panel.set_speed(value)
 
-    def get_pump_dispense_distance(self) -> float:
-        """Pump 토출 거리 반환"""
-        return self.pump_panel.get_dispense_distance()
+    def get_valve_time(self) -> float:
+        """밸브 시간 반환"""
+        return self.valve_panel.get_valve_time()
 
-    def set_pump_dispense_distance(self, value: float):
-        """Pump 토출 거리 설정"""
-        self.pump_panel.set_dispense_distance(value)
+    def set_valve_time(self, value: float):
+        """밸브 시간 설정"""
+        self.valve_panel.set_valve_time(value)
 

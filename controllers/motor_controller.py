@@ -23,11 +23,6 @@ class MotorConfig:
     z_min: float = 0.0          # Z축 최소 위치 (mm)
     z_max: float = 80.0         # Z축 최대 위치 (mm) - 실제 스펙
     drop_speed: int = 150       # Z축 하강 속도 (mm/min)
-    # 레진 펌프 (시린지) 설정
-    pump_speed: int = 300       # 펌프 속도 (mm/min)
-    pump_max_position: float = 200.0   # 플런저 최대 이동 거리 (mm, 홈=최후방)
-    pump_dispense_distance: float = 10.0  # 레이어당 토출 거리 (mm)
-    pump_warn_position: float = 10.0   # 레진 부족 경고 위치 (mm)
 
 
 class MotorController:
@@ -50,9 +45,6 @@ class MotorController:
         # 홈잉 상태
         self._z_is_homed = False
         self._x_is_homed = False
-
-        # 펌프 상태
-        self._pump_position: float = 0.0  # 현재 플런저 위치 (0=Tip쪽, 200=홈쪽)
 
         # 재시도 설정
         self._max_retries = 3
@@ -121,8 +113,6 @@ class MotorController:
                 timeout = 300  # X축 이동: 5분
             elif "G1" in gcode and "X" in gcode:
                 timeout = 300
-            elif "G0" in gcode and "Y" in gcode:
-                timeout = 300  # Y축(펌프) 이동: 5분
             elif "G28" in gcode:
                 timeout = 120  # 홈잉: 120초
             elif "M400" in gcode:
@@ -388,118 +378,17 @@ class MotorController:
         """X축 홈(0mm)으로 이동 (G0 이동, G28 아님)"""
         return self.x_move_absolute(0, speed)
 
-    # ==================== 펌프 (시린지 Y축) 제어 ====================
+    # ==================== 솔레노이드 밸브 제어 (FAN0/PF7) ====================
 
-    def pump_home(self) -> bool:
-        """
-        펌프 홈잉 (G28 Y → 좌표 설정 → Tip쪽으로 이동)
+    def valve_on(self) -> bool:
+        """솔레노이드 밸브 열기 (레진 토출)"""
+        print("[Motor] Valve ON")
+        return self.send_gcode("SET_PIN PIN=valve VALUE=1", timeout=10)
 
-        Flow:
-            1. G28 Y (엔드스톱까지 이동)
-            2. G92 Y200 (현재 위치를 200mm로 설정)
-            3. G0 Y0 (200mm 전진 → Tip쪽, 위치=0)
-        """
-        print("[Motor] 펌프 홈잉 시작")
-
-        # 1. Y축 홈잉 (엔드스톱)
-        print("[Motor] 펌프: G28 Y (엔드스톱)")
-        if not self.send_gcode("G28 Y", timeout=300):
-            print("[Motor] 펌프 홈잉 실패: G28 Y")
-            return False
-        self.wait_for_movement_complete(timeout=300)
-
-        # 2. 현재 위치를 200mm로 설정 (홈=최후방)
-        if not self.send_gcode("G92 Y200", timeout=10):
-            return False
-
-        # 3. 200mm 전진 → Tip쪽 (위치=0)
-        print("[Motor] 펌프: Y0으로 이동 (Tip쪽)")
-        if not self.send_gcode(f"G90\nG0 Y0 F{self.config.pump_speed}", timeout=300):
-            print("[Motor] 펌프 홈잉 실패: Y0 이동")
-            return False
-        self.wait_for_movement_complete(timeout=300)
-
-        self._pump_position = 0.0
-        print(f"[Motor] 펌프 홈잉 완료: 위치={self._pump_position}mm")
-        return True
-
-    def pump_fill(self, distance: float) -> bool:
-        """
-        레진 빨아들이기 (플런저 후퇴, 위치 증가)
-
-        Args:
-            distance: 후퇴 거리 (mm), 양수
-        """
-        if distance <= 0:
-            return True
-
-        max_pos = self.config.pump_max_position
-        target = min(self._pump_position + distance, max_pos)
-        actual = target - self._pump_position
-
-        if actual <= 0:
-            print(f"[Motor] 펌프 이미 최대 위치 ({self._pump_position:.1f}mm) - FILL 생략")
-            return True
-
-        print(f"[Motor] 펌프 FILL: {actual:.1f}mm 후퇴 (현재:{self._pump_position:.1f} → 목표:{target:.1f}mm)")
-        gcode = f"G90\nG0 Y{target:.1f} F{self.config.pump_speed}"
-        success = self.send_gcode(gcode, timeout=300)
-        if success:
-            self.wait_for_movement_complete(timeout=300)
-            self._pump_position = target
-            print(f"[Motor] 펌프 FILL 완료: 위치={self._pump_position:.1f}mm")
-        return success
-
-    def pump_fill_to_home(self) -> bool:
-        """홈까지 후퇴 (가득 채우기)"""
-        max_pos = self.config.pump_max_position
-        return self.pump_fill(max_pos - self._pump_position)
-
-    def pump_push(self, distance: float) -> bool:
-        """
-        레진 밀어내기 (플런저 전진, 위치 감소)
-
-        Args:
-            distance: 전진 거리 (mm), 양수
-        """
-        if distance <= 0:
-            return True
-
-        target = max(self._pump_position - distance, 0.0)
-        actual = self._pump_position - target
-
-        if actual <= 0:
-            print(f"[Motor] 펌프 이미 최소 위치 ({self._pump_position:.1f}mm) - PUSH 생략")
-            return True
-
-        print(f"[Motor] 펌프 PUSH: {actual:.1f}mm 전진 (현재:{self._pump_position:.1f} → 목표:{target:.1f}mm)")
-        gcode = f"G90\nG0 Y{target:.1f} F{self.config.pump_speed}"
-        success = self.send_gcode(gcode, timeout=300)
-        if success:
-            self.wait_for_movement_complete(timeout=300)
-            self._pump_position = target
-            print(f"[Motor] 펌프 PUSH 완료: 위치={self._pump_position:.1f}mm")
-        return success
-
-    def pump_dispense(self, distance: float) -> bool:
-        """
-        출력용 레진 토출 (매 레이어 호출)
-
-        Args:
-            distance: 토출 거리 (mm)
-
-        Returns:
-            성공 여부
-        """
-        return self.pump_push(distance)
-
-    def pump_get_position(self) -> float:
-        """현재 플런저 위치 반환 (0=Tip, 200=홈)"""
-        return self._pump_position
-
-    def pump_is_low(self) -> bool:
-        """레진 부족 여부 확인"""
-        return self._pump_position <= self.config.pump_warn_position
+    def valve_off(self) -> bool:
+        """솔레노이드 밸브 닫기"""
+        print("[Motor] Valve OFF")
+        return self.send_gcode("SET_PIN PIN=valve VALUE=0", timeout=10)
 
     # ==================== 복합 동작 ====================
 

@@ -1,7 +1,6 @@
 """
 VERICOM DLP 3D Printer GUI - Leveling Page
-좌측: 스테이지/블레이드 수평 맞추기 (레벨링)
-우측: 레진 공급장치 초기 충전 (프라이밍)
+스테이지/블레이드 수평 맞추기 (레벨링)
 """
 
 from PySide6.QtWidgets import (
@@ -32,25 +31,6 @@ LEVEL_STEPS = [
     },
 ]
 LEVEL_DONE_DESC = "블레이드를 먼저 고정시키고\nZ축 Stage를 고정한 후\nDone을 누르세요."
-
-# ==================== 프라이밍 단계 정의 ====================
-PRIME_STEPS = [
-    {
-        "icon": Icons.PUMP_HOME,
-        "desc": "호스를 레진통에 넣지 마세요.\n버튼을 누르면 플런저가 초기화됩니다.",
-    },
-    {
-        "icon": Icons.PUMP_FILL,
-        "desc": "플런저가 앞으로 이동합니다.\n버튼을 누르세요.",
-    },
-    {
-        "icon": Icons.PUMP_HOME,
-        "desc": "호스 끝을 레진통에 담근 후\n버튼을 누르세요.",
-    },
-]
-PRIME_DONE_DESC = ("충전 완료.\n호스 끝에 슬롯노즐을 장착하세요.\n"
-                   "배출량 설정은 Setting에서 조정하세요.\n"
-                   "Done을 누르세요.")
 
 
 class StepPanel(QFrame):
@@ -227,44 +207,33 @@ class StepPanel(QFrame):
 
 
 class LevelingPage(BasePage):
-    """레벨링 + 프라이밍 통합 페이지"""
+    """레벨링 페이지"""
 
     # 레벨링 시그널
     z_home = Signal()
     x_home = Signal()
     x_move = Signal(float, int)  # distance, speed
 
-    # 프라이밍 시그널
-    pump_home = Signal()
-    pump_push = Signal(float)  # distance
-    pump_fill_home = Signal()
-
     def __init__(self, parent=None):
         super().__init__("Leveling", show_back=True, parent=parent)
 
         self._busy = False
-        self._active_panel = None  # "level" or "prime"
         self._setup_content()
 
     def _setup_content(self):
         """콘텐츠 구성"""
-        # 좌우 분할 레이아웃
         split_layout = QHBoxLayout()
         split_layout.setSpacing(16)
         split_layout.setContentsMargins(20, 10, 20, 10)
 
-        # 좌측: 레벨링 패널
+        # 레벨링 패널 (가운데 정렬)
         self.level_panel = StepPanel("Leveling", LEVEL_STEPS, LEVEL_DONE_DESC)
         self.level_panel.action_clicked.connect(self._on_level_action)
         self.level_panel.done_clicked.connect(self._on_done)
 
-        # 우측: 프라이밍 패널
-        self.prime_panel = StepPanel("Priming", PRIME_STEPS, PRIME_DONE_DESC)
-        self.prime_panel.action_clicked.connect(self._on_prime_action)
-        self.prime_panel.done_clicked.connect(self._on_done)
-
+        split_layout.addStretch()
         split_layout.addWidget(self.level_panel)
-        split_layout.addWidget(self.prime_panel)
+        split_layout.addStretch()
 
         self.content_layout.addLayout(split_layout)
 
@@ -274,8 +243,7 @@ class LevelingPage(BasePage):
             return
 
         self._busy = True
-        self._active_panel = "level"
-        self._set_all_buttons_enabled(False)
+        self.level_panel.set_action_enabled(False)
 
         step = self.level_panel.step
         if step == 0:
@@ -285,42 +253,11 @@ class LevelingPage(BasePage):
         elif step == 2:
             self.x_move.emit(75.0, 600)  # 10mm/s = 600mm/min
 
-    def _on_prime_action(self):
-        """프라이밍 액션 버튼 클릭"""
-        if self._busy:
-            return
-
-        self._busy = True
-        self._active_panel = "prime"
-        self._set_all_buttons_enabled(False)
-
-        step = self.prime_panel.step
-        if step == 0:
-            self.pump_home.emit()          # 플런저 초기화 (홈)
-        elif step == 1:
-            self.pump_push.emit(150.0)     # 150mm 앞으로 밀기
-        elif step == 2:
-            self.pump_fill_home.emit()     # 홈으로 당기기 = 레진 흡입
-
-    def _set_all_buttons_enabled(self, enabled: bool):
-        """양쪽 패널 버튼 모두 활성화/비활성화"""
-        self.level_panel.set_action_enabled(enabled)
-        self.prime_panel.set_action_enabled(enabled)
-
     def on_motor_finished(self):
         """모터 작업 완료 시 main.py에서 호출"""
         self._busy = False
-
-        # 활성 패널의 단계 진행
-        if self._active_panel == "level":
-            self.level_panel.advance_step()
-        elif self._active_panel == "prime":
-            self.prime_panel.advance_step()
-
-        self._active_panel = None
-
-        # 아직 완료되지 않은 패널의 버튼 다시 활성화
-        self._set_all_buttons_enabled(True)
+        self.level_panel.advance_step()
+        self.level_panel.set_action_enabled(True)
 
     def _on_done(self):
         """Done 버튼 클릭"""
@@ -329,6 +266,4 @@ class LevelingPage(BasePage):
     def reset(self):
         """페이지 초기화 (진입 시 호출)"""
         self._busy = False
-        self._active_panel = None
         self.level_panel.reset()
-        self.prime_panel.reset()
