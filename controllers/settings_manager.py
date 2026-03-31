@@ -19,7 +19,6 @@ class PrintSettings:
     """프린트 관련 설정"""
     led_power: int = 43         # LED 파워 (9-100%, 1023=100%, 440=43%)
     blade_speed: int = 5        # Blade 속도 (1-15 mm/s, 리드스크류)
-    valve_time: float = 0.0    # 솔레노이드 밸브 열림 시간 (초, 0=비활성)
 
 
 @dataclass
@@ -73,8 +72,7 @@ class SettingsManager:
             print_data = data.get('print_settings', {})
             self._settings.print_settings = PrintSettings(
                 led_power=print_data.get('led_power', 100),
-                blade_speed=print_data.get('blade_speed', 5),
-                valve_time=print_data.get('valve_time', 0.0)
+                blade_speed=print_data.get('blade_speed', 5)
             )
 
             # 기타 설정 로드
@@ -84,7 +82,6 @@ class SettingsManager:
             print(f"[Settings] 설정 로드 완료: {SETTINGS_FILE}")
             print(f"  - LED Power: {self._settings.print_settings.led_power}%")
             print(f"  - Blade Speed: {self._settings.print_settings.blade_speed}mm/s")
-            print(f"  - Valve Time: {self._settings.print_settings.valve_time}s")
 
         except Exception as e:
             print(f"[Settings] 설정 로드 실패: {e}")
@@ -132,18 +129,6 @@ class SettingsManager:
         self._settings.print_settings.blade_speed = value
         self.save()
 
-    # ==================== Valve Time ====================
-
-    def get_valve_time(self) -> float:
-        """밸브 열림 시간 반환 (초)"""
-        return self._settings.print_settings.valve_time
-
-    def set_valve_time(self, value: float):
-        """밸브 열림 시간 설정 (초, 0~10)"""
-        value = max(0.0, min(10.0, value))
-        self._settings.print_settings.valve_time = value
-        self.save()
-
     # ==================== Language ====================
 
     def get_language(self) -> str:
@@ -178,8 +163,6 @@ class SettingsManager:
             return self._settings.print_settings.led_power
         elif key == "blade_speed":
             return self._settings.print_settings.blade_speed
-        elif key == "valve_time":
-            return self._settings.print_settings.valve_time
         return default
 
     def set(self, key: str, value):
@@ -192,8 +175,6 @@ class SettingsManager:
             self._settings.print_settings.led_power = value
         elif key == "blade_speed":
             self._settings.print_settings.blade_speed = value
-        elif key == "valve_time":
-            self._settings.print_settings.valve_time = value
         self.save()
 
 
