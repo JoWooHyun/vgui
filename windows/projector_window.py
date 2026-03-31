@@ -6,7 +6,7 @@ VERICOM DLP 3D Printer - Projector Window
 import os
 from PySide6.QtWidgets import QMainWindow, QLabel, QApplication
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QPixmap, QImage, QPainter, QColor
+from PySide6.QtGui import QPixmap, QImage, QPainter, QColor, QTransform
 
 # 로고 이미지 경로
 LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "VERICOM_LOGO.png")
@@ -103,8 +103,11 @@ class ProjectorWindow(QMainWindow):
 
         self._current_pixmap = pixmap
 
+        # 좌우 반전 (프로젝터 미러링 보정)
+        mirrored = pixmap.transformed(QTransform().scale(-1, 1))
+
         # 윈도우 크기에 맞게 스케일링
-        scaled_pixmap = pixmap.scaled(
+        scaled_pixmap = mirrored.scaled(
             self.image_label.size(),
             Qt.KeepAspectRatio,
             Qt.SmoothTransformation
