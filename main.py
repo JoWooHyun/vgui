@@ -50,6 +50,11 @@ class MotorWorker(QObject):
                 self.motor.x_move_relative(distance, speed=speed)
             elif self.operation == "x_home":
                 self.motor.x_home()
+            elif self.operation == "y_move":
+                distance = self.kwargs.get("distance", 0)
+                self.motor.y_move_relative(distance)
+            elif self.operation == "y_home":
+                self.motor.y_home()
         except Exception as e:
             self.error.emit(str(e))
         finally:
@@ -278,7 +283,9 @@ class MainWindow(QMainWindow):
         self.setting_page.blade_move.connect(self._setting_blade_move)
         self.setting_page.led_power_changed.connect(self._on_led_power_changed)
         self.setting_page.blade_speed_changed.connect(self._on_blade_speed_changed)
-        
+        self.setting_page.y_move.connect(self._setting_y_move)
+        self.setting_page.y_home.connect(self._setting_y_home)
+
         # 매뉴얼 페이지
         self.manual_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TOOL))
         self.manual_page.z_move.connect(self._move_z)
@@ -704,6 +711,16 @@ class MainWindow(QMainWindow):
         else:  # 0에 가까우면 140으로
             print("[Setting] Blade 0 → 140mm 이동")
             self.motor.x_move_absolute(140, blade_speed)
+
+    def _setting_y_move(self, distance: float):
+        """Setting 페이지에서 Y축 이동"""
+        print(f"[Setting] Y Axis Move: {distance}mm")
+        self._start_motor_operation("y_move", distance=distance)
+
+    def _setting_y_home(self):
+        """Setting 페이지에서 Y축 Home"""
+        print("[Setting] Y Axis Home")
+        self._start_motor_operation("y_home")
 
     # ==================== 설정 저장/동기화 ====================
 

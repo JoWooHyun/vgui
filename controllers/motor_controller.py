@@ -16,12 +16,15 @@ class MotorConfig:
     """모터 설정"""
     z_speed: int = 300          # Z축 이동 속도 (mm/min)
     x_speed: int = 300          # X축 이동 속도 (mm/min) - 리드스크류
+    y_speed: int = 300          # Y축 이동 속도 (mm/min)
     z_home_speed: int = 300     # Z축 홈 속도
     x_home_speed: int = 300     # X축 홈 속도 - 리드스크류
     x_min: float = 0.0          # X축 최소 위치 (mm)
     x_max: float = 150.0        # X축 최대 위치 (mm) - printer.cfg position_max
     z_min: float = 0.0          # Z축 최소 위치 (mm)
     z_max: float = 80.0         # Z축 최대 위치 (mm) - 실제 스펙
+    y_min: float = 0.0          # Y축 최소 위치 (mm)
+    y_max: float = 150.0        # Y축 최대 위치 (mm)
     drop_speed: int = 150       # Z축 하강 속도 (mm/min)
 
 
@@ -41,10 +44,12 @@ class MotorController:
         # 현재 위치 캐시
         self._z_position: float = 0.0
         self._x_position: float = 0.0
+        self._y_position: float = 0.0
 
         # 홈잉 상태
         self._z_is_homed = False
         self._x_is_homed = False
+        self._y_is_homed = False
 
         # 재시도 설정
         self._max_retries = 3
@@ -113,6 +118,8 @@ class MotorController:
                 timeout = 300  # X축 이동: 5분
             elif "G1" in gcode and "X" in gcode:
                 timeout = 300
+            elif "G1" in gcode and "Y" in gcode:
+                timeout = 120  # Y축 이동: 2분
             elif "G28" in gcode:
                 timeout = 120  # 홈잉: 120초
             elif "M400" in gcode:
@@ -378,6 +385,49 @@ class MotorController:
         """X축 홈(0mm)으로 이동 (G0 이동, G28 아님)"""
         return self.x_move_absolute(0, speed)
 
+    # ==================== Y축 제어 ====================
+
+    def y_home(self) -> bool:
+        """Y축 홈으로 이동"""
+        print("[Motor] Y축 홈 이동 시작")
+        success = self.send_gcode("G28 Y", timeout=120)
+        if success:
+            self._y_position = 0.0
+            self._y_is_homed = True
+            self.wait_for_movement_complete(timeout=120)
+            print("[Motor] Y축 홈 이동 완료")
+        return success
+
+    def y_move_relative(self, distance: float, speed: Optional[int] = None) -> bool:
+        """
+        Y축 상대 이동
+
+        Args:
+            distance: 이동 거리 (양수: 홈 반대방향, 음수: 홈 방향)
+            speed: 이동 속도 (mm/min), None이면 기본값
+        """
+        speed = speed or self.config.y_speed
+
+        # 목표 위치 계산 및 제한
+        target_position = self._y_position + distance
+        target_position = max(self.config.y_min, min(target_position, self.config.y_max))
+        actual_distance = target_position - self._y_position
+
+        if actual_distance == 0:
+            print(f"[Motor] Y축 이미 한계 위치 ({self._y_position:.1f}mm) - 이동 생략")
+            return True
+
+        if abs(actual_distance) != abs(distance):
+            print(f"[Motor] Y축 이동 제한: {distance}mm → {actual_distance:.1f}mm (범위: {self.config.y_min}~{self.config.y_max}mm)")
+
+        gcode = f"G91\nG1 Y{actual_distance} F{speed}\nG90"
+        print(f"[Motor] Y축 상대 이동: {actual_distance:.1f}mm @ {speed}mm/min")
+        success = self.send_gcode(gcode)
+        if success:
+            self._y_position = target_position
+            self.wait_for_movement_complete(timeout=120)
+        return success
+
     # ==================== 복합 동작 ====================
 
     def home_all(self) -> bool:
@@ -545,6 +595,7 @@ class MotorController:
                 data = response.json()
                 pos = data.get('result', {}).get('status', {}).get('toolhead', {}).get('position', [0, 0, 0, 0])
                 self._x_position = pos[0] if len(pos) > 0 else 0
+                self._y_position = pos[1] if len(pos) > 1 else 0
                 self._z_position = pos[2] if len(pos) > 2 else 0
         except:
             pass

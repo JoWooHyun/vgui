@@ -11,10 +11,13 @@ from PySide6.QtCore import Signal, Qt
 
 from pages.base_page import BasePage
 from components.numeric_keypad import NumericKeypad
+from components.icon_button import ControlButton, HomeButton
+from components.number_dial import DistanceSelector
 from styles.colors import Colors
 from styles.fonts import Fonts
+from styles.icons import Icons
 from styles.stylesheets import (
-    get_axis_panel_style,
+    get_axis_panel_style, get_axis_title_style,
     Radius
 )
 
@@ -342,8 +345,79 @@ class BladePanel(QFrame):
         self.speed_btn.setText(f"{self._speed_value} mm/s")
 
 
+class YAxisPanel(QFrame):
+    """Y축 모터 제어 패널 (홈 + 거리선택 + 위/아래)"""
+
+    move_positive = Signal(float)  # 홈 반대방향 (아래)
+    move_negative = Signal(float)  # 홈 방향 (위)
+    home_axis = Signal()           # 홈 이동
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._setup_ui()
+
+    def _setup_ui(self):
+        """UI 구성"""
+        self.setStyleSheet(get_axis_panel_style())
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(0)
+
+        layout.addStretch(1)
+
+        # 타이틀
+        self.title_label = QLabel("Y Axis")
+        self.title_label.setStyleSheet(get_axis_title_style())
+        self.title_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.title_label)
+
+        layout.addStretch(1)
+
+        # 거리 선택기 (0.1, 1.0, 10.0 mm)
+        self.distance_selector = DistanceSelector()
+        layout.addWidget(self.distance_selector)
+
+        layout.addStretch(1)
+
+        # 제어 버튼들 (HOME, UP, DOWN)
+        control_layout = QHBoxLayout()
+        control_layout.setSpacing(12)
+        control_layout.setAlignment(Qt.AlignCenter)
+
+        # 홈 버튼
+        self.btn_home = HomeButton(70, 28)
+        self.btn_home.clicked.connect(self.home_axis.emit)
+
+        # 위 버튼 (홈 방향)
+        self.btn_up = ControlButton(Icons.CHEVRON_UP, 70, 28)
+        self.btn_up.clicked.connect(self._on_move_up)
+
+        # 아래 버튼 (홈 반대방향)
+        self.btn_down = ControlButton(Icons.CHEVRON_DOWN, 70, 28)
+        self.btn_down.clicked.connect(self._on_move_down)
+
+        control_layout.addWidget(self.btn_home)
+        control_layout.addWidget(self.btn_up)
+        control_layout.addWidget(self.btn_down)
+
+        layout.addLayout(control_layout)
+
+        layout.addStretch(1)
+
+    def _on_move_up(self):
+        """위로 이동 (홈 방향 = 음의 방향)"""
+        distance = self.distance_selector.get_selected_distance()
+        self.move_negative.emit(distance)
+
+    def _on_move_down(self):
+        """아래로 이동 (홈 반대방향 = 양의 방향)"""
+        distance = self.distance_selector.get_selected_distance()
+        self.move_positive.emit(distance)
+
+
 class SettingPage(BasePage):
-    """설정 페이지 (LED Power + Blade)"""
+    """설정 페이지 (LED Power + Blade + Y Axis)"""
 
     # LED 시그널
     led_power_changed = Signal(int)
@@ -355,13 +429,17 @@ class SettingPage(BasePage):
     blade_move = Signal()  # MOVE 버튼 클릭
     blade_home = Signal()
 
+    # Y축 시그널
+    y_move = Signal(float)    # Y축 이동 (거리)
+    y_home = Signal()         # Y축 홈
+
     def __init__(self, parent=None):
         super().__init__("Setting", show_back=True, parent=parent)
         self._setup_content()
 
     def _setup_content(self):
         """콘텐츠 구성"""
-        # 2열 레이아웃
+        # 3열 레이아웃
         panels_layout = QHBoxLayout()
         panels_layout.setSpacing(20)
 
@@ -377,8 +455,15 @@ class SettingPage(BasePage):
         self.blade_panel.blade_move.connect(self.blade_move.emit)
         self.blade_panel.home_axis.connect(self.blade_home.emit)
 
+        # Y축 패널
+        self.y_panel = YAxisPanel()
+        self.y_panel.move_positive.connect(lambda d: self.y_move.emit(d))
+        self.y_panel.move_negative.connect(lambda d: self.y_move.emit(-d))
+        self.y_panel.home_axis.connect(self.y_home.emit)
+
         panels_layout.addWidget(self.led_panel, 1)
         panels_layout.addWidget(self.blade_panel, 1)
+        panels_layout.addWidget(self.y_panel, 1)
 
         self.content_layout.addLayout(panels_layout)
 
