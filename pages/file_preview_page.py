@@ -391,7 +391,6 @@ class FilePreviewPage(BasePage):
         self._led_power = 43     # % (1023 = 100%, 440 = 43%)
         self._blade_cycles = 1   # 블레이드 왕복 횟수 (1~3)
         self._blade_mode = "roundtrip"  # 블레이드 모드: "roundtrip"(왕복) / "oneway"(편도)
-        self._valve_time = 0.0  # 솔레노이드 밸브 열림 시간 (초, 0=비활성)
 
         self._setup_content()
     
@@ -511,19 +510,6 @@ class FilePreviewPage(BasePage):
         self.row_blade_mode.value_changed.connect(self._on_blade_mode_changed)
         right_layout.addWidget(self.row_blade_mode)
 
-        # Valve Time (솔레노이드 밸브 열림 시간, 0=비활성)
-        self.row_valve_time = EditableRow(
-            label="Valve Time",
-            value=self._valve_time,
-            unit="s",
-            min_val=0,
-            max_val=10,
-            step=0.1,
-            allow_decimal=True
-        )
-        self.row_valve_time.value_changed.connect(self._on_valve_time_changed)
-        right_layout.addWidget(self.row_valve_time)
-
         right_layout.addStretch()
         
         # 버튼들
@@ -605,11 +591,6 @@ class FilePreviewPage(BasePage):
         self._blade_mode = mode
         label = "왕복" if mode == "roundtrip" else "편도"
         print(f"[Preview] Blade Mode: {label}")
-
-    def _on_valve_time_changed(self, value: float):
-        """Valve Time 변경"""
-        self._valve_time = value
-        print(f"[Preview] Valve Time: {self._valve_time}s")
 
     def set_file(self, file_path: str):
         """파일 설정 및 정보 표시"""
@@ -751,7 +732,6 @@ class FilePreviewPage(BasePage):
                 'ledPower': self._led_power,
                 'bladeCycles': self._blade_cycles,
                 'bladeMode': self._blade_mode,
-                'valveTime': self._valve_time,
             }
             self.start_print.emit(self._file_path, full_params)
     
@@ -767,7 +747,6 @@ class FilePreviewPage(BasePage):
             'ledPower': self._led_power,
             'bladeCycles': self._blade_cycles,
             'bladeMode': self._blade_mode,
-            'valveTime': self._valve_time,
         }
     
     def get_blade_speed(self) -> int:
@@ -806,12 +785,3 @@ class FilePreviewPage(BasePage):
         if mode in ("roundtrip", "oneway"):
             self._blade_mode = mode
             self.row_blade_mode.set_value(mode)
-
-    def get_valve_time(self) -> float:
-        """Valve Time 반환"""
-        return self._valve_time
-
-    def set_valve_time(self, value: float):
-        """Valve Time 설정"""
-        self._valve_time = max(0.0, min(10.0, value))
-        self.row_valve_time.set_value(self._valve_time)

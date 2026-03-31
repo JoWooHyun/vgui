@@ -342,139 +342,8 @@ class BladePanel(QFrame):
         self.speed_btn.setText(f"{self._speed_value} mm/s")
 
 
-class ValvePanel(QFrame):
-    """솔레노이드 밸브 설정 패널"""
-
-    valve_time_changed = Signal(float)  # 밸브 시간 변경
-    valve_test = Signal(float)          # TEST 버튼 (설정 시간만큼 밸브 열기)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._valve_time = 0.0   # 기본값 0초 (비활성)
-        self._min_time = 0.0
-        self._max_time = 10.0
-        self._setup_ui()
-
-    def _setup_ui(self):
-        """UI 구성"""
-        self.setStyleSheet(get_axis_panel_style())
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(16)
-
-        # 타이틀
-        title = QLabel("VALVE SET")
-        title.setStyleSheet(f"""
-            QLabel {{
-                color: {Colors.NAVY};
-                font-size: 18px;
-                font-weight: 700;
-                background-color: transparent;
-                border: none;
-            }}
-        """)
-        title.setAlignment(Qt.AlignCenter)
-        layout.addWidget(title)
-
-        layout.addStretch(3)
-
-        # Time 라벨
-        time_label = QLabel("Time")
-        time_label.setAlignment(Qt.AlignCenter)
-        time_label.setStyleSheet(f"""
-            QLabel {{
-                color: {Colors.TEXT_SECONDARY};
-                font-size: 14px;
-                background-color: transparent;
-                border: none;
-            }}
-        """)
-        layout.addWidget(time_label)
-
-        # 시간 값 표시 (클릭 가능)
-        self.time_btn = QPushButton(f"{self._valve_time:.1f} s")
-        self.time_btn.setFixedSize(200, 80)
-        self.time_btn.setCursor(Qt.PointingHandCursor)
-        self.time_btn.setFont(Fonts.mono_display())
-        self.time_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {Colors.BG_SECONDARY};
-                border: 2px solid {Colors.CYAN};
-                border-radius: {Radius.LG}px;
-                color: {Colors.NAVY};
-                font-size: 36px;
-                font-weight: 700;
-            }}
-            QPushButton:pressed {{
-                background-color: {Colors.BG_TERTIARY};
-            }}
-        """)
-        self.time_btn.clicked.connect(self._on_time_click)
-
-        time_container = QHBoxLayout()
-        time_container.addStretch()
-        time_container.addWidget(self.time_btn)
-        time_container.addStretch()
-        layout.addLayout(time_container)
-
-        layout.addStretch(3)
-
-        # TEST 버튼
-        self.btn_test = QPushButton("TEST")
-        self.btn_test.setFixedHeight(44)
-        self.btn_test.setCursor(Qt.PointingHandCursor)
-        self.btn_test.setFont(Fonts.h3())
-        self.btn_test.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {Colors.BG_SECONDARY};
-                border: 2px solid {Colors.BORDER};
-                border-radius: {Radius.MD}px;
-                color: {Colors.TEXT_PRIMARY};
-                font-weight: 600;
-            }}
-            QPushButton:pressed {{
-                background-color: {Colors.BG_TERTIARY};
-            }}
-        """)
-        self.btn_test.clicked.connect(self._on_test_click)
-        layout.addWidget(self.btn_test)
-
-    def _on_time_click(self):
-        """시간 값 클릭 - 키패드 열기"""
-        keypad = NumericKeypad(
-            title="Valve Time",
-            value=self._valve_time,
-            unit="s",
-            min_val=self._min_time,
-            max_val=self._max_time,
-            allow_decimal=True,
-            parent=self.window()
-        )
-        keypad.value_confirmed.connect(self._on_time_confirmed)
-        keypad.exec()
-
-    def _on_time_confirmed(self, value: float):
-        """시간 값 확정"""
-        self._valve_time = value
-        self.time_btn.setText(f"{self._valve_time:.1f} s")
-        self.valve_time_changed.emit(self._valve_time)
-
-    def _on_test_click(self):
-        """TEST 버튼 - 설정 시간만큼 밸브 열기"""
-        if self._valve_time > 0:
-            self.valve_test.emit(self._valve_time)
-
-    def get_valve_time(self) -> float:
-        return self._valve_time
-
-    def set_valve_time(self, value: float):
-        self._valve_time = max(self._min_time, min(self._max_time, value))
-        self.time_btn.setText(f"{self._valve_time:.1f} s")
-
-
 class SettingPage(BasePage):
-    """설정 페이지 (LED Power + Blade + Valve)"""
+    """설정 페이지 (LED Power + Blade)"""
 
     # LED 시그널
     led_power_changed = Signal(int)
@@ -486,17 +355,13 @@ class SettingPage(BasePage):
     blade_move = Signal()  # MOVE 버튼 클릭
     blade_home = Signal()
 
-    # Valve 시그널
-    valve_time_changed = Signal(float)
-    valve_test = Signal(float)
-
     def __init__(self, parent=None):
         super().__init__("Setting", show_back=True, parent=parent)
         self._setup_content()
 
     def _setup_content(self):
         """콘텐츠 구성"""
-        # 3열 레이아웃
+        # 2열 레이아웃
         panels_layout = QHBoxLayout()
         panels_layout.setSpacing(20)
 
@@ -512,14 +377,8 @@ class SettingPage(BasePage):
         self.blade_panel.blade_move.connect(self.blade_move.emit)
         self.blade_panel.home_axis.connect(self.blade_home.emit)
 
-        # Valve 패널
-        self.valve_panel = ValvePanel()
-        self.valve_panel.valve_time_changed.connect(self.valve_time_changed.emit)
-        self.valve_panel.valve_test.connect(self.valve_test.emit)
-
         panels_layout.addWidget(self.led_panel, 1)
         panels_layout.addWidget(self.blade_panel, 1)
-        panels_layout.addWidget(self.valve_panel, 1)
 
         self.content_layout.addLayout(panels_layout)
 
@@ -538,12 +397,4 @@ class SettingPage(BasePage):
     def set_blade_speed(self, value: int):
         """Blade 속도 값 설정"""
         self.blade_panel.set_speed(value)
-
-    def get_valve_time(self) -> float:
-        """밸브 시간 반환"""
-        return self.valve_panel.get_valve_time()
-
-    def set_valve_time(self, value: float):
-        """밸브 시간 설정"""
-        self.valve_panel.set_valve_time(value)
 

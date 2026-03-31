@@ -50,7 +50,6 @@ class PrintJob:
     leveling_cycles: int = 1
     blade_cycles: int = 1  # 매 레이어 블레이드 왕복 횟수
     blade_mode: str = "roundtrip"  # "roundtrip"(왕복) / "oneway"(편도)
-    valve_time: float = 0.0  # 솔레노이드 밸브 열림 시간 (초, 0=비활성)
 
 
 class PrintWorker(QThread):
@@ -119,8 +118,7 @@ class PrintWorker(QThread):
     def start_print(self, file_path: str, params: Dict[str, Any],
                    blade_speed: int = 300, led_power: int = 440,
                    leveling_cycles: int = 1, blade_cycles: int = 1,
-                   blade_mode: str = "roundtrip",
-                   valve_time: float = 0.0):
+                   blade_mode: str = "roundtrip"):
         """
         프린트 시작
 
@@ -132,7 +130,6 @@ class PrintWorker(QThread):
             leveling_cycles: 레진 평탄화 횟수
             blade_cycles: 매 레이어 블레이드 왕복 횟수 (1~3)
             blade_mode: 블레이드 모드 ("roundtrip" 또는 "oneway")
-            valve_time: 솔레노이드 밸브 열림 시간 (초, 0=비활성)
         """
         if self.isRunning():
             print("[PrintWorker] 이미 실행 중")
@@ -152,8 +149,7 @@ class PrintWorker(QThread):
             led_power=led_power,
             leveling_cycles=leveling_cycles,
             blade_cycles=blade_cycles,
-            blade_mode=blade_mode,
-            valve_time=valve_time
+            blade_mode=blade_mode
         )
 
         # 플래그 초기화
@@ -218,7 +214,6 @@ class PrintWorker(QThread):
         print(f"  - 총 레이어: {params.totalLayer}")
         print(f"  - 블레이드 속도: {job.blade_speed} mm/min")
         print(f"  - LED 파워: {job.led_power}")
-        print(f"  - 밸브 시간: {job.valve_time}s/레이어")
 
         # 컨트롤러 설정 (시뮬레이션 모드가 아닐 때)
         # 주의: DLP는 main.py에서 이미 초기화됨, 다시 초기화하면 안됨
@@ -326,13 +321,6 @@ class PrintWorker(QThread):
             self.error_occurred.emit(f"레이어 {layer_idx}: Z축 이동 실패")
             self._is_stopped = True
             return False
-
-        # 1.5. 밸브 토출 (블레이드 이동 전)
-        if job.valve_time > 0:
-            if not self._valve_dispense(job.valve_time):
-                self.error_occurred.emit(f"레이어 {layer_idx}: 밸브 토출 실패")
-                self._is_stopped = True
-                return False
 
         # 2. X축 블레이드 이동 (blade_mode에 따라 분기, 홈=150mm쪽)
         if job.blade_mode == "oneway":
@@ -456,20 +444,6 @@ class PrintWorker(QThread):
             return self.motor.x_move_absolute(position, speed)
         else:
             time.sleep(0.2)
-            return True
-
-    def _valve_dispense(self, duration: float) -> bool:
-        """솔레노이드 밸브 열어서 레진 토출"""
-        print(f"[PrintWorker] 밸브 토출: {duration:.1f}s")
-        if self.motor and not self.simulation:
-            if not self.motor.valve_on():
-                return False
-            time.sleep(duration)
-            if not self.motor.valve_off():
-                return False
-            return True
-        else:
-            time.sleep(duration)  # 시뮬레이션
             return True
 
     def _dlp_projector_on(self):

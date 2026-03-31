@@ -378,18 +378,6 @@ class MotorController:
         """X축 홈(0mm)으로 이동 (G0 이동, G28 아님)"""
         return self.x_move_absolute(0, speed)
 
-    # ==================== 솔레노이드 밸브 제어 (FAN0/PF7) ====================
-
-    def valve_on(self) -> bool:
-        """솔레노이드 밸브 열기 (레진 토출)"""
-        print("[Motor] Valve ON")
-        return self.send_gcode("SET_PIN PIN=valve VALUE=1", timeout=10)
-
-    def valve_off(self) -> bool:
-        """솔레노이드 밸브 닫기"""
-        print("[Motor] Valve OFF")
-        return self.send_gcode("SET_PIN PIN=valve VALUE=0", timeout=10)
-
     # ==================== 복합 동작 ====================
 
     def home_all(self) -> bool:

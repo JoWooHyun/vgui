@@ -50,12 +50,6 @@ class MotorWorker(QObject):
                 self.motor.x_move_relative(distance, speed=speed)
             elif self.operation == "x_home":
                 self.motor.x_home()
-            elif self.operation == "valve_test":
-                import time
-                duration = self.kwargs.get("duration", 1.0)
-                self.motor.valve_on()
-                time.sleep(duration)
-                self.motor.valve_off()
         except Exception as e:
             self.error.emit(str(e))
         finally:
@@ -257,15 +251,9 @@ class MainWindow(QMainWindow):
         self.file_preview_page.set_led_power(saved_led_power)
         self.file_preview_page.set_blade_speed(saved_blade_speed)
 
-        # Valve 설정 적용
-        saved_valve_time = self.settings.get_valve_time()
-        self.setting_page.set_valve_time(saved_valve_time)
-        self.file_preview_page.set_valve_time(saved_valve_time)
-
         print(f"[System] 저장된 설정 적용:")
         print(f"  - LED Power: {saved_led_power}%")
         print(f"  - Blade Speed: {saved_blade_speed}mm/s")
-        print(f"  - Valve Time: {saved_valve_time}s")
 
     def _connect_signals(self):
         """시그널 연결"""
@@ -290,8 +278,6 @@ class MainWindow(QMainWindow):
         self.setting_page.blade_move.connect(self._setting_blade_move)
         self.setting_page.led_power_changed.connect(self._on_led_power_changed)
         self.setting_page.blade_speed_changed.connect(self._on_blade_speed_changed)
-        self.setting_page.valve_time_changed.connect(self._on_valve_time_changed)
-        self.setting_page.valve_test.connect(self._on_valve_test)
         
         # 매뉴얼 페이지
         self.manual_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TOOL))
@@ -490,7 +476,6 @@ class MainWindow(QMainWindow):
         leveling_cycles = params.get('levelingCycles', 1)
         blade_cycles = params.get('bladeCycles', 1)  # 매 레이어 블레이드 왕복 횟수
         blade_mode = params.get('bladeMode', 'roundtrip')  # 블레이드 모드 (왕복/편도)
-        valve_time = float(params.get('valveTime', 0.0))  # 밸브 열림 시간 (초)
 
         # 추가 파라미터 (run.gcode에서 추출된 값)
         estimated_time = int(params.get('estimatedPrintTime', 0))  # 초 단위
@@ -560,8 +545,7 @@ class MainWindow(QMainWindow):
             led_power=led_power,
             leveling_cycles=leveling_cycles,
             blade_cycles=blade_cycles,
-            blade_mode=blade_mode,
-            valve_time=valve_time
+            blade_mode=blade_mode
         )
 
     def _on_progress_updated(self, current: int, total: int):
@@ -720,19 +704,6 @@ class MainWindow(QMainWindow):
         else:  # 0에 가까우면 140으로
             print("[Setting] Blade 0 → 140mm 이동")
             self.motor.x_move_absolute(140, blade_speed)
-
-    # ==================== Valve 제어 ====================
-
-    def _on_valve_time_changed(self, time_val: float):
-        """Valve 시간 설정 변경"""
-        print(f"[Setting] Valve Time: {time_val}s")
-        self.settings.set_valve_time(time_val)
-        self.file_preview_page.set_valve_time(time_val)
-
-    def _on_valve_test(self, duration: float):
-        """Valve TEST: 설정 시간만큼 밸브 열고 닫기"""
-        print(f"[Setting] Valve Test: {duration}s")
-        self._start_motor_operation("valve_test", duration=duration)
 
     # ==================== 설정 저장/동기화 ====================
 
