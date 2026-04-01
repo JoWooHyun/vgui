@@ -122,7 +122,6 @@ class ManualPage(BasePage):
 
     def __init__(self, parent=None):
         super().__init__("Manual Control", show_back=True, parent=parent)
-        self._is_busy = False
         self._setup_content()
 
     def _setup_content(self):
@@ -157,29 +156,3 @@ class ManualPage(BasePage):
         """X축 위치 업데이트"""
         self.x_panel.set_value(value)
 
-    def set_busy(self, busy: bool):
-        """작업 중 상태 설정 - UI 잠금/해제"""
-        self._is_busy = busy
-
-        # 뒤로가기 버튼 비활성화
-        self.header.btn_back.setEnabled(not busy)
-
-        # 모든 제어 버튼 비활성화
-        self.z_panel.btn_home.setEnabled(not busy)
-        self.z_panel.btn_positive.setEnabled(not busy)
-        self.z_panel.btn_negative.setEnabled(not busy)
-
-        self.x_panel.btn_home.setEnabled(not busy)
-        self.x_panel.btn_positive.setEnabled(not busy)
-        self.x_panel.btn_negative.setEnabled(not busy)
-
-        # 타이틀 변경으로 상태 표시
-        if busy:
-            self.header.set_title("Manual Control - Moving...")
-        else:
-            self.header.set_title("Manual Control")
-
-    @property
-    def is_busy(self) -> bool:
-        """작업 중인지 여부"""
-        return self._is_busy

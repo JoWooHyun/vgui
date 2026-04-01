@@ -160,8 +160,7 @@ class MainWindow(QMainWindow):
         self.print_worker = None
 
         # 모터 워커 (비동기 모터 제어용)
-        self.motor_thread = None
-        self.motor_worker = None
+        self._motor_threads = []
 
         # 프로젝터 윈도우 (두 번째 모니터)
         self.projector_window = None
@@ -345,53 +344,36 @@ class MainWindow(QMainWindow):
     
     # ==================== 하드웨어 제어 ====================
 
-    def _start_motor_operation(self, operation: str, **kwargs):
-        """모터 작업을 비동기로 시작"""
-        # 이미 모터 작업 중이면 무시
-        if self.motor_thread and self.motor_thread.isRunning():
-            print(f"[Motor] 이미 작업 중, {operation} 무시")
-            return
-
-        # ManualPage UI 잠금
-        self.manual_page.set_busy(True)
-
+    def _start_motor_operation(self, operation: str, on_finished=None, **kwargs):
+        """모터 작업을 비동기로 시작 (Klipper 큐에 맡김)"""
         # 스레드 및 워커 생성
-        self.motor_thread = QThread()
-        self.motor_worker = MotorWorker(self.motor, operation, **kwargs)
-        self.motor_worker.moveToThread(self.motor_thread)
+        thread = QThread()
+        worker = MotorWorker(self.motor, operation, **kwargs)
+        worker.moveToThread(thread)
 
         # 시그널 연결
-        self.motor_thread.started.connect(self.motor_worker.run)
-        self.motor_worker.finished.connect(self._on_motor_finished)
-        self.motor_worker.error.connect(self._on_motor_error)
-        self.motor_worker.finished.connect(self.motor_thread.quit)
-        # 워커 삭제는 스레드 종료 후에 처리 (cross-thread 문제 방지)
-        self.motor_thread.finished.connect(self._cleanup_motor_thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(thread.quit)
+        worker.error.connect(self._on_motor_error)
+        thread.finished.connect(lambda: self._cleanup_thread(thread, worker))
+
+        # 완료 콜백 (레벨링 등)
+        if on_finished:
+            worker.finished.connect(on_finished)
 
         # 스레드 시작
-        self.motor_thread.start()
+        thread.start()
 
-    def _on_motor_finished(self):
-        """모터 작업 완료"""
-        print("[Motor] 작업 완료")
-        self.manual_page.set_busy(False)
-        # 레벨링 페이지 콜백
-        if self.stack.currentIndex() == self.PAGE_LEVELING:
-            self.leveling_page.on_motor_finished()
-
-    def _cleanup_motor_thread(self):
-        """모터 스레드 정리 (스레드 종료 후 호출)"""
-        if self.motor_worker:
-            self.motor_worker.deleteLater()
-            self.motor_worker = None
-        if self.motor_thread:
-            self.motor_thread.deleteLater()
-            self.motor_thread = None
+    def _cleanup_thread(self, thread, worker):
+        """모터 스레드 정리"""
+        if hasattr(self, '_motor_threads') and thread in self._motor_threads:
+            self._motor_threads.remove(thread)
+        worker.deleteLater()
+        thread.deleteLater()
 
     def _on_motor_error(self, error_msg: str):
         """모터 작업 오류"""
         print(f"[Motor] 오류: {error_msg}")
-        self.manual_page.set_busy(False)
 
     def _move_z(self, distance: float):
         """Z축 이동 (비동기)"""
@@ -423,17 +405,17 @@ class MainWindow(QMainWindow):
     def _leveling_z_home(self):
         """레벨링: Z축 홈"""
         print("[Leveling] Z축 홈으로 이동")
-        self._start_motor_operation("z_home")
+        self._start_motor_operation("z_home", on_finished=self.leveling_page.on_motor_finished)
 
     def _leveling_x_home(self):
         """레벨링: X축 홈"""
         print("[Leveling] X축 홈으로 이동")
-        self._start_motor_operation("x_home")
+        self._start_motor_operation("x_home", on_finished=self.leveling_page.on_motor_finished)
 
     def _leveling_x_move(self, distance: float, speed: int):
         """레벨링: X축 이동"""
         print(f"[Leveling] X축 {distance}mm 이동 (속도: {speed}mm/min)")
-        self._start_motor_operation("x_move", distance=distance, speed=speed)
+        self._start_motor_operation("x_move", on_finished=self.leveling_page.on_motor_finished, distance=distance, speed=speed)
 
     def _emergency_stop(self):
         """모든 동작 정지 (Klipper 유지)"""
