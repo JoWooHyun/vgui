@@ -49,7 +49,7 @@ class PrintJob:
     led_power: int = 440
     leveling_cycles: int = 1
     blade_cycles: int = 1  # 매 레이어 블레이드 왕복 횟수
-    blade_mode: str = "roundtrip"  # "roundtrip"(왕복) / "oneway"(편도)
+    # blade_mode: str = "roundtrip"  # 편도 모드 고정 (왕복 필요 시 주석 해제)
 
 
 class PrintWorker(QThread):
@@ -117,8 +117,7 @@ class PrintWorker(QThread):
 
     def start_print(self, file_path: str, params: Dict[str, Any],
                    blade_speed: int = 300, led_power: int = 440,
-                   leveling_cycles: int = 1, blade_cycles: int = 1,
-                   blade_mode: str = "roundtrip"):
+                   leveling_cycles: int = 1, blade_cycles: int = 1):
         """
         프린트 시작
 
@@ -129,7 +128,6 @@ class PrintWorker(QThread):
             led_power: LED 밝기 (91~1023)
             leveling_cycles: 레진 평탄화 횟수
             blade_cycles: 매 레이어 블레이드 왕복 횟수 (1~3)
-            blade_mode: 블레이드 모드 ("roundtrip" 또는 "oneway")
         """
         if self.isRunning():
             print("[PrintWorker] 이미 실행 중")
@@ -149,7 +147,7 @@ class PrintWorker(QThread):
             led_power=led_power,
             leveling_cycles=leveling_cycles,
             blade_cycles=blade_cycles,
-            blade_mode=blade_mode
+            # blade_mode 제거 - 편도 모드 고정
         )
 
         # 플래그 초기화
@@ -287,19 +285,14 @@ class PrintWorker(QThread):
 
     def _process_layer(self, layer_idx: int, job: PrintJob) -> bool:
         """
-        단일 레이어 처리
+        단일 레이어 처리 (편도 모드)
 
-        Flow (roundtrip 왕복 모드):
-        1. Z축 레이어 높이로 이동
-        2. X축 왕복 (140→0→140) × N회
-        3. 이미지 투영 → LED ON → 노광 → LED OFF
-        4. Z축 리프트 → Z축 다음 레이어
-
-        Flow (oneway 편도 모드):
+        Flow:
         1. Z축 레이어 높이로 이동
         2. X축 편도 (140→0) × N회
         3. 이미지 투영 → LED ON → 노광 → LED OFF
-        4. Z축 리프트 → X축 복귀(0→140) → Z축 다음 레이어
+        4. X축 복귀 (0→140)
+        5. Z축 다음 레이어 높이로 하강
 
         Returns:
             bool: 성공 시 True, 실패 시 False (이미지 로드 실패 등)
@@ -310,12 +303,8 @@ class PrintWorker(QThread):
         is_bottom = layer_idx < params.bottomLayerCount
         if is_bottom:
             exposure_time = params.bottomLayerExposureTime
-            lift_height = params.bottomLayerLiftHeight
-            lift_speed = params.bottomLayerLiftSpeed
         else:
             exposure_time = params.normalExposureTime
-            lift_height = params.normalLayerLiftHeight
-            lift_speed = params.normalLayerLiftSpeed
 
         # Z축 위치 계산
         z_position = (layer_idx + 1) * params.layerHeight
@@ -326,42 +315,40 @@ class PrintWorker(QThread):
             self._is_stopped = True
             return False
 
-        # 2. X축 블레이드 이동 (blade_mode에 따라 분기, 홈=150mm쪽)
-        if job.blade_mode == "oneway":
-            # 편도 모드: (140→0) × N회
-            for cycle in range(job.blade_cycles):
-                if not self._motor_x_move(0, job.blade_speed):
-                    self.error_occurred.emit(f"레이어 {layer_idx}: X축 이동 실패")
-                    self._is_stopped = True
-                    return False
-                # N회 반복 시 중간에 복귀 (마지막 제외)
-                if cycle < job.blade_cycles - 1:
-                    if not self._motor_x_move(140, job.blade_speed):
-                        self.error_occurred.emit(f"레이어 {layer_idx}: X축 복귀 실패")
-                        self._is_stopped = True
-                        return False
-        else:
-            # 왕복 모드: (140→0→140) × N회
-            for cycle in range(job.blade_cycles):
-                if not self._motor_x_move(0, job.blade_speed):
-                    self.error_occurred.emit(f"레이어 {layer_idx}: X축 이동 실패")
-                    self._is_stopped = True
-                    return False
+        # 2. X축 블레이드 편도 이동 (140→0) × N회
+        for cycle in range(job.blade_cycles):
+            if not self._motor_x_move(0, job.blade_speed):
+                self.error_occurred.emit(f"레이어 {layer_idx}: X축 이동 실패")
+                self._is_stopped = True
+                return False
+            # N회 반복 시 중간에 복귀 (마지막 제외)
+            if cycle < job.blade_cycles - 1:
                 if not self._motor_x_move(140, job.blade_speed):
                     self.error_occurred.emit(f"레이어 {layer_idx}: X축 복귀 실패")
                     self._is_stopped = True
                     return False
 
+        # [왕복 모드 - 필요 시 주석 해제]
+        # if job.blade_mode == "roundtrip":
+        #     for cycle in range(job.blade_cycles):
+        #         if not self._motor_x_move(0, job.blade_speed):
+        #             self.error_occurred.emit(f"레이어 {layer_idx}: X축 이동 실패")
+        #             self._is_stopped = True
+        #             return False
+        #         if not self._motor_x_move(140, job.blade_speed):
+        #             self.error_occurred.emit(f"레이어 {layer_idx}: X축 복귀 실패")
+        #             self._is_stopped = True
+        #             return False
+
         # 정지/일시정지 체크 (LED ON 전에)
         if self._check_stopped():
-            return True  # 정지 요청은 정상 종료
+            return True
         self._check_paused()
         if self._check_stopped():
             return True
 
         # 3. 이미지 투영 (실패 시 프린트 중지)
         if not self._show_layer_image(job.file_path, layer_idx):
-            # 이미지 로드 실패 - 프린트 중지
             self._mutex.lock()
             self._is_stopped = True
             self._mutex.unlock()
@@ -369,14 +356,10 @@ class PrintWorker(QThread):
 
         # 4. LED ON + 노광
         self._dlp_led_on(job.led_power)
-
-        # 노광 대기 (일시정지/정지 체크하면서)
         self._wait_exposure(exposure_time)
 
         # 5. LED OFF
         self._dlp_led_off()
-
-        # 이미지 클리어
         self.clear_image.emit()
 
         # LED OFF 후 일시정지/정지 체크
@@ -386,18 +369,11 @@ class PrintWorker(QThread):
         if self._check_stopped():
             return True
 
-        # 6. Z축 리프트
-        if not self._motor_z_move(z_position + lift_height, lift_speed):
-            self.error_occurred.emit(f"레이어 {layer_idx}: Z축 리프트 실패")
+        # 6. X축 복귀 (0→140)
+        if not self._motor_x_move(140, job.blade_speed):
+            self.error_occurred.emit(f"레이어 {layer_idx}: X축 복귀 실패")
             self._is_stopped = True
             return False
-
-        # 편도 모드: 리프트 후 X축 복귀 (0→140)
-        if job.blade_mode == "oneway":
-            if not self._motor_x_move(140, job.blade_speed):
-                self.error_occurred.emit(f"레이어 {layer_idx}: X축 복귀 실패")
-                self._is_stopped = True
-                return False
 
         # 7. Z축 다음 레이어 높이로 하강 (마지막 레이어가 아닐 때만)
         if layer_idx < job.params.totalLayer - 1:
