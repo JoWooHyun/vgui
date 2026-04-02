@@ -50,6 +50,9 @@ class PrintJob:
     leveling_cycles: int = 1
     blade_cycles: int = 1  # 매 레이어 블레이드 왕복 횟수
     # blade_mode: str = "roundtrip"  # 편도 모드 고정 (왕복 필요 시 주석 해제)
+    y_dispense_distance: float = 1.0   # Y축 토출 거리 (mm/레이어)
+    y_dispense_speed: int = 300        # Y축 토출 속도 (mm/min)
+    y_dispense_delay: float = 2.0      # Y축 토출 후 대기 (초)
 
 
 class PrintWorker(QThread):
@@ -72,6 +75,7 @@ class PrintWorker(QThread):
     error_occurred = Signal(str)  # error message
     print_completed = Signal()
     print_stopped = Signal()
+    resin_empty = Signal()  # 레진 부족 알림 (Y축 80mm 도달)
 
     # 이미지 표시 요청 시그널 (ProjectorWindow로 전달)
     show_image = Signal(object)  # QPixmap
@@ -95,6 +99,13 @@ class PrintWorker(QThread):
         # 동기화
         self._mutex = QMutex()
         self._pause_condition = QWaitCondition()
+        self._resin_mutex = QMutex()
+        self._resin_condition = QWaitCondition()
+
+        # Y축 레진 토출 상태
+        self._y_position = 0.0           # Y축 현재 위치 (누적)
+        self._y_dispensing_disabled = False  # True면 토출 스킵 (수동 공급 모드)
+        self._y_resin_waiting = False     # 레진 부족 응답 대기 중
 
         # 현재 작업
         self._job: Optional[PrintJob] = None
@@ -117,7 +128,10 @@ class PrintWorker(QThread):
 
     def start_print(self, file_path: str, params: Dict[str, Any],
                    blade_speed: int = 300, led_power: int = 440,
-                   leveling_cycles: int = 1, blade_cycles: int = 1):
+                   leveling_cycles: int = 1, blade_cycles: int = 1,
+                   y_dispense_distance: float = 1.0,
+                   y_dispense_speed: int = 300,
+                   y_dispense_delay: float = 2.0):
         """
         프린트 시작
 
@@ -128,6 +142,9 @@ class PrintWorker(QThread):
             led_power: LED 밝기 (91~1023)
             leveling_cycles: 레진 평탄화 횟수
             blade_cycles: 매 레이어 블레이드 왕복 횟수 (1~3)
+            y_dispense_distance: Y축 토출 거리 (mm/레이어)
+            y_dispense_speed: Y축 토출 속도 (mm/min)
+            y_dispense_delay: Y축 토출 후 대기 (초)
         """
         if self.isRunning():
             print("[PrintWorker] 이미 실행 중")
@@ -147,12 +164,17 @@ class PrintWorker(QThread):
             led_power=led_power,
             leveling_cycles=leveling_cycles,
             blade_cycles=blade_cycles,
-            # blade_mode 제거 - 편도 모드 고정
+            y_dispense_distance=y_dispense_distance,
+            y_dispense_speed=y_dispense_speed,
+            y_dispense_delay=y_dispense_delay,
         )
 
         # 플래그 초기화
         self._is_paused = False
         self._is_stopped = False
+        self._y_position = 0.0
+        self._y_dispensing_disabled = False
+        self._y_resin_waiting = False
 
         # 스레드 시작
         self.start()
@@ -181,8 +203,31 @@ class PrintWorker(QThread):
         self._is_paused = False
         self._pause_condition.wakeAll()
         self._mutex.unlock()
+        # 레진 대기 중이면 깨우기
+        self._resin_mutex.lock()
+        self._y_resin_waiting = False
+        self._resin_condition.wakeAll()
+        self._resin_mutex.unlock()
         self._set_status(PrintStatus.STOPPING)
         print("[PrintWorker] 정지 요청")
+
+    def disable_y_dispensing(self):
+        """레진 부족 → OK: Y토출 비활성화하고 프린팅 계속"""
+        self._y_dispensing_disabled = True
+        self._resin_mutex.lock()
+        self._y_resin_waiting = False
+        self._resin_condition.wakeAll()
+        self._resin_mutex.unlock()
+        print("[PrintWorker] Y축 토출 비활성화 (수동 공급 모드)")
+
+    def stop_by_resin_empty(self):
+        """레진 부족 → NO: 프린팅 중지"""
+        self._resin_mutex.lock()
+        self._y_resin_waiting = False
+        self._resin_condition.wakeAll()
+        self._resin_mutex.unlock()
+        self.stop()
+        print("[PrintWorker] 레진 부족으로 프린팅 중지")
 
     # ==================== 메인 루프 ====================
 
@@ -241,6 +286,14 @@ class PrintWorker(QThread):
             return
         if not self._motor_x_home():
             self.error_occurred.emit("X축 홈 이동 실패")
+            self._is_stopped = True
+            return
+
+        # Y축 홈
+        if self._check_stopped():
+            return
+        if not self._motor_y_home():
+            self.error_occurred.emit("Y축 홈 이동 실패")
             self._is_stopped = True
             return
 
@@ -315,7 +368,35 @@ class PrintWorker(QThread):
             self._is_stopped = True
             return False
 
-        # 2. X축 블레이드 편도 이동 (140→0) × N회
+        # 2. Y축 레진 토출 (토출 전 80mm 체크)
+        if not self._y_dispensing_disabled and job.y_dispense_distance > 0:
+            # 80mm 도달 체크 (토출 전)
+            Y_MAX_POSITION = 80.0
+            if self._y_position >= Y_MAX_POSITION:
+                # 레진 부족 → 일시정지 + 알림
+                print(f"[PrintWorker] Y축 {self._y_position}mm 도달 → 레진 부족 알림")
+                self._y_resin_waiting = True
+                self.resin_empty.emit()
+                # 유저 응답 대기
+                self._resin_mutex.lock()
+                while self._y_resin_waiting and not self._is_stopped:
+                    self._resin_condition.wait(self._resin_mutex, 1000)
+                self._resin_mutex.unlock()
+                if self._check_stopped():
+                    return True
+
+            # 토출 실행 (disable 안 된 경우)
+            if not self._y_dispensing_disabled:
+                if not self._motor_y_move(job.y_dispense_distance, job.y_dispense_speed):
+                    self.error_occurred.emit(f"레이어 {layer_idx}: Y축 토출 실패")
+                    self._is_stopped = True
+                    return False
+                self._y_position += job.y_dispense_distance
+                print(f"[PrintWorker] Y축 토출 {job.y_dispense_distance}mm (누적: {self._y_position}mm)")
+                # 토출 후 대기
+                time.sleep(job.y_dispense_delay)
+
+        # 3. X축 블레이드 편도 이동 (140→0) × N회
         for cycle in range(job.blade_cycles):
             if not self._motor_x_move(0, job.blade_speed):
                 self.error_occurred.emit(f"레이어 {layer_idx}: X축 이동 실패")
@@ -424,6 +505,23 @@ class PrintWorker(QThread):
             return self.motor.x_move_absolute(position, speed)
         else:
             time.sleep(0.2)
+            return True
+
+    def _motor_y_home(self) -> bool:
+        """Y축 홈"""
+        print("[PrintWorker] Y축 홈 이동")
+        if self.motor and not self.simulation:
+            return self.motor.y_home()
+        else:
+            time.sleep(0.3)
+            return True
+
+    def _motor_y_move(self, distance: float, speed: int = 300) -> bool:
+        """Y축 상대 이동"""
+        if self.motor and not self.simulation:
+            return self.motor.y_move_relative(distance, speed)
+        else:
+            time.sleep(0.1)
             return True
 
     def _dlp_projector_on(self):

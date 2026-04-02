@@ -19,6 +19,9 @@ class PrintSettings:
     """프린트 관련 설정"""
     led_power: int = 43         # LED 파워 (9-100%, 1023=100%, 440=43%)
     blade_speed: int = 5        # Blade 속도 (1-15 mm/s, 리드스크류)
+    y_dispense_distance: float = 1.0   # Y축 토출 거리 (mm/레이어)
+    y_dispense_speed: int = 5          # Y축 토출 속도 (mm/s)
+    y_dispense_delay: float = 2.0      # Y축 토출 후 대기 (초)
 
 
 @dataclass
@@ -72,7 +75,10 @@ class SettingsManager:
             print_data = data.get('print_settings', {})
             self._settings.print_settings = PrintSettings(
                 led_power=print_data.get('led_power', 100),
-                blade_speed=print_data.get('blade_speed', 5)
+                blade_speed=print_data.get('blade_speed', 5),
+                y_dispense_distance=print_data.get('y_dispense_distance', 1.0),
+                y_dispense_speed=print_data.get('y_dispense_speed', 5),
+                y_dispense_delay=print_data.get('y_dispense_delay', 2.0)
             )
 
             # 기타 설정 로드
@@ -129,6 +135,36 @@ class SettingsManager:
         self._settings.print_settings.blade_speed = value
         self.save()
 
+    # ==================== Y Dispense Distance ====================
+
+    def get_y_dispense_distance(self) -> float:
+        return self._settings.print_settings.y_dispense_distance
+
+    def set_y_dispense_distance(self, value: float):
+        value = max(0.1, min(5.0, value))
+        self._settings.print_settings.y_dispense_distance = value
+        self.save()
+
+    # ==================== Y Dispense Speed ====================
+
+    def get_y_dispense_speed(self) -> int:
+        return self._settings.print_settings.y_dispense_speed
+
+    def set_y_dispense_speed(self, value: int):
+        value = max(1, min(15, value))
+        self._settings.print_settings.y_dispense_speed = value
+        self.save()
+
+    # ==================== Y Dispense Delay ====================
+
+    def get_y_dispense_delay(self) -> float:
+        return self._settings.print_settings.y_dispense_delay
+
+    def set_y_dispense_delay(self, value: float):
+        value = max(0.5, min(10.0, value))
+        self._settings.print_settings.y_dispense_delay = value
+        self.save()
+
     # ==================== Language ====================
 
     def get_language(self) -> str:
@@ -163,6 +199,12 @@ class SettingsManager:
             return self._settings.print_settings.led_power
         elif key == "blade_speed":
             return self._settings.print_settings.blade_speed
+        elif key == "y_dispense_distance":
+            return self._settings.print_settings.y_dispense_distance
+        elif key == "y_dispense_speed":
+            return self._settings.print_settings.y_dispense_speed
+        elif key == "y_dispense_delay":
+            return self._settings.print_settings.y_dispense_delay
         return default
 
     def set(self, key: str, value):
@@ -175,6 +217,12 @@ class SettingsManager:
             self._settings.print_settings.led_power = value
         elif key == "blade_speed":
             self._settings.print_settings.blade_speed = value
+        elif key == "y_dispense_distance":
+            self._settings.print_settings.y_dispense_distance = value
+        elif key == "y_dispense_speed":
+            self._settings.print_settings.y_dispense_speed = value
+        elif key == "y_dispense_delay":
+            self._settings.print_settings.y_dispense_delay = value
         self.save()
 
 

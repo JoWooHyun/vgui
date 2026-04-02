@@ -19,6 +19,7 @@ from styles.colors import Colors
 from styles.fonts import Fonts
 from styles.icons import Icons
 from controllers.gcode_parser import extract_print_parameters
+from controllers.settings_manager import get_settings
 
 
 class InfoRow(QFrame):
@@ -390,6 +391,9 @@ class FilePreviewPage(BasePage):
         self._blade_speed = 5    # mm/s (실제값 = 표시값 × 60, 리드스크류)
         self._led_power = 43     # % (1023 = 100%, 440 = 43%)
         self._blade_cycles = 1   # 블레이드 왕복 횟수 (1~3)
+        self._y_dispense_distance = 1.0  # Y축 토출 거리 (mm/레이어)
+        self._y_dispense_speed = 5       # Y축 토출 속도 (mm/s)
+        self._y_dispense_delay = 2.0     # Y축 토출 후 대기 (초)
 
         self._setup_content()
     
@@ -501,7 +505,43 @@ class FilePreviewPage(BasePage):
         self.row_blade_cycles.value_changed.connect(self._on_blade_cycles_changed)
         right_layout.addWidget(self.row_blade_cycles)
 
-        # Blade Mode 토글 제거 (편도 모드 고정)
+        # Y Dispense Distance (mm/레이어)
+        self.row_y_dispense = EditableRow(
+            label="Y Dispense",
+            value=self._y_dispense_distance,
+            unit="mm",
+            min_val=0.1,
+            max_val=5.0,
+            step=0.1,
+            allow_decimal=True
+        )
+        self.row_y_dispense.value_changed.connect(self._on_y_dispense_changed)
+        right_layout.addWidget(self.row_y_dispense)
+
+        # Y Dispense Speed (mm/s)
+        self.row_y_speed = EditableRow(
+            label="Y Speed",
+            value=self._y_dispense_speed,
+            unit="mm/s",
+            min_val=1,
+            max_val=15,
+            step=1
+        )
+        self.row_y_speed.value_changed.connect(self._on_y_speed_changed)
+        right_layout.addWidget(self.row_y_speed)
+
+        # Y Dispense Delay (토출 후 대기 초)
+        self.row_y_delay = EditableRow(
+            label="Y Delay",
+            value=self._y_dispense_delay,
+            unit="s",
+            min_val=0.5,
+            max_val=10.0,
+            step=0.5,
+            allow_decimal=True
+        )
+        self.row_y_delay.value_changed.connect(self._on_y_delay_changed)
+        right_layout.addWidget(self.row_y_delay)
 
         right_layout.addStretch()
         
@@ -578,6 +618,24 @@ class FilePreviewPage(BasePage):
         """Blade Cycles 변경"""
         self._blade_cycles = int(value)
         print(f"[Preview] Blade Cycles: {self._blade_cycles}회")
+
+    def _on_y_dispense_changed(self, value: float):
+        """Y Dispense Distance 변경"""
+        self._y_dispense_distance = value
+        get_settings().set_y_dispense_distance(value)
+        print(f"[Preview] Y Dispense: {self._y_dispense_distance} mm")
+
+    def _on_y_speed_changed(self, value: float):
+        """Y Dispense Speed 변경"""
+        self._y_dispense_speed = int(value)
+        get_settings().set_y_dispense_speed(self._y_dispense_speed)
+        print(f"[Preview] Y Speed: {self._y_dispense_speed} mm/s (실제: {self._y_dispense_speed * 60} mm/min)")
+
+    def _on_y_delay_changed(self, value: float):
+        """Y Dispense Delay 변경"""
+        self._y_dispense_delay = value
+        get_settings().set_y_dispense_delay(value)
+        print(f"[Preview] Y Delay: {self._y_dispense_delay} s")
 
     def set_file(self, file_path: str):
         """파일 설정 및 정보 표시"""
@@ -718,6 +776,9 @@ class FilePreviewPage(BasePage):
                 'bladeSpeed': self._blade_speed * 60,  # mm/s → mm/min 변환
                 'ledPower': self._led_power,
                 'bladeCycles': self._blade_cycles,
+                'yDispenseDistance': self._y_dispense_distance,
+                'yDispenseSpeed': self._y_dispense_speed * 60,  # mm/s → mm/min
+                'yDispenseDelay': self._y_dispense_delay,
             }
             self.start_print.emit(self._file_path, full_params)
 
@@ -732,6 +793,9 @@ class FilePreviewPage(BasePage):
             'bladeSpeed': self._blade_speed * 60,  # mm/s → mm/min 변환
             'ledPower': self._led_power,
             'bladeCycles': self._blade_cycles,
+            'yDispenseDistance': self._y_dispense_distance,
+            'yDispenseSpeed': self._y_dispense_speed * 60,  # mm/s → mm/min
+            'yDispenseDelay': self._y_dispense_delay,
         }
     
     def get_blade_speed(self) -> int:
@@ -760,4 +824,25 @@ class FilePreviewPage(BasePage):
         """Blade Cycles 설정"""
         self._blade_cycles = max(1, min(3, value))
         self.row_blade_cycles.set_value(self._blade_cycles)
+
+    def get_y_dispense_distance(self) -> float:
+        return self._y_dispense_distance
+
+    def set_y_dispense_distance(self, value: float):
+        self._y_dispense_distance = value
+        self.row_y_dispense.set_value(value)
+
+    def get_y_dispense_speed(self) -> int:
+        return self._y_dispense_speed
+
+    def set_y_dispense_speed(self, value: int):
+        self._y_dispense_speed = value
+        self.row_y_speed.set_value(value)
+
+    def get_y_dispense_delay(self) -> float:
+        return self._y_dispense_delay
+
+    def set_y_dispense_delay(self, value: float):
+        self._y_dispense_delay = value
+        self.row_y_delay.set_value(value)
 

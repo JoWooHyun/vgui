@@ -255,6 +255,11 @@ class MainWindow(QMainWindow):
         self.file_preview_page.set_led_power(saved_led_power)
         self.file_preview_page.set_blade_speed(saved_blade_speed)
 
+        # Y축 토출 설정 적용
+        self.file_preview_page.set_y_dispense_distance(self.settings.get_y_dispense_distance())
+        self.file_preview_page.set_y_dispense_speed(self.settings.get_y_dispense_speed())
+        self.file_preview_page.set_y_dispense_delay(self.settings.get_y_dispense_delay())
+
         print(f"[System] 저장된 설정 적용:")
         print(f"  - LED Power: {saved_led_power}%")
         print(f"  - Blade Speed: {saved_blade_speed}mm/s")
@@ -466,6 +471,11 @@ class MainWindow(QMainWindow):
         blade_cycles = params.get('bladeCycles', 1)  # 매 레이어 블레이드 왕복 횟수
         # blade_mode 제거 - 편도(oneway) 모드 고정
 
+        # Y축 토출 파라미터
+        y_dispense_distance = params.get('yDispenseDistance', 1.0)
+        y_dispense_speed = params.get('yDispenseSpeed', 300)  # 이미 mm/min
+        y_dispense_delay = params.get('yDispenseDelay', 2.0)
+
         # 추가 파라미터 (run.gcode에서 추출된 값)
         estimated_time = int(params.get('estimatedPrintTime', 0))  # 초 단위
         layer_height = float(params.get('layerHeight', 0.0))
@@ -517,6 +527,7 @@ class MainWindow(QMainWindow):
         self.print_worker.print_completed.connect(self._on_print_completed)
         self.print_worker.print_stopped.connect(self._on_print_stopped_by_worker)
         self.print_worker.error_occurred.connect(self._on_print_error)
+        self.print_worker.resin_empty.connect(self._on_resin_empty)
 
         # 프로젝터 윈도우에 이미지 표시 연결
         if self.projector_window:
@@ -533,7 +544,10 @@ class MainWindow(QMainWindow):
             blade_speed=blade_speed,
             led_power=led_power,
             leveling_cycles=leveling_cycles,
-            blade_cycles=blade_cycles
+            blade_cycles=blade_cycles,
+            y_dispense_distance=y_dispense_distance,
+            y_dispense_speed=y_dispense_speed,
+            y_dispense_delay=y_dispense_delay
         )
 
     def _on_progress_updated(self, current: int, total: int):
@@ -564,6 +578,33 @@ class MainWindow(QMainWindow):
 
         # PrintProgressPage에서 에러 표시 및 종료 버튼 표시
         self.print_progress_page.show_error(message)
+
+    def _on_resin_empty(self):
+        """레진 부족 알림 (Y축 80mm 도달)"""
+        print("[Print] 레진 부족 알림")
+
+        from pages.file_preview_page import ConfirmDialog
+        dialog = ConfirmDialog(
+            "레진 부족",
+            "레진이 다 떨어졌습니다.\n계속 프린팅하시겠습니까?",
+            self
+        )
+        # "Delete" 텍스트를 "NO"로, "Cancel"을 "OK"로 변경
+        dialog.btn_confirm.setText("NO")
+        dialog.btn_cancel.setText("OK")
+
+        result = dialog.exec()
+
+        if result == 0:
+            # Cancel(OK) 클릭 → Y토출 없이 프린팅 계속
+            print("[Print] 레진 부족 → OK: 수동 공급 모드로 계속")
+            if self.print_worker:
+                self.print_worker.disable_y_dispensing()
+        else:
+            # Confirm(NO) 클릭 → 프린팅 중지
+            print("[Print] 레진 부족 → NO: 프린팅 중지")
+            if self.print_worker:
+                self.print_worker.stop_by_resin_empty()
 
     def _on_print_pause(self):
         """프린트 일시정지"""
