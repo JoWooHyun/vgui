@@ -603,8 +603,9 @@ class PrintWorker(QThread):
         # 이미지 클리어
         self.clear_image.emit()
 
-        # X축만 홈 복귀 (Z축은 현재 위치 유지 - 안전을 위해)
-        self._motor_x_home()
+        # X축 홈 복귀 주석처리 (엔드스톱 센서 위치 미정)
+        # 마지막 레이어의 0→140 복귀로 블레이드는 140mm 위치에 있음
+        # self._motor_x_home()
 
         # Klipper 일시정지 상태 초기화 + 프린트 종료 알림
         if self.motor and not self.simulation:
