@@ -226,11 +226,15 @@ class PrintWorker(QThread):
                 # 이전 일시정지 상태 초기화
                 self.motor.klipper_clear_pause()
 
-        # Z축 홈
+        # Z축 홈 → 0.1mm 이동
         if self._check_stopped():
             return
         if not self._motor_z_home():
             self.error_occurred.emit("Z축 홈 이동 실패")
+            self._is_stopped = True
+            return
+        if not self._motor_z_move(0.1):
+            self.error_occurred.emit("Z축 0.1mm 이동 실패")
             self._is_stopped = True
             return
 
@@ -242,7 +246,7 @@ class PrintWorker(QThread):
             self._is_stopped = True
             return
 
-        # 2. 레진 평탄화
+        # 2. 레진 평탄화 (X축 왕복 + Z축 홈 복귀)
         if job.leveling_cycles > 0:
             self._set_status(PrintStatus.LEVELING)
             if self._check_stopped():

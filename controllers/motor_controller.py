@@ -513,16 +513,15 @@ class MotorController:
 
     def leveling_cycle(self, cycles: int = 1, speed: Optional[int] = None) -> bool:
         """
-        레진 평탄화 사이클
+        레진 평탄화 사이클 (Z축은 이미 0.1mm 위치에 있다고 가정)
 
         Args:
             cycles: 왕복 횟수
             speed: 블레이드 속도
 
         Flow:
-            1. Z축 0.1mm 이동
-            2. X축 140 → 0 → 140 왕복 (N회)
-            3. Z축 홈 복귀
+            1. X축 140 → 0 → 140 왕복 (N회)
+            2. Z축 홈 복귀
         """
         if cycles <= 0:
             return True
@@ -532,44 +531,31 @@ class MotorController:
         print(f"[Motor] 레진 평탄화 작업 시작 (왕복 {cycles}회)")
         print("=" * 40)
 
-        # 1. Z축을 0.1mm 위치로 이동
-        print("\n[Motor] 1단계: Z축 0.1mm 위치로 이동")
-        if not self.z_move_absolute(0.1, self.config.drop_speed):
-            print("[Motor] ⚠️ Z축 0.1mm 이동 실패 - 평탄화 건너뛰기")
-            return False
-        print("[Motor] ✅ Z축 0.1mm 위치 완료")
-
-        # 2. X축 블레이드 왕복 동작
+        # 1. X축 블레이드 왕복 동작
         for cycle in range(cycles):
             print(f"\n[Motor] --- 평탄화 {cycle + 1}/{cycles}회 ---")
 
-            # 2-1. 140mm → 0mm 이동
             print("[Motor] X축 140mm → 0mm 이동")
             if not self.x_move_absolute(0, speed):
-                print("[Motor] ❌ X축 0mm 이동 실패 - 평탄화 중단")
+                print("[Motor] X축 0mm 이동 실패 - 평탄화 중단")
                 return False
-            print("[Motor] ✅ X축 0mm 도착")
 
-            # 안정화 대기
             time.sleep(0.2)
 
-            # 2-2. 0mm → 140mm 이동
             print("[Motor] X축 0mm → 140mm 이동")
             if not self.x_move_absolute(140, speed):
-                print("[Motor] ❌ X축 140mm 이동 실패 - 평탄화 중단")
+                print("[Motor] X축 140mm 이동 실패 - 평탄화 중단")
                 return False
-            print("[Motor] ✅ X축 140mm 도착")
 
-            # 안정화 대기
             time.sleep(0.2)
-            print(f"[Motor] ✅ 평탄화 {cycle + 1}회 완료")
+            print(f"[Motor] 평탄화 {cycle + 1}회 완료")
 
-        # 3. Z축 홈으로 복귀
-        print("\n[Motor] 3단계: Z축 홈으로 복귀")
+        # 2. Z축 홈으로 복귀
+        print("[Motor] Z축 홈으로 복귀")
         if not self.z_home():
-            print("[Motor] ⚠️ Z축 홈 복귀 실패")
+            print("[Motor] Z축 홈 복귀 실패")
             return False
-        print("[Motor] ✅ Z축 홈 복귀 완료")
+        print("[Motor] Z축 홈 복귀 완료")
 
         print("=" * 40)
         print("[Motor] 레진 평탄화 작업 완료")
