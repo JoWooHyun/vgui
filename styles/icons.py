@@ -590,6 +590,16 @@ class Icons:
     </svg>
     """
 
+    # 소재 (비커/플라스크)
+    MATERIAL = """
+    <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 3h6"/>
+        <path d="M10 3v5.172a2 2 0 0 1-.586 1.414L5 14l1.5 6.5h11L19 14l-4.414-4.414A2 2 0 0 1 14 8.172V3"/>
+        <path d="M7 17h10"/>
+    </svg>
+    """
+
     # LED 파워 (전구 + 광선)
     LED_POWER = """
     <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2"

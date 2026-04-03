@@ -5,13 +5,52 @@ VERICOM DLP 3D Printer - Settings Manager
 
 import json
 import os
-from dataclasses import dataclass, asdict
-from typing import Optional
+from dataclasses import dataclass, asdict, field
+from typing import Optional, List
 
 
 # 설정 파일 경로
 SETTINGS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
+
+
+@dataclass
+class MaterialPreset:
+    """소재별 프린트 프리셋"""
+    name: str = "Default"
+    blade_speed: int = 5            # Blade 속도 (1-15 mm/s)
+    led_power: int = 43             # LED 파워 (9-100%)
+    blade_cycles: int = 1           # 블레이드 반복 횟수 (1~3)
+    y_dispense_distance: float = 1.0  # Y축 토출 거리 (mm/레이어, 0.1~5.0)
+    y_dispense_speed: int = 5       # Y축 토출 속도 (mm/s, 1~15)
+    y_dispense_delay: float = 2.0   # Y축 토출 후 대기 (초, 0.5~10.0)
+    # 확장 항목
+    leveling_cycles: int = 1        # 레진 평탄화 횟수 (0~5)
+    lift_height: float = 5.0        # 리프트 높이 (mm, 1.0~20.0)
+    drop_speed: int = 150           # Z축 하강 속도 (mm/min, 10~300)
+
+
+# 기본 내장 소재 프리셋
+DEFAULT_MATERIALS = [
+    MaterialPreset(
+        name="Zirconia",
+        blade_speed=5, led_power=43, blade_cycles=1,
+        y_dispense_distance=1.0, y_dispense_speed=5, y_dispense_delay=2.0,
+        leveling_cycles=1, lift_height=5.0, drop_speed=150
+    ),
+    MaterialPreset(
+        name="Alumina",
+        blade_speed=5, led_power=50, blade_cycles=1,
+        y_dispense_distance=1.0, y_dispense_speed=5, y_dispense_delay=2.0,
+        leveling_cycles=1, lift_height=5.0, drop_speed=150
+    ),
+    MaterialPreset(
+        name="Hydroxyapatite",
+        blade_speed=4, led_power=45, blade_cycles=1,
+        y_dispense_distance=1.2, y_dispense_speed=4, y_dispense_delay=2.5,
+        leveling_cycles=1, lift_height=5.0, drop_speed=120
+    ),
+]
 
 
 @dataclass
@@ -30,10 +69,15 @@ class AppSettings:
     print_settings: PrintSettings = None
     language: str = "en"        # 언어 설정
     theme: str = "Light"        # 테마 설정
+    materials: List[MaterialPreset] = field(default_factory=list)
+    selected_material: str = ""  # 선택된 소재 이름
 
     def __post_init__(self):
         if self.print_settings is None:
             self.print_settings = PrintSettings()
+        if not self.materials:
+            self.materials = [MaterialPreset(**asdict(m)) for m in DEFAULT_MATERIALS]
+            self.selected_material = self.materials[0].name
 
 
 class SettingsManager:
@@ -85,9 +129,33 @@ class SettingsManager:
             self._settings.language = data.get('language', 'en')
             self._settings.theme = data.get('theme', 'Light')
 
+            # 소재 프리셋 로드
+            materials_data = data.get('materials', [])
+            if materials_data:
+                self._settings.materials = []
+                for m in materials_data:
+                    self._settings.materials.append(MaterialPreset(
+                        name=m.get('name', 'Unknown'),
+                        blade_speed=m.get('blade_speed', 5),
+                        led_power=m.get('led_power', 43),
+                        blade_cycles=m.get('blade_cycles', 1),
+                        y_dispense_distance=m.get('y_dispense_distance', 1.0),
+                        y_dispense_speed=m.get('y_dispense_speed', 5),
+                        y_dispense_delay=m.get('y_dispense_delay', 2.0),
+                        leveling_cycles=m.get('leveling_cycles', 1),
+                        lift_height=m.get('lift_height', 5.0),
+                        drop_speed=m.get('drop_speed', 150),
+                    ))
+
+            self._settings.selected_material = data.get('selected_material', '')
+            # 선택된 소재가 없거나 삭제된 경우 첫 번째 소재 선택
+            if self._settings.materials and self._settings.selected_material not in [m.name for m in self._settings.materials]:
+                self._settings.selected_material = self._settings.materials[0].name
+
             print(f"[Settings] 설정 로드 완료: {SETTINGS_FILE}")
             print(f"  - LED Power: {self._settings.print_settings.led_power}%")
             print(f"  - Blade Speed: {self._settings.print_settings.blade_speed}mm/s")
+            print(f"  - 소재 프리셋: {len(self._settings.materials)}개")
 
         except Exception as e:
             print(f"[Settings] 설정 로드 실패: {e}")
@@ -100,7 +168,9 @@ class SettingsManager:
             data = {
                 'print_settings': asdict(self._settings.print_settings),
                 'language': self._settings.language,
-                'theme': self._settings.theme
+                'theme': self._settings.theme,
+                'materials': [asdict(m) for m in self._settings.materials],
+                'selected_material': self._settings.selected_material
             }
 
             with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
@@ -110,6 +180,78 @@ class SettingsManager:
 
         except Exception as e:
             print(f"[Settings] 설정 저장 실패: {e}")
+
+    # ==================== 소재 프리셋 관리 ====================
+
+    def get_materials(self) -> List[MaterialPreset]:
+        """소재 프리셋 목록 반환"""
+        return self._settings.materials
+
+    def get_material_by_name(self, name: str) -> Optional[MaterialPreset]:
+        """이름으로 소재 프리셋 반환"""
+        for m in self._settings.materials:
+            if m.name == name:
+                return m
+        return None
+
+    def add_material(self, preset: MaterialPreset):
+        """소재 프리셋 추가"""
+        # 이름 중복 방지
+        existing_names = [m.name for m in self._settings.materials]
+        if preset.name in existing_names:
+            base_name = preset.name
+            i = 2
+            while f"{base_name} ({i})" in existing_names:
+                i += 1
+            preset.name = f"{base_name} ({i})"
+
+        self._settings.materials.append(preset)
+        self.save()
+        print(f"[Settings] 소재 추가: {preset.name}")
+
+    def update_material(self, original_name: str, preset: MaterialPreset):
+        """소재 프리셋 수정"""
+        for i, m in enumerate(self._settings.materials):
+            if m.name == original_name:
+                self._settings.materials[i] = preset
+                # 선택된 소재 이름도 갱신
+                if self._settings.selected_material == original_name:
+                    self._settings.selected_material = preset.name
+                self.save()
+                print(f"[Settings] 소재 수정: {original_name} → {preset.name}")
+                return True
+        return False
+
+    def delete_material(self, name: str) -> bool:
+        """소재 프리셋 삭제"""
+        if len(self._settings.materials) <= 1:
+            print("[Settings] 최소 1개 소재는 유지해야 합니다")
+            return False
+
+        for i, m in enumerate(self._settings.materials):
+            if m.name == name:
+                self._settings.materials.pop(i)
+                # 삭제된 소재가 선택 중이면 첫 번째 소재로 변경
+                if self._settings.selected_material == name:
+                    self._settings.selected_material = self._settings.materials[0].name
+                self.save()
+                print(f"[Settings] 소재 삭제: {name}")
+                return True
+        return False
+
+    def get_selected_material(self) -> str:
+        """선택된 소재 이름 반환"""
+        return self._settings.selected_material
+
+    def set_selected_material(self, name: str):
+        """소재 선택"""
+        if any(m.name == name for m in self._settings.materials):
+            self._settings.selected_material = name
+            self.save()
+
+    def get_selected_material_preset(self) -> Optional[MaterialPreset]:
+        """선택된 소재의 프리셋 반환"""
+        return self.get_material_by_name(self._settings.selected_material)
 
     # ==================== LED Power ====================
 

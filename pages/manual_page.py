@@ -111,7 +111,7 @@ class AxisControlPanel(QFrame):
 
 
 class ManualPage(BasePage):
-    """수동 제어 페이지 (Z축 + X축)"""
+    """수동 제어 페이지 (Z축 + X축 + Y축)"""
 
     # 모터 제어 시그널
     z_move = Signal(float)      # Z축 이동 (+ 상승, - 하강)
@@ -120,13 +120,16 @@ class ManualPage(BasePage):
     x_move = Signal(float)      # X축(블레이드) 이동
     x_home = Signal()           # X축 홈
 
+    y_move = Signal(float)      # Y축(Resin Feeder) 이동
+    y_home = Signal()           # Y축 홈
+
     def __init__(self, parent=None):
         super().__init__("Manual Control", show_back=True, parent=parent)
         self._setup_content()
 
     def _setup_content(self):
         """콘텐츠 구성"""
-        # 2열 레이아웃
+        # 3열 레이아웃
         panels_layout = QHBoxLayout()
         panels_layout.setSpacing(20)
 
@@ -143,8 +146,15 @@ class ManualPage(BasePage):
         self.x_panel.move_negative.connect(lambda d: self.x_move.emit(-d))
         self.x_panel.home_axis.connect(self.x_home.emit)
 
+        # Y축 패널 (Resin Feeder)
+        self.y_panel = AxisControlPanel("Resin Feeder", is_horizontal=False)
+        self.y_panel.move_positive.connect(lambda d: self.y_move.emit(d))
+        self.y_panel.move_negative.connect(lambda d: self.y_move.emit(-d))
+        self.y_panel.home_axis.connect(self.y_home.emit)
+
         panels_layout.addWidget(self.z_panel)
         panels_layout.addWidget(self.x_panel)
+        panels_layout.addWidget(self.y_panel)
 
         self.content_layout.addLayout(panels_layout)
     

@@ -79,6 +79,7 @@ class ToolPage(BasePage):
     go_exposure = Signal()
     go_leveling = Signal()
     go_setting = Signal()
+    go_material = Signal()
 
     def __init__(self, parent=None):
         super().__init__("Tool", show_back=True, parent=parent)
@@ -119,6 +120,12 @@ class ToolPage(BasePage):
         self.btn_setting.setFixedSize(*self.BUTTON_SIZE)
         self.btn_setting.clicked.connect(self.go_setting.emit)
         row.addWidget(self.btn_setting)
+
+        # Material 버튼
+        self.btn_material = ToolButton("Material", Icons.MATERIAL)
+        self.btn_material.setFixedSize(*self.BUTTON_SIZE)
+        self.btn_material.clicked.connect(self.go_material.emit)
+        row.addWidget(self.btn_material)
 
         row.addStretch()
         self.content_layout.addLayout(row)

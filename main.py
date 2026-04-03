@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from controllers.theme_manager import get_theme_manager
 _theme_init = get_theme_manager()  # 테마 로드 및 Colors 적용
 
-from PySide6.QtWidgets import QApplication, QMainWindow, QStackedWidget, QMessageBox
+from PySide6.QtWidgets import QApplication, QMainWindow, QStackedWidget, QMessageBox, QDialog
 from PySide6.QtCore import Qt, QTimer, QThread, Signal, QObject
 from PySide6.QtGui import QCursor
 
@@ -75,6 +75,7 @@ from pages.file_preview_page import FilePreviewPage, ZipErrorDialog
 from pages.print_progress_page import PrintProgressPage, ErrorDialog
 from pages.setting_page import SettingPage
 from pages.theme_page import ThemePage
+from pages.material_page import MaterialPage
 
 # 하드웨어 컨트롤러
 from controllers.motor_controller import MotorController
@@ -122,6 +123,7 @@ class MainWindow(QMainWindow):
     PAGE_SETTING = 11
     PAGE_THEME = 12
     PAGE_LEVELING = 13
+    PAGE_MATERIAL = 14
 
     def __init__(self, kiosk_mode: bool = False, simulation: bool = True):
         super().__init__()
@@ -223,6 +225,7 @@ class MainWindow(QMainWindow):
         self.setting_page = SettingPage()
         self.theme_page = ThemePage()
         self.leveling_page = LevelingPage()
+        self.material_page = MaterialPage()
 
         # 스택에 추가
         self.stack.addWidget(self.main_page)         # 0
@@ -239,6 +242,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.setting_page)      # 11
         self.stack.addWidget(self.theme_page)        # 12
         self.stack.addWidget(self.leveling_page)    # 13
+        self.stack.addWidget(self.material_page)    # 14
 
         self.setCentralWidget(self.stack)
 
@@ -251,18 +255,15 @@ class MainWindow(QMainWindow):
         self.setting_page.set_led_power(saved_led_power)
         self.setting_page.set_blade_speed(saved_blade_speed)
 
-        # File Preview 페이지에도 적용
-        self.file_preview_page.set_led_power(saved_led_power)
-        self.file_preview_page.set_blade_speed(saved_blade_speed)
-
-        # Y축 토출 설정 적용
-        self.file_preview_page.set_y_dispense_distance(self.settings.get_y_dispense_distance())
-        self.file_preview_page.set_y_dispense_speed(self.settings.get_y_dispense_speed())
-        self.file_preview_page.set_y_dispense_delay(self.settings.get_y_dispense_delay())
+        # 선택된 소재 프리셋을 FilePreview에 적용
+        preset = self.settings.get_selected_material_preset()
+        if preset:
+            self.file_preview_page.apply_material(preset)
 
         print(f"[System] 저장된 설정 적용:")
         print(f"  - LED Power: {saved_led_power}%")
         print(f"  - Blade Speed: {saved_blade_speed}mm/s")
+        print(f"  - 선택 소재: {self.settings.get_selected_material()}")
 
     def _connect_signals(self):
         """시그널 연결"""
@@ -278,6 +279,10 @@ class MainWindow(QMainWindow):
         self.tool_page.go_exposure.connect(lambda: self._go_to_page(self.PAGE_EXPOSURE))
         self.tool_page.go_leveling.connect(self._go_to_leveling)
         self.tool_page.go_setting.connect(lambda: self._go_to_page(self.PAGE_SETTING))
+        self.tool_page.go_material.connect(lambda: self._go_to_page(self.PAGE_MATERIAL))
+
+        # 소재 페이지
+        self.material_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TOOL))
 
         # 설정 페이지
         self.setting_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TOOL))
@@ -296,6 +301,8 @@ class MainWindow(QMainWindow):
         self.manual_page.z_home.connect(self._home_z)
         self.manual_page.x_move.connect(self._move_x)
         self.manual_page.x_home.connect(self._home_x)
+        self.manual_page.y_move.connect(self._manual_y_move)
+        self.manual_page.y_home.connect(self._manual_y_home)
         
         # 프린트 페이지
         self.print_page.go_back.connect(lambda: self._go_to_page(self.PAGE_MAIN))
@@ -400,6 +407,16 @@ class MainWindow(QMainWindow):
         print("[Motor] X축 홈으로 이동")
         self._start_motor_operation("x_home")
 
+    def _manual_y_move(self, distance: float):
+        """Manual 페이지에서 Y축 이동"""
+        print(f"[Manual] Y Axis Move: {distance}mm")
+        self._start_motor_operation("y_move", distance=distance)
+
+    def _manual_y_home(self):
+        """Manual 페이지에서 Y축 Home"""
+        print("[Manual] Y Axis Home")
+        self._start_motor_operation("y_home")
+
     # ==================== Leveling 페이지 제어 ====================
 
     def _go_to_leveling(self):
@@ -434,20 +451,34 @@ class MainWindow(QMainWindow):
             self.print_worker.stop()
     
     def _on_file_selected(self, file_path: str):
-        """파일 선택됨 -> ZIP 검증 후 File Preview로 이동"""
+        """파일 선택됨 -> ZIP 검증 → 소재 선택 → File Preview로 이동"""
         print(f"[Print] 파일 선택: {file_path}")
 
         # ZIP 파일 검증
         validation = validate_zip_file(file_path)
         if not validation.is_valid:
             print(f"[Print] ZIP 검증 실패: {validation.error_message}")
-            # 오류 다이얼로그 표시 (print_page에서)
             dialog = ZipErrorDialog(validation.error_message, self.print_page)
             dialog.exec()
-            return  # 페이지 이동 안 함
+            return
 
-        # 검증 통과 시 File Preview로 이동
+        # 소재 선택 팝업
+        from pages.file_preview_page import MaterialSelectDialog
+        dialog = MaterialSelectDialog(self)
+        result = dialog.exec()
+        if result != QDialog.Accepted or not dialog.get_selected():
+            print("[Print] 소재 선택 취소")
+            return
+
+        # 선택된 소재 적용
+        selected_name = dialog.get_selected()
+        self.settings.set_selected_material(selected_name)
+        preset = self.settings.get_material_by_name(selected_name)
+        print(f"[Print] 소재 선택: {selected_name}")
+
+        # File Preview로 이동
         self.file_preview_page.set_file(file_path)
+        self.file_preview_page.apply_material(preset)
         self._go_to_page(self.PAGE_FILE_PREVIEW)
     
     def _on_start_print(self, file_path: str, params: dict):
@@ -747,20 +778,14 @@ class MainWindow(QMainWindow):
     # ==================== 설정 저장/동기화 ====================
 
     def _on_led_power_changed(self, power: int):
-        """LED Power 변경 시 저장 및 동기화"""
+        """LED Power 변경 시 저장"""
         print(f"[Setting] LED Power 변경: {power}%")
-        # 설정 저장
         self.settings.set_led_power(power)
-        # File Preview 페이지에 동기화
-        self.file_preview_page.set_led_power(power)
 
     def _on_blade_speed_changed(self, speed: int):
-        """Blade Speed 변경 시 저장 및 동기화"""
+        """Blade Speed 변경 시 저장"""
         print(f"[Setting] Blade Speed 변경: {speed}mm/s")
-        # 설정 저장
         self.settings.set_blade_speed(speed)
-        # File Preview 페이지에 동기화 (mm/s 그대로)
-        self.file_preview_page.set_blade_speed(speed)
 
     # ==================== 시스템 메뉴 ====================
 

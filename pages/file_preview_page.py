@@ -8,7 +8,7 @@ import zipfile
 import json
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QPushButton, QLabel, QFrame, QDialog
+    QPushButton, QLabel, QFrame, QDialog, QScrollArea
 )
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtGui import QPixmap
@@ -19,7 +19,7 @@ from styles.colors import Colors
 from styles.fonts import Fonts
 from styles.icons import Icons
 from controllers.gcode_parser import extract_print_parameters
-from controllers.settings_manager import get_settings
+from controllers.settings_manager import get_settings, MaterialPreset
 
 
 class InfoRow(QFrame):
@@ -61,109 +61,155 @@ class InfoRow(QFrame):
         self.lbl_value.setText(value)
 
 
-class EditableRow(QFrame):
-    """수정 가능한 정보 행 (클릭하면 NumberDial 팝업)"""
-    
-    value_changed = Signal(float)
-    
-    def __init__(self, label: str, value: float, unit: str,
-                 min_val: float, max_val: float, step: float = 1.0,
-                 allow_decimal: bool = False, parent=None):
+class ReadOnlyRow(QFrame):
+    """읽기 전용 정보 행 (라벨 + 값)"""
+
+    def __init__(self, label: str, value: str = "-", parent=None):
         super().__init__(parent)
 
-        self._value = value
-        self._unit = unit
-        self._min = min_val
-        self._max = max_val
-        self._step = step
-        self._label = label
-        self._allow_decimal = allow_decimal
-        
-        self.setFixedHeight(40)
-        self.setCursor(Qt.PointingHandCursor)
+        self.setFixedHeight(32)
         self.setStyleSheet(f"""
             QFrame {{
                 background-color: {Colors.BG_SECONDARY};
-                border: 2px solid {Colors.CYAN};
-                border-radius: 8px;
+                border: none;
+                border-radius: 6px;
             }}
         """)
-        
+
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(12, 0, 12, 0)
+        layout.setContentsMargins(10, 0, 10, 0)
         layout.setSpacing(8)
-        
-        # 라벨 (폭 늘림)
+
         self.lbl_label = QLabel(label)
         self.lbl_label.setFont(Fonts.body_small())
-        self.lbl_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; background-color: transparent; border: none;")
+        self.lbl_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; background: transparent; border: none;")
         self.lbl_label.setFixedWidth(110)
-        
-        # 값 (클릭 가능한 느낌)
-        self.lbl_value = QLabel()
-        self.lbl_value.setFont(Fonts.body())
-        self.lbl_value.setStyleSheet(f"color: {Colors.CYAN}; background-color: transparent; border: none; font-weight: 600;")
-        self._update_display()
-        
-        # 편집 아이콘 (EDIT 아이콘 사용)
-        self.lbl_edit = QLabel()
-        self.lbl_edit.setFixedSize(20, 20)
-        self.lbl_edit.setPixmap(Icons.get_pixmap(Icons.EDIT, 18, Colors.CYAN))
-        self.lbl_edit.setStyleSheet("background-color: transparent; border: none;")
-        
+
+        self.lbl_value = QLabel(value)
+        self.lbl_value.setFont(Fonts.body_small())
+        self.lbl_value.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.lbl_value.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; background: transparent; border: none; font-weight: 600;")
+
         layout.addWidget(self.lbl_label)
         layout.addWidget(self.lbl_value, 1)
-        layout.addWidget(self.lbl_edit)
-    
-    def _update_display(self):
-        """표시 업데이트"""
-        if self._value == int(self._value):
-            self.lbl_value.setText(f"{int(self._value)} {self._unit}")
-        else:
-            self.lbl_value.setText(f"{self._value:.1f} {self._unit}")
-    
-    def mousePressEvent(self, event):
-        """클릭 시 NumericKeypad 표시"""
-        if event.button() == Qt.LeftButton:
-            self._show_keypad()
-        super().mousePressEvent(event)
-    
-    def _show_keypad(self):
-        """NumericKeypad 팝업 표시"""
-        keypad = NumericKeypad(
-            title=self._label,
-            value=self._value,
-            unit=self._unit,
-            min_val=self._min,
-            max_val=self._max,
-            allow_decimal=self._allow_decimal,
-            parent=self.window()
-        )
-        keypad.value_confirmed.connect(self._on_value_confirmed)
-        keypad.exec()
-    
-    def _on_value_confirmed(self, value: float):
-        """값 확정됨"""
-        self._value = value
-        self._update_display()
-        self.value_changed.emit(value)
-    
-    def get_value(self) -> float:
-        """현재 값 반환"""
-        return self._value
-    
-    def set_value(self, value: float):
-        """값 설정"""
-        self._value = value
-        self._update_display()
+
+    def set_value(self, value: str):
+        self.lbl_value.setText(value)
+
+
+class MaterialSelectDialog(QDialog):
+    """소재 선택 팝업 다이얼로그"""
+
+    material_selected = Signal(str)  # 선택된 소재 이름
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self._selected_name = ""
+
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Dialog)
+        self.setFixedSize(360, 340)
+        self.setStyleSheet(f"""
+            QDialog {{
+                background-color: {Colors.BG_PRIMARY};
+                border: 2px solid {Colors.CYAN};
+                border-radius: 16px;
+            }}
+        """)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(12)
+
+        # 제목
+        lbl_title = QLabel("Select Material")
+        lbl_title.setFont(Fonts.h3())
+        lbl_title.setAlignment(Qt.AlignCenter)
+        lbl_title.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; background: transparent;")
+        layout.addWidget(lbl_title)
+
+        # 소재 버튼 리스트
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setStyleSheet(f"""
+            QScrollArea {{ border: none; background: transparent; }}
+            QWidget {{ background: transparent; }}
+        """)
+        list_widget = QWidget()
+        self._list_layout = QVBoxLayout(list_widget)
+        self._list_layout.setContentsMargins(0, 0, 0, 0)
+        self._list_layout.setSpacing(8)
+
+        settings = get_settings()
+        materials = settings.get_materials()
+        selected = settings.get_selected_material()
+
+        for mat in materials:
+            btn = QPushButton(mat.name)
+            btn.setFixedHeight(44)
+            btn.setFont(Fonts.body())
+            btn.setCursor(Qt.PointingHandCursor)
+
+            if mat.name == selected:
+                btn.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: {Colors.CYAN};
+                        color: {Colors.WHITE};
+                        border: none;
+                        border-radius: 10px;
+                        font-weight: 600;
+                    }}
+                """)
+            else:
+                btn.setStyleSheet(f"""
+                    QPushButton {{
+                        background-color: {Colors.BG_SECONDARY};
+                        color: {Colors.TEXT_PRIMARY};
+                        border: 1px solid {Colors.BORDER};
+                        border-radius: 10px;
+                    }}
+                    QPushButton:pressed {{ background-color: {Colors.BG_TERTIARY}; }}
+                """)
+
+            btn.clicked.connect(lambda checked, name=mat.name: self._on_select(name))
+            self._list_layout.addWidget(btn)
+
+        self._list_layout.addStretch()
+        scroll.setWidget(list_widget)
+        layout.addWidget(scroll, 1)
+
+        # Cancel 버튼
+        btn_cancel = QPushButton("Cancel")
+        btn_cancel.setFixedHeight(44)
+        btn_cancel.setFont(Fonts.body())
+        btn_cancel.setCursor(Qt.PointingHandCursor)
+        btn_cancel.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.BG_SECONDARY};
+                color: {Colors.TEXT_PRIMARY};
+                border: 1px solid {Colors.BORDER};
+                border-radius: 8px;
+            }}
+            QPushButton:pressed {{ background-color: {Colors.BG_TERTIARY}; }}
+        """)
+        btn_cancel.clicked.connect(self.reject)
+        layout.addWidget(btn_cancel)
+
+    def _on_select(self, name: str):
+        self._selected_name = name
+        self.accept()
+
+    def get_selected(self) -> str:
+        return self._selected_name
 
 
 class ConfirmDialog(QDialog):
     """확인 다이얼로그"""
-    
+
     def __init__(self, title: str, message: str, parent=None):
         super().__init__(parent)
-        
+
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Dialog)
         self.setFixedSize(350, 180)
         self.setStyleSheet(f"""
@@ -173,28 +219,28 @@ class ConfirmDialog(QDialog):
                 border-radius: 16px;
             }}
         """)
-        
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(16)
-        
+
         # 제목
         lbl_title = QLabel(title)
         lbl_title.setFont(Fonts.h3())
         lbl_title.setAlignment(Qt.AlignCenter)
         lbl_title.setStyleSheet(f"color: {Colors.TEXT_PRIMARY};")
-        
+
         # 메시지
         lbl_message = QLabel(message)
         lbl_message.setFont(Fonts.body())
         lbl_message.setAlignment(Qt.AlignCenter)
         lbl_message.setWordWrap(True)
         lbl_message.setStyleSheet(f"color: {Colors.TEXT_SECONDARY};")
-        
+
         # 버튼들
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(12)
-        
+
         self.btn_cancel = QPushButton("Cancel")
         self.btn_cancel.setFixedSize(120, 44)
         self.btn_cancel.setFont(Fonts.body())
@@ -211,7 +257,7 @@ class ConfirmDialog(QDialog):
             }}
         """)
         self.btn_cancel.clicked.connect(self.reject)
-        
+
         self.btn_confirm = QPushButton("Delete")
         self.btn_confirm.setFixedSize(120, 44)
         self.btn_confirm.setFont(Fonts.body())
@@ -228,7 +274,7 @@ class ConfirmDialog(QDialog):
             }}
         """)
         self.btn_confirm.clicked.connect(self.accept)
-        
+
         btn_layout.addWidget(self.btn_cancel)
         btn_layout.addWidget(self.btn_confirm)
 
@@ -301,116 +347,37 @@ class ZipErrorDialog(QDialog):
         layout.addLayout(btn_layout)
 
 
-class ToggleRow(QFrame):
-    """토글 가능한 정보 행 (클릭하면 값 전환)"""
-
-    value_changed = Signal(str)
-
-    def __init__(self, label: str, options: list, parent=None):
-        """
-        Args:
-            label: 행 라벨
-            options: [(key, display_text), ...] 형태의 선택지 리스트
-        """
-        super().__init__(parent)
-
-        self._options = options
-        self._current_index = 0
-
-        self.setFixedHeight(40)
-        self.setCursor(Qt.PointingHandCursor)
-        self.setStyleSheet(f"""
-            QFrame {{
-                background-color: {Colors.BG_SECONDARY};
-                border: 2px solid {Colors.CYAN};
-                border-radius: 8px;
-            }}
-        """)
-
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(12, 0, 12, 0)
-        layout.setSpacing(8)
-
-        self.lbl_label = QLabel(label)
-        self.lbl_label.setFont(Fonts.body_small())
-        self.lbl_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; background-color: transparent; border: none;")
-        self.lbl_label.setFixedWidth(110)
-
-        self.lbl_value = QLabel()
-        self.lbl_value.setFont(Fonts.body())
-        self.lbl_value.setStyleSheet(f"color: {Colors.CYAN}; background-color: transparent; border: none; font-weight: 600;")
-        self._update_display()
-
-        self.lbl_icon = QLabel()
-        self.lbl_icon.setFixedSize(20, 20)
-        self.lbl_icon.setPixmap(Icons.get_pixmap(Icons.EDIT, 18, Colors.CYAN))
-        self.lbl_icon.setStyleSheet("background-color: transparent; border: none;")
-
-        layout.addWidget(self.lbl_label)
-        layout.addWidget(self.lbl_value, 1)
-        layout.addWidget(self.lbl_icon)
-
-    def _update_display(self):
-        key, display = self._options[self._current_index]
-        self.lbl_value.setText(display)
-
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self._current_index = (self._current_index + 1) % len(self._options)
-            self._update_display()
-            key, _ = self._options[self._current_index]
-            self.value_changed.emit(key)
-        super().mousePressEvent(event)
-
-    def get_value(self) -> str:
-        key, _ = self._options[self._current_index]
-        return key
-
-    def set_value(self, key: str):
-        for i, (k, _) in enumerate(self._options):
-            if k == key:
-                self._current_index = i
-                self._update_display()
-                break
-
-
 class FilePreviewPage(BasePage):
     """파일 미리보기 페이지"""
-    
+
     # 시그널
     start_print = Signal(str, dict)  # (파일 경로, 파라미터)
     file_deleted = Signal(str)  # 삭제된 파일 경로
-    
+
     def __init__(self, parent=None):
         super().__init__("File Preview", show_back=True, parent=parent)
-        
+
         self._file_path = ""
         self._print_params = {}
-        
-        # 사용자 설정값 (기본값)
-        self._blade_speed = 5    # mm/s (실제값 = 표시값 × 60, 리드스크류)
-        self._led_power = 43     # % (1023 = 100%, 440 = 43%)
-        self._blade_cycles = 1   # 블레이드 왕복 횟수 (1~3)
-        self._y_dispense_distance = 1.0  # Y축 토출 거리 (mm/레이어)
-        self._y_dispense_speed = 5       # Y축 토출 속도 (mm/s)
-        self._y_dispense_delay = 2.0     # Y축 토출 후 대기 (초)
+        self._selected_material_name = ""
+        self._material_preset = None  # MaterialPreset
 
         self._setup_content()
-    
+
     def _setup_content(self):
         """콘텐츠 구성"""
         # 중앙 정렬 wrapper
         wrapper = QHBoxLayout()
         wrapper.addStretch()
-        
+
         # 메인 콘텐츠
         content = QHBoxLayout()
         content.setSpacing(32)
-        
+
         # === 왼쪽: 썸네일 ===
         left_layout = QVBoxLayout()
         left_layout.setAlignment(Qt.AlignCenter)
-        
+
         # 썸네일 프레임
         self.thumbnail_frame = QFrame()
         self.thumbnail_frame.setFixedSize(280, 220)
@@ -421,18 +388,18 @@ class FilePreviewPage(BasePage):
                 border-radius: 12px;
             }}
         """)
-        
+
         thumb_layout = QVBoxLayout(self.thumbnail_frame)
         thumb_layout.setContentsMargins(10, 10, 10, 10)
         thumb_layout.setAlignment(Qt.AlignCenter)
-        
+
         self.lbl_thumbnail = QLabel()
         self.lbl_thumbnail.setFixedSize(260, 200)
         self.lbl_thumbnail.setAlignment(Qt.AlignCenter)
         self.lbl_thumbnail.setStyleSheet(f"background: {Colors.BG_SECONDARY};")
-        
+
         thumb_layout.addWidget(self.lbl_thumbnail)
-        
+
         # 파일명
         self.lbl_filename = QLabel()
         self.lbl_filename.setFont(Fonts.h3())
@@ -440,115 +407,70 @@ class FilePreviewPage(BasePage):
         self.lbl_filename.setStyleSheet(f"color: {Colors.TEXT_PRIMARY};")
         self.lbl_filename.setFixedWidth(280)
         self.lbl_filename.setWordWrap(True)
-        
+
         left_layout.addWidget(self.thumbnail_frame)
         left_layout.addSpacing(12)
         left_layout.addWidget(self.lbl_filename)
-        
+
         # === 오른쪽: 정보 + 버튼 ===
         right_layout = QVBoxLayout()
-        right_layout.setSpacing(8)
-        
-        # 읽기 전용 정보 행들 (아이콘 + 값)
+        right_layout.setSpacing(6)
+
+        # 선택된 소재 이름 표시
+        self.lbl_material = QLabel("Material: -")
+        self.lbl_material.setFont(Fonts.body())
+        self.lbl_material.setAlignment(Qt.AlignCenter)
+        self.lbl_material.setFixedHeight(28)
+        self.lbl_material.setStyleSheet(f"""
+            color: {Colors.CYAN};
+            background-color: {Colors.BG_SECONDARY};
+            border-radius: 6px;
+            font-weight: 600;
+        """)
+        right_layout.addWidget(self.lbl_material)
+
+        right_layout.addSpacing(4)
+
+        # 읽기 전용 정보 행들 (아이콘 + 값) - gcode 파라미터
         self.info_rows = {}
 
-        # (아이콘, 키) - 아이콘으로 의미 전달
         info_items = [
-            (Icons.STACK, "totalLayer"),              # 레이어 수
-            (Icons.TIMER, "estimatedPrintTime"),      # 예상 시간
-            (Icons.RULER, "layerHeight"),             # 레이어 높이
-            (Icons.EXPOSURE_BOTTOM, "bottomLayerExposureTime"),  # 바닥 노출
-            (Icons.EXPOSURE_NORMAL, "normalExposureTime"),       # 일반 노출
+            (Icons.STACK, "totalLayer"),
+            (Icons.TIMER, "estimatedPrintTime"),
+            (Icons.RULER, "layerHeight"),
+            (Icons.EXPOSURE_BOTTOM, "bottomLayerExposureTime"),
+            (Icons.EXPOSURE_NORMAL, "normalExposureTime"),
         ]
 
         for icon_svg, key in info_items:
             row = InfoRow(icon_svg)
             self.info_rows[key] = row
             right_layout.addWidget(row)
-        
-        right_layout.addSpacing(8)
-        
-        # 수정 가능한 행들
-        # Blade Speed (mm/s, 실제값 = 표시값 × 60, 리드스크류)
-        self.row_blade_speed = EditableRow(
-            label="Blade Speed",
-            value=self._blade_speed,
-            unit="mm/s",
-            min_val=1,
-            max_val=15,
-            step=1
-        )
-        self.row_blade_speed.value_changed.connect(self._on_blade_speed_changed)
-        right_layout.addWidget(self.row_blade_speed)
-        
-        # LED Power (9-100% 범위, 1023 = 100%)
-        self.row_led_power = EditableRow(
-            label="LED Power",
-            value=self._led_power,
-            unit="%",
-            min_val=9,
-            max_val=100,
-            step=1
-        )
-        self.row_led_power.value_changed.connect(self._on_led_power_changed)
-        right_layout.addWidget(self.row_led_power)
 
-        # Blade Cycles (1~3회)
-        self.row_blade_cycles = EditableRow(
-            label="Blade Cycles",
-            value=self._blade_cycles,
-            unit="회",
-            min_val=1,
-            max_val=3,
-            step=1
-        )
-        self.row_blade_cycles.value_changed.connect(self._on_blade_cycles_changed)
-        right_layout.addWidget(self.row_blade_cycles)
+        right_layout.addSpacing(4)
 
-        # Y Dispense Distance (mm/레이어)
-        self.row_y_dispense = EditableRow(
-            label="Y Dispense",
-            value=self._y_dispense_distance,
-            unit="mm",
-            min_val=0.1,
-            max_val=5.0,
-            step=0.1,
-            allow_decimal=True
-        )
-        self.row_y_dispense.value_changed.connect(self._on_y_dispense_changed)
-        right_layout.addWidget(self.row_y_dispense)
+        # 소재 프리셋 값 읽기 전용 표시
+        self.preset_rows = {}
+        preset_items = [
+            ("Blade Speed", "blade_speed", "mm/s"),
+            ("LED Power", "led_power", "%"),
+            ("Blade Cycles", "blade_cycles", "회"),
+            ("Y Dispense", "y_dispense_distance", "mm"),
+            ("Y Speed", "y_dispense_speed", "mm/s"),
+            ("Y Delay", "y_dispense_delay", "s"),
+        ]
 
-        # Y Dispense Speed (mm/s)
-        self.row_y_speed = EditableRow(
-            label="Y Speed",
-            value=self._y_dispense_speed,
-            unit="mm/s",
-            min_val=1,
-            max_val=15,
-            step=1
-        )
-        self.row_y_speed.value_changed.connect(self._on_y_speed_changed)
-        right_layout.addWidget(self.row_y_speed)
-
-        # Y Dispense Delay (토출 후 대기 초)
-        self.row_y_delay = EditableRow(
-            label="Y Delay",
-            value=self._y_dispense_delay,
-            unit="s",
-            min_val=0.5,
-            max_val=10.0,
-            step=0.5,
-            allow_decimal=True
-        )
-        self.row_y_delay.value_changed.connect(self._on_y_delay_changed)
-        right_layout.addWidget(self.row_y_delay)
+        for label, key, unit in preset_items:
+            row = ReadOnlyRow(label, "-")
+            self.preset_rows[key] = (row, unit)
+            right_layout.addWidget(row)
 
         right_layout.addStretch()
-        
+
         # 버튼들
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(16)
-        
+
         # Delete 버튼
         self.btn_delete = QPushButton()
         self.btn_delete.setFixedSize(140, 56)
@@ -568,7 +490,7 @@ class FilePreviewPage(BasePage):
             }}
         """)
         self.btn_delete.clicked.connect(self._on_delete)
-        
+
         # Start 버튼
         self.btn_start = QPushButton()
         self.btn_start.setFixedSize(140, 56)
@@ -587,72 +509,61 @@ class FilePreviewPage(BasePage):
             }}
         """)
         self.btn_start.clicked.connect(self._on_start)
-        
+
         btn_layout.addWidget(self.btn_delete)
         btn_layout.addWidget(self.btn_start)
-        
+
         right_layout.addLayout(btn_layout)
-        
+
         # 조립
         content.addLayout(left_layout)
         content.addLayout(right_layout)
-        
+
         wrapper.addLayout(content)
         wrapper.addStretch()
-        
+
         self.content_layout.addStretch()
         self.content_layout.addLayout(wrapper)
         self.content_layout.addStretch()
-    
-    def _on_blade_speed_changed(self, value: float):
-        """Blade Speed 변경"""
-        self._blade_speed = int(value)
-        print(f"[Preview] Blade Speed: {self._blade_speed} mm/s (실제: {self._blade_speed * 60} mm/min)")
-    
-    def _on_led_power_changed(self, value: float):
-        """LED Power 변경"""
-        self._led_power = int(value)
-        print(f"[Preview] LED Power: {self._led_power}%")
 
-    def _on_blade_cycles_changed(self, value: float):
-        """Blade Cycles 변경"""
-        self._blade_cycles = int(value)
-        print(f"[Preview] Blade Cycles: {self._blade_cycles}회")
+    def apply_material(self, preset: MaterialPreset):
+        """소재 프리셋 적용 (읽기 전용 표시)"""
+        self._material_preset = preset
+        self._selected_material_name = preset.name
+        self.lbl_material.setText(f"Material: {preset.name}")
 
-    def _on_y_dispense_changed(self, value: float):
-        """Y Dispense Distance 변경"""
-        self._y_dispense_distance = value
-        get_settings().set_y_dispense_distance(value)
-        print(f"[Preview] Y Dispense: {self._y_dispense_distance} mm")
-
-    def _on_y_speed_changed(self, value: float):
-        """Y Dispense Speed 변경"""
-        self._y_dispense_speed = int(value)
-        get_settings().set_y_dispense_speed(self._y_dispense_speed)
-        print(f"[Preview] Y Speed: {self._y_dispense_speed} mm/s (실제: {self._y_dispense_speed * 60} mm/min)")
-
-    def _on_y_delay_changed(self, value: float):
-        """Y Dispense Delay 변경"""
-        self._y_dispense_delay = value
-        get_settings().set_y_dispense_delay(value)
-        print(f"[Preview] Y Delay: {self._y_dispense_delay} s")
+        # 프리셋 값 표시
+        values = {
+            'blade_speed': preset.blade_speed,
+            'led_power': preset.led_power,
+            'blade_cycles': preset.blade_cycles,
+            'y_dispense_distance': preset.y_dispense_distance,
+            'y_dispense_speed': preset.y_dispense_speed,
+            'y_dispense_delay': preset.y_dispense_delay,
+        }
+        for key, (row, unit) in self.preset_rows.items():
+            val = values.get(key, 0)
+            if val == int(val):
+                row.set_value(f"{int(val)} {unit}")
+            else:
+                row.set_value(f"{val:.1f} {unit}")
 
     def set_file(self, file_path: str):
         """파일 설정 및 정보 표시"""
         self._file_path = file_path
-        
+
         # 파일명 표시
         filename = os.path.basename(file_path)
         self.lbl_filename.setText(filename)
-        
+
         # 파일 형식 확인
         ext = os.path.splitext(file_path)[1].lower()
-        
+
         if ext == '.zip':
             self._load_zip_info(file_path)
         else:
             self._clear_info()
-    
+
     def _load_zip_info(self, file_path: str):
         """ZIP 파일에서 정보 로드 (검증은 main.py에서 완료됨)"""
         try:
@@ -683,39 +594,7 @@ class FilePreviewPage(BasePage):
             print(f"ZIP 파일 로드 오류: {e}")
             self._clear_info()
             self.lbl_thumbnail.setPixmap(Icons.get_pixmap(Icons.FILE, 64, Colors.TEXT_DISABLED))
-    
-    def _parse_gcode_params(self, gcode_content: str) -> dict:
-        """G-code에서 프린트 파라미터 추출"""
-        params = {
-            'estimatedPrintTime': 0,  # 초 단위
-            'normalExposureTime': 0,
-            'bottomLayerExposureTime': 0,
-        }
-        
-        # G-code 주석에서 파라미터 찾기
-        for line in gcode_content.split('\n'):
-            line = line.strip()
-            
-            if line.startswith(';'):
-                # 주석 라인에서 파라미터 추출
-                if 'estimatedPrintTime' in line:
-                    try:
-                        params['estimatedPrintTime'] = float(line.split(':')[-1].strip())
-                    except:
-                        pass
-                elif 'normalExposureTime' in line:
-                    try:
-                        params['normalExposureTime'] = float(line.split(':')[-1].strip())
-                    except:
-                        pass
-                elif 'bottomLayerExposureTime' in line:
-                    try:
-                        params['bottomLayerExposureTime'] = float(line.split(':')[-1].strip())
-                    except:
-                        pass
-        
-        return params
-    
+
     def _update_info_display(self):
         """정보 표시 업데이트"""
         p = self._print_params
@@ -740,25 +619,25 @@ class FilePreviewPage(BasePage):
         # 노출 시간
         self.info_rows['bottomLayerExposureTime'].set_value(f"{p.get('bottomLayerExposureTime', 0)} sec")
         self.info_rows['normalExposureTime'].set_value(f"{p.get('normalExposureTime', 0)} sec")
-    
+
     def _clear_info(self):
         """정보 초기화"""
         self._print_params = {}
         for row in self.info_rows.values():
             row.set_value("-")
-    
+
     def _on_delete(self):
         """Delete 버튼 클릭"""
         if not self._file_path:
             return
-        
+
         filename = os.path.basename(self._file_path)
         dialog = ConfirmDialog(
             "Delete File",
             f"Are you sure you want to delete\n'{filename}'?",
             self
         )
-        
+
         if dialog.exec() == QDialog.Accepted:
             try:
                 os.remove(self._file_path)
@@ -766,21 +645,27 @@ class FilePreviewPage(BasePage):
                 self.go_back.emit()
             except Exception as e:
                 print(f"파일 삭제 오류: {e}")
-    
+
     def _on_start(self):
         """Start 버튼 클릭"""
-        if self._file_path:
-            # 사용자 설정값 포함한 전체 파라미터
-            full_params = {
-                **self._print_params,
-                'bladeSpeed': self._blade_speed * 60,  # mm/s → mm/min 변환
-                'ledPower': self._led_power,
-                'bladeCycles': self._blade_cycles,
-                'yDispenseDistance': self._y_dispense_distance,
-                'yDispenseSpeed': self._y_dispense_speed * 60,  # mm/s → mm/min
-                'yDispenseDelay': self._y_dispense_delay,
-            }
-            self.start_print.emit(self._file_path, full_params)
+        if not self._file_path or not self._material_preset:
+            return
+
+        preset = self._material_preset
+        full_params = {
+            **self._print_params,
+            'bladeSpeed': preset.blade_speed * 60,  # mm/s → mm/min
+            'ledPower': preset.led_power,
+            'bladeCycles': preset.blade_cycles,
+            'yDispenseDistance': preset.y_dispense_distance,
+            'yDispenseSpeed': preset.y_dispense_speed * 60,  # mm/s → mm/min
+            'yDispenseDelay': preset.y_dispense_delay,
+            'levelingCycles': preset.leveling_cycles,
+            'liftHeight': preset.lift_height,
+            'dropSpeed': preset.drop_speed,
+            'materialName': preset.name,
+        }
+        self.start_print.emit(self._file_path, full_params)
 
     def get_file_path(self) -> str:
         """현재 파일 경로 반환"""
@@ -788,61 +673,15 @@ class FilePreviewPage(BasePage):
 
     def get_print_params(self) -> dict:
         """프린트 파라미터 반환"""
+        if not self._material_preset:
+            return self._print_params
+        preset = self._material_preset
         return {
             **self._print_params,
-            'bladeSpeed': self._blade_speed * 60,  # mm/s → mm/min 변환
-            'ledPower': self._led_power,
-            'bladeCycles': self._blade_cycles,
-            'yDispenseDistance': self._y_dispense_distance,
-            'yDispenseSpeed': self._y_dispense_speed * 60,  # mm/s → mm/min
-            'yDispenseDelay': self._y_dispense_delay,
+            'bladeSpeed': preset.blade_speed * 60,
+            'ledPower': preset.led_power,
+            'bladeCycles': preset.blade_cycles,
+            'yDispenseDistance': preset.y_dispense_distance,
+            'yDispenseSpeed': preset.y_dispense_speed * 60,
+            'yDispenseDelay': preset.y_dispense_delay,
         }
-    
-    def get_blade_speed(self) -> int:
-        """Blade Speed 반환"""
-        return self._blade_speed
-
-    def set_blade_speed(self, value: int):
-        """Blade Speed 설정"""
-        self._blade_speed = value
-        self.row_blade_speed.set_value(value)
-
-    def get_led_power(self) -> int:
-        """LED Power 반환"""
-        return self._led_power
-
-    def set_led_power(self, value: int):
-        """LED Power 설정"""
-        self._led_power = value
-        self.row_led_power.set_value(value)
-
-    def get_blade_cycles(self) -> int:
-        """Blade Cycles 반환"""
-        return self._blade_cycles
-
-    def set_blade_cycles(self, value: int):
-        """Blade Cycles 설정"""
-        self._blade_cycles = max(1, min(3, value))
-        self.row_blade_cycles.set_value(self._blade_cycles)
-
-    def get_y_dispense_distance(self) -> float:
-        return self._y_dispense_distance
-
-    def set_y_dispense_distance(self, value: float):
-        self._y_dispense_distance = value
-        self.row_y_dispense.set_value(value)
-
-    def get_y_dispense_speed(self) -> int:
-        return self._y_dispense_speed
-
-    def set_y_dispense_speed(self, value: int):
-        self._y_dispense_speed = value
-        self.row_y_speed.set_value(value)
-
-    def get_y_dispense_delay(self) -> float:
-        return self._y_dispense_delay
-
-    def set_y_dispense_delay(self, value: float):
-        self._y_dispense_delay = value
-        self.row_y_delay.set_value(value)
-
