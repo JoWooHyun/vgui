@@ -297,6 +297,14 @@ class PrintWorker(QThread):
             self._is_stopped = True
             return
 
+        # Y축 50cc 시작 위치로 보정 (홈 = ~60cc, 6mm 이동 → 50cc)
+        Y_HOME_TO_50CC_OFFSET = 6.0  # mm
+        if not self._motor_y_move(Y_HOME_TO_50CC_OFFSET, job.y_dispense_speed):
+            self.error_occurred.emit("Y축 50cc 보정 이동 실패")
+            self._is_stopped = True
+            return
+        self._y_position = 0.0  # 50cc 위치를 토출 시작점(0)으로 재설정
+
         # 2. 레진 평탄화 (X축 왕복 + Z축 홈 복귀)
         if job.leveling_cycles > 0:
             self._set_status(PrintStatus.LEVELING)
