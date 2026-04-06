@@ -1,0 +1,31 @@
+코드 리뷰 결과
+🔴 Critical (치명적)
+#	문제	위치	설명
+1	블레이드 속도 단위 혼란	여러 파일	FilePreviewPage는 ×50, main.py는 ×60 사용. 불일치!
+2	레이어 이미지 업데이트 안됨	main.py	show_image 시그널이 프로젝터에만 연결, PrintProgressPage에는 미연결
+3	모터/DLP 에러 무시	print_worker.py	하드웨어 명령 실패해도 프린트 계속 진행
+🟠 High (높음)
+#	문제	위치	설명
+4	_process_layer() 후 stop 체크 없음	print_worker.py:258	레이어 처리 중 stop해도 다음 레이어 시그널 발생 가능
+5	이미지 로드 실패 시 무시	print_worker.py:391-400	이미지 없어도 LED 노광 진행
+6	에러 시 ProgressPage 미통보	main.py:404-408	에러 발생해도 타이머/버튼 그대로
+🟡 Medium (중간)
+#	문제	위치	설명
+7	Z축 홈 복귀 없음	print_worker.py:453-470	cleanup에서 X축만 홈, Z축은 그대로
+8	페이지-Worker 상태 불일치 가능	print_progress_page.py	pause 시 UI 먼저 변경, Worker 확인 안함
+9	타이머 cleanup 없음	print_progress_page.py	테마 변경 시 타이머 계속 동작 가능
+10	ZIP 파싱 실패 시 피드백 없음	file_preview_page.py	에러 시 사용자에게 알림 없음
+🟢 Low (낮음)
+#	문제	위치	설명
+11	노광 시간 미세 드리프트	print_worker.py:425-437	sleep 100ms + mutex 시간으로 약간 오버
+12	_parse_gcode_params() 죽은 코드	file_preview_page.py:471-501	사용 안하는 메서드
+13	블레이드 속도 50 매직넘버	여러 파일	상수로 정의 안됨
+당장 확인/수정이 필요한 것
+1. 블레이드 속도 변환 확인
+
+FilePreviewPage: _blade_speed × 50 → PrintWorker
+main.py 설정 동기화: speed × 60 → FilePreviewPage
+50이 맞나요, 60이 맞나요? 이전 대화에서 50이 맞다고 했는데, main.py에 60이 남아있을 수 있습니다.
+2. 레이어 이미지 연결 필요
+PrintProgressPage의 update_layer_image()가 호출되지 않아서 프린트 중 이미지가 업데이트 안됩니다.
+테스트하시면서 블레이드 속도가 정확한지 특히 확인해주세요. 단위 변환 문제가 가장 치명적입니다.

@@ -352,8 +352,8 @@ class PrintWorker(QThread):
         1. Z축 레이어 높이로 이동
         2. X축 편도 (140→0) × N회
         3. 이미지 투영 → LED ON → 노광 → LED OFF
-        4. X축 복귀 (0→140)
-        5. Z축 다음 레이어 높이로 하강
+        4. Z축 리프트 (+5mm, 블레이드 복귀 공간 확보)
+        5. X축 복귀 (0→140)
 
         Returns:
             bool: 성공 시 True, 실패 시 False (이미지 로드 실패 등)
@@ -458,19 +458,18 @@ class PrintWorker(QThread):
         if self._check_stopped():
             return True
 
-        # 6. X축 복귀 (0→140)
+        # 6. Z축 리프트 (+5mm, 블레이드 복귀 공간 확보)
+        z_lift_position = z_position + 5.0
+        if not self._motor_z_move(z_lift_position):
+            self.error_occurred.emit(f"레이어 {layer_idx}: Z축 리프트 실패")
+            self._is_stopped = True
+            return False
+
+        # 7. X축 복귀 (0→140)
         if not self._motor_x_move(140, job.blade_speed):
             self.error_occurred.emit(f"레이어 {layer_idx}: X축 복귀 실패")
             self._is_stopped = True
             return False
-
-        # 7. Z축 다음 레이어 높이로 하강 (마지막 레이어가 아닐 때만)
-        if layer_idx < job.params.totalLayer - 1:
-            next_z = (layer_idx + 2) * params.layerHeight
-            if not self._motor_z_move(next_z, params.normalDropSpeed):
-                self.error_occurred.emit(f"레이어 {layer_idx}: Z축 하강 실패")
-                self._is_stopped = True
-                return False
 
         return True
 

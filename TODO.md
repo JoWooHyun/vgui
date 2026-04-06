@@ -1,22 +1,24 @@
-# VERICOM DLP 3D Printer GUI - TODO
+# MAZIC CERA GUI - TODO
 
 ## 현재 상태
 
-**키오스크 모드 & 모터 비동기 처리** (2025-12-30)
-- 키오스크 보안 모드 추가 (Alt+F4, Alt+Tab, Esc 차단)
-- 관리자 모드 (로고 5회 클릭 또는 Ctrl+Shift+F12)
-- 모터 작업 비동기 처리 (GUI 멈춤 방지)
-- Manual 페이지 UI 잠금 기능 (모터 작업 중 버튼 비활성화)
+**소재 프리셋 시스템** (2025-04-06)
+- Material 페이지 추가 (Tool > Material)
+- 소재별 프린트 파라미터 프리셋 관리 (추가/편집/삭제)
+- 프린트 플로우: 파일 선택 → 소재 선택(팝업) → 미리보기(읽기전용) → 프린트
+- 기본 소재: Zirconia, Alumina, Hydroxyapatite
 
-**다크모드 완전 지원** (2025-12-30)
-- 모든 페이지 및 다이얼로그 다크모드 테마 지원
-- 테마 전환 시 UI 자동 새로고침
-- 테마 설정 재시작 후에도 유지
+**Y축 자동 레진 토출** (2025-02)
+- 레이어당 자동 레진 공급 (시린지 펌프, Y축 모터)
+- 80mm 한계 시 레진 부족 알림 + 사용자 선택
+- Y축 50cc 보정 (홈 후 6mm 오프셋)
+- Manual/Setting 페이지에 Y축 제어 패널
 
-**코드 리뷰 완료** (2025-12-29)
-- Critical/High 우선순위 버그 수정 완료
-- Medium 일부 항목 수정 완료 (ZIP 파일 검증, 프린트 종료 UI 개선)
-- Medium/Low 나머지 항목 대기 중
+**프린트 시퀀스 고도화** (2025-01~02)
+- 블레이드 모드: Oneway (140→0)
+- Klipper 장시간 일시정지 → 자동 firmware restart 복구
+- Leveling 페이지 3단계 가이드 시퀀스
+- Exposure + Clean 통합 (5개 패턴)
 
 ---
 
@@ -121,12 +123,15 @@
 - [x] **Theme 페이지** - Light/Dark 테마 선택 ✅ (2025-12-24)
 - [ ] **Calibration 페이지** - LED Test, Blade Test, Z=0 설정
 - [ ] **프린트 이력 페이지** - 과거 프린트 기록 조회
-- [x] **Setting 페이지** - LED Power/Blade Speed 설정
+- [x] **Setting 페이지** - LED Power/Blade Speed/Y축 설정
+- [x] **Material 페이지** - 소재 프리셋 관리 ✅ (2025-04-06)
+- [x] **Leveling 페이지** - 3단계 가이드 레벨링 ✅ (2025-02)
 
 ### 시스템 기능
 
 - [ ] **자동 시작** - 부팅 시 자동 실행 (systemd 서비스)
 - [x] **설정 저장/로드** - JSON 파일로 설정 유지 (SettingsManager)
+- [x] **소재 프리셋** - MaterialPreset 기반 소재별 설정 관리 ✅ (2025-04-06)
 - [ ] **다국어 지원** - 한국어/영어 전환 실제 구현
 - [x] **테마 기능** - Light/Dark 2가지 테마 ✅ (2025-12-24)
 - [ ] **OTA 업데이트** - 원격 펌웨어/소프트웨어 업데이트
@@ -161,6 +166,31 @@
 ---
 
 ## 완료된 항목 (Done)
+
+### 2025-04-06 (소재 프리셋 시스템)
+
+- [x] MaterialPreset dataclass 추가 (9개 필드)
+- [x] Material 페이지 신규 생성 (프리셋 리스트 + 편집 패널)
+- [x] 프린트 플로우 변경 (파일 → 소재 팝업 → 읽기전용 미리보기)
+- [x] MaterialSelectDialog 팝업 추가
+- [x] FilePreviewPage EditableRow → ReadOnlyRow 변경
+- [x] Manual 페이지에 Y축 (Resin Feeder) 패널 추가
+- [x] Tool 페이지에 Material 버튼 추가
+- [x] Y축 50cc 보정 코드 추가 (홈 후 6mm 오프셋)
+
+### 2025-01~02 (프린팅 시퀀스 고도화)
+
+- [x] 블레이드 모드 Oneway 전환
+- [x] Klipper idle_timeout 대응 (PAUSE/RESUME 통합)
+- [x] Klipper shutdown 자동 복구 (firmware_restart)
+- [x] Y축 자동 레진 토출 시스템 (시린지 펌프)
+- [x] Y축 80mm 한계 감지 및 사용자 알림
+- [x] Exposure + Clean 페이지 통합 (5패턴)
+- [x] Leveling 페이지 추가 (3단계 가이드)
+- [x] Setting 페이지 3패널 구조 (LED/Blade/Y축)
+- [x] 프로젝터 앱 수명주기 내 상시 ON
+- [x] X축 블레이드 방향 반전 (150mm 홈)
+- [x] 예상 프린트 시간 계산 정확도 개선
 
 ### 2025-12-30 (키오스크 & 모터 비동기)
 
