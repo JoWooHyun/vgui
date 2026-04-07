@@ -53,6 +53,7 @@ class PrintJob:
     y_dispense_distance: float = 1.0   # Y축 토출 거리 (mm/레이어)
     y_dispense_speed: int = 300        # Y축 토출 속도 (mm/min)
     y_dispense_delay: float = 2.0      # Y축 토출 후 대기 (초)
+    y_priming_position: float = 0.0    # 프라이밍 완료 위치 (mm, 0이면 미완료)
 
 
 class PrintWorker(QThread):
@@ -75,7 +76,8 @@ class PrintWorker(QThread):
     error_occurred = Signal(str)  # error message
     print_completed = Signal()
     print_stopped = Signal()
-    resin_empty = Signal()  # 레진 부족 알림 (Y축 80mm 도달)
+    resin_empty = Signal()  # 레진 부족 알림 (Y축 91mm 도달)
+    priming_requested = Signal()  # 프라이밍 요청 (프린트 중 프라이밍 필요 시)
 
     # 이미지 표시 요청 시그널 (ProjectorWindow로 전달)
     show_image = Signal(object)  # QPixmap
@@ -131,7 +133,8 @@ class PrintWorker(QThread):
                    leveling_cycles: int = 1, blade_cycles: int = 1,
                    y_dispense_distance: float = 1.0,
                    y_dispense_speed: int = 300,
-                   y_dispense_delay: float = 2.0):
+                   y_dispense_delay: float = 2.0,
+                   y_priming_position: float = 0.0):
         """
         프린트 시작
 
@@ -145,6 +148,7 @@ class PrintWorker(QThread):
             y_dispense_distance: Y축 토출 거리 (mm/레이어)
             y_dispense_speed: Y축 토출 속도 (mm/min)
             y_dispense_delay: Y축 토출 후 대기 (초)
+            y_priming_position: 프라이밍 완료 위치 (mm, 0이면 미완료)
         """
         if self.isRunning():
             print("[PrintWorker] 이미 실행 중")
@@ -167,12 +171,13 @@ class PrintWorker(QThread):
             y_dispense_distance=y_dispense_distance,
             y_dispense_speed=y_dispense_speed,
             y_dispense_delay=y_dispense_delay,
+            y_priming_position=y_priming_position,
         )
 
         # 플래그 초기화
         self._is_paused = False
         self._is_stopped = False
-        self._y_position = 0.0
+        self._y_position = y_priming_position  # 프라이밍 위치에서 시작
         self._y_dispensing_disabled = False
         self._y_resin_waiting = False
 
@@ -289,21 +294,26 @@ class PrintWorker(QThread):
             self._is_stopped = True
             return
 
-        # Y축 홈
-        if self._check_stopped():
-            return
-        if not self._motor_y_home():
-            self.error_occurred.emit("Y축 홈 이동 실패")
-            self._is_stopped = True
-            return
+        # Y축: 프라이밍 완료 여부에 따라 분기
+        if job.y_priming_position > 0:
+            # 프라이밍 완료 상태 → Y홈/오프셋 생략, 저장된 위치에서 시작
+            print(f"[PrintWorker] Y축 프라이밍 완료 상태 - 시작 위치: {job.y_priming_position}mm")
+            self._y_position = job.y_priming_position
+        else:
+            # 프라이밍 미완료 → 기존 방식 (Y홈 + 6mm 오프셋)
+            if self._check_stopped():
+                return
+            if not self._motor_y_home():
+                self.error_occurred.emit("Y축 홈 이동 실패")
+                self._is_stopped = True
+                return
 
-        # Y축 50cc 시작 위치로 보정 (홈 = ~60cc, 6mm 이동 → 50cc)
-        Y_HOME_TO_50CC_OFFSET = 6.0  # mm
-        if not self._motor_y_move(Y_HOME_TO_50CC_OFFSET, job.y_dispense_speed):
-            self.error_occurred.emit("Y축 50cc 보정 이동 실패")
-            self._is_stopped = True
-            return
-        self._y_position = 0.0  # 50cc 위치를 토출 시작점(0)으로 재설정
+            Y_HOME_TO_50CC_OFFSET = 6.0  # mm
+            if not self._motor_y_move(Y_HOME_TO_50CC_OFFSET, job.y_dispense_speed):
+                self.error_occurred.emit("Y축 50cc 보정 이동 실패")
+                self._is_stopped = True
+                return
+            self._y_position = Y_HOME_TO_50CC_OFFSET  # 6mm 위치에서 시작
 
         # 2. 레진 평탄화 (X축 왕복 + Z축 홈 복귀)
         if job.leveling_cycles > 0:
@@ -376,10 +386,10 @@ class PrintWorker(QThread):
             self._is_stopped = True
             return False
 
-        # 2. Y축 레진 토출 (토출 전 80mm 체크)
+        # 2. Y축 레진 토출 (토출 전 91mm 체크)
         if not self._y_dispensing_disabled and job.y_dispense_distance > 0:
-            # 80mm 도달 체크 (토출 전)
-            Y_MAX_POSITION = 80.0
+            # 91mm 도달 체크 (토출 전) - 실측: 홈→91mm가 물리적 끝
+            Y_MAX_POSITION = 91.0
             if self._y_position >= Y_MAX_POSITION:
                 # 레진 부족 → 일시정지 + 알림
                 print(f"[PrintWorker] Y축 {self._y_position}mm 도달 → 레진 부족 알림")

@@ -346,14 +346,17 @@ class BladePanel(QFrame):
 
 
 class YAxisPanel(QFrame):
-    """Y축 모터 제어 패널 (홈 + 거리선택 + 위/아래)"""
+    """Y축 프라이밍 패널 (PRIME → HOME → UP/DOWN 이동 → OK 저장)"""
 
-    move_positive = Signal(float)  # 홈 반대방향 (아래)
-    move_negative = Signal(float)  # 홈 방향 (위)
+    move_positive = Signal(float)  # 홈 반대방향 (전진)
+    move_negative = Signal(float)  # 홈 방향 (후진)
     home_axis = Signal()           # 홈 이동
+    priming_started = Signal()     # 프라이밍 시작 (HOME 실행 요청)
+    priming_done = Signal()        # 프라이밍 완료 (좌표 저장 요청)
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._is_priming = False   # 프라이밍 모드 여부
         self._setup_ui()
 
     def _setup_ui(self):
@@ -367,43 +370,139 @@ class YAxisPanel(QFrame):
         layout.addStretch(1)
 
         # 타이틀
-        self.title_label = QLabel("Y Axis")
+        self.title_label = QLabel("PRIMING")
         self.title_label.setStyleSheet(get_axis_title_style())
         self.title_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.title_label)
+
+        # 상태 라벨
+        self.status_label = QLabel("")
+        self.status_label.setStyleSheet(f"""
+            QLabel {{
+                color: {Colors.TEXT_SECONDARY};
+                font-size: 12px;
+                background-color: transparent;
+                border: none;
+            }}
+        """)
+        self.status_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.status_label)
 
         layout.addStretch(1)
 
         # 거리 선택기 (0.1, 1.0, 10.0 mm)
         self.distance_selector = DistanceSelector()
+        self.distance_selector.setEnabled(False)  # 프라이밍 모드에서만 활성화
         layout.addWidget(self.distance_selector)
 
         layout.addStretch(1)
 
-        # 제어 버튼들 (HOME, UP, DOWN)
-        control_layout = QHBoxLayout()
-        control_layout.setSpacing(12)
-        control_layout.setAlignment(Qt.AlignCenter)
+        # 이동 버튼들 (UP, DOWN) - 프라이밍 모드에서만 활성화
+        move_layout = QHBoxLayout()
+        move_layout.setSpacing(12)
+        move_layout.setAlignment(Qt.AlignCenter)
 
-        # 홈 버튼
-        self.btn_home = HomeButton(70, 28)
-        self.btn_home.clicked.connect(self.home_axis.emit)
-
-        # 위 버튼 (홈 방향)
         self.btn_up = ControlButton(Icons.CHEVRON_UP, 70, 28)
         self.btn_up.clicked.connect(self._on_move_up)
+        self.btn_up.setEnabled(False)
 
-        # 아래 버튼 (홈 반대방향)
         self.btn_down = ControlButton(Icons.CHEVRON_DOWN, 70, 28)
         self.btn_down.clicked.connect(self._on_move_down)
+        self.btn_down.setEnabled(False)
 
-        control_layout.addWidget(self.btn_home)
-        control_layout.addWidget(self.btn_up)
-        control_layout.addWidget(self.btn_down)
-
-        layout.addLayout(control_layout)
+        move_layout.addWidget(self.btn_up)
+        move_layout.addWidget(self.btn_down)
+        layout.addLayout(move_layout)
 
         layout.addStretch(1)
+
+        # PRIME / OK 버튼
+        action_layout = QHBoxLayout()
+        action_layout.setSpacing(8)
+
+        self.btn_prime = QPushButton("PRIME")
+        self.btn_prime.setFixedHeight(44)
+        self.btn_prime.setCursor(Qt.PointingHandCursor)
+        self.btn_prime.setFont(Fonts.h3())
+        self.btn_prime.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.BG_SECONDARY};
+                border: 2px solid {Colors.BORDER};
+                border-radius: {Radius.MD}px;
+                color: {Colors.TEXT_PRIMARY};
+                font-weight: 600;
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.BG_TERTIARY};
+            }}
+        """)
+        self.btn_prime.clicked.connect(self._on_prime_click)
+
+        self.btn_ok = QPushButton("OK")
+        self.btn_ok.setFixedHeight(44)
+        self.btn_ok.setCursor(Qt.PointingHandCursor)
+        self.btn_ok.setFont(Fonts.h3())
+        self.btn_ok.setEnabled(False)
+        self._update_ok_style()
+        self.btn_ok.clicked.connect(self._on_ok_click)
+
+        action_layout.addWidget(self.btn_prime)
+        action_layout.addWidget(self.btn_ok)
+        layout.addLayout(action_layout)
+
+    def _update_ok_style(self):
+        """OK 버튼 스타일 (활성/비활성)"""
+        if self.btn_ok.isEnabled():
+            self.btn_ok.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {Colors.CYAN};
+                    border: none;
+                    border-radius: {Radius.MD}px;
+                    color: {Colors.WHITE};
+                    font-weight: 600;
+                }}
+                QPushButton:pressed {{
+                    background-color: #0891B2;
+                }}
+            """)
+        else:
+            self.btn_ok.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {Colors.BG_TERTIARY};
+                    border: 2px solid {Colors.BORDER};
+                    border-radius: {Radius.MD}px;
+                    color: {Colors.TEXT_TERTIARY};
+                    font-weight: 600;
+                }}
+            """)
+
+    def _on_prime_click(self):
+        """PRIME 버튼 클릭 → 홈 실행 + 프라이밍 모드 진입"""
+        self._is_priming = True
+        self.status_label.setText("Homing...")
+        self.btn_prime.setEnabled(False)
+        self.priming_started.emit()
+
+    def on_home_completed(self):
+        """홈 완료 후 호출 (main.py에서 호출)"""
+        self.status_label.setText("Move until resin appears, then OK")
+        self.distance_selector.setEnabled(True)
+        self.btn_up.setEnabled(True)
+        self.btn_down.setEnabled(True)
+        self.btn_ok.setEnabled(True)
+        self._update_ok_style()
+
+    def _on_ok_click(self):
+        """OK 버튼 클릭 → 프라이밍 완료, 좌표 저장 요청"""
+        self._is_priming = False
+        self.status_label.setText("Priming saved!")
+        self.distance_selector.setEnabled(False)
+        self.btn_up.setEnabled(False)
+        self.btn_down.setEnabled(False)
+        self.btn_ok.setEnabled(False)
+        self.btn_prime.setEnabled(True)
+        self._update_ok_style()
+        self.priming_done.emit()
 
     def _on_move_up(self):
         """위로 이동 (홈 방향 = 음의 방향)"""
@@ -432,6 +531,8 @@ class SettingPage(BasePage):
     # Y축 시그널
     y_move = Signal(float)    # Y축 이동 (거리)
     y_home = Signal()         # Y축 홈
+    y_prime_start = Signal()  # 프라이밍 시작 (홈 요청)
+    y_prime_done = Signal()   # 프라이밍 완료 (좌표 저장 요청)
 
     def __init__(self, parent=None):
         super().__init__("Setting", show_back=True, parent=parent)
@@ -455,11 +556,13 @@ class SettingPage(BasePage):
         self.blade_panel.blade_move.connect(self.blade_move.emit)
         self.blade_panel.home_axis.connect(self.blade_home.emit)
 
-        # Y축 패널
+        # Y축 프라이밍 패널
         self.y_panel = YAxisPanel()
         self.y_panel.move_positive.connect(lambda d: self.y_move.emit(d))
         self.y_panel.move_negative.connect(lambda d: self.y_move.emit(-d))
         self.y_panel.home_axis.connect(self.y_home.emit)
+        self.y_panel.priming_started.connect(self.y_prime_start.emit)
+        self.y_panel.priming_done.connect(self.y_prime_done.emit)
 
         panels_layout.addWidget(self.led_panel, 1)
         panels_layout.addWidget(self.blade_panel, 1)

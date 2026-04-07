@@ -24,7 +24,7 @@ class MotorConfig:
     z_min: float = 0.0          # Z축 최소 위치 (mm)
     z_max: float = 80.0         # Z축 최대 위치 (mm) - 실제 스펙
     y_min: float = 0.0          # Y축 최소 위치 (mm)
-    y_max: float = 150.0        # Y축 최대 위치 (mm)
+    y_max: float = 91.0         # Y축 최대 위치 (mm) - 실측: 홈→91mm가 물리적 끝
     drop_speed: int = 150       # Z축 하강 속도 (mm/min)
 
 

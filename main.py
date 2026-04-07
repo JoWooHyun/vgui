@@ -20,7 +20,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from controllers.theme_manager import get_theme_manager
 _theme_init = get_theme_manager()  # 테마 로드 및 Colors 적용
 
-from PySide6.QtWidgets import QApplication, QMainWindow, QStackedWidget, QMessageBox, QDialog
+from PySide6.QtWidgets import (
+    QApplication, QMainWindow, QStackedWidget, QMessageBox, QDialog,
+    QVBoxLayout, QHBoxLayout, QLabel, QPushButton
+)
 from PySide6.QtCore import Qt, QTimer, QThread, Signal, QObject
 from PySide6.QtGui import QCursor
 
@@ -60,6 +63,8 @@ class MotorWorker(QObject):
         finally:
             self.finished.emit()
 
+from styles.colors import Colors
+from styles.fonts import Fonts
 from styles.stylesheets import get_global_style
 from pages.main_page import MainPage
 from pages.tool_page import ToolPage, SimpleAlert
@@ -294,6 +299,8 @@ class MainWindow(QMainWindow):
         self.setting_page.blade_speed_changed.connect(self._on_blade_speed_changed)
         self.setting_page.y_move.connect(self._setting_y_move)
         self.setting_page.y_home.connect(self._setting_y_home)
+        self.setting_page.y_prime_start.connect(self._setting_y_prime_start)
+        self.setting_page.y_prime_done.connect(self._setting_y_prime_done)
 
         # 매뉴얼 페이지
         self.manual_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TOOL))
@@ -482,9 +489,110 @@ class MainWindow(QMainWindow):
         self._go_to_page(self.PAGE_FILE_PREVIEW)
     
     def _on_start_print(self, file_path: str, params: dict):
-        """프린트 시작"""
-        print(f"[Print] 프린트 시작: {file_path}")
+        """프린트 시작 - 프라이밍 확인 후 진행"""
+        print(f"[Print] 프린트 시작 요청: {file_path}")
+
+        # 프라이밍 확인 팝업
+        priming_pos = self.settings.get_y_priming_position()
+        y_priming_position = 0.0
+
+        if priming_pos > 0:
+            # 저장된 프라이밍 위치가 있음 → 사용할지 확인
+            dialog = self._create_priming_confirm_dialog(priming_pos)
+            result = dialog.exec()
+
+            if result == QDialog.Accepted:
+                # "예" → 저장된 프라이밍 위치 사용
+                y_priming_position = priming_pos
+                print(f"[Print] 저장된 프라이밍 위치 사용: {priming_pos}mm")
+            else:
+                # "아니오" → 프라이밍 미완료로 진행 (기존 Y홈+오프셋 방식)
+                y_priming_position = 0.0
+                print("[Print] 프라이밍 없이 진행 (기존 Y홈+오프셋)")
+        else:
+            print("[Print] 프라이밍 기록 없음 → 기존 Y홈+오프셋 방식")
+
+        # 프라이밍 위치 초기화 (사용 후 리셋)
+        self.settings.set_y_priming_position(0.0)
+
+        self._execute_print(file_path, params, y_priming_position)
+
+    def _create_priming_confirm_dialog(self, priming_pos: float) -> QDialog:
+        """프라이밍 확인 다이얼로그 생성"""
+        dialog = QDialog(self)
+        dialog.setWindowFlags(Qt.FramelessWindowHint | Qt.Dialog)
+        dialog.setFixedSize(400, 200)
+        dialog.setStyleSheet(f"""
+            QDialog {{
+                background-color: {Colors.BG_PRIMARY};
+                border: 2px solid {Colors.BORDER};
+                border-radius: 16px;
+            }}
+        """)
+
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(16)
+
+        lbl_title = QLabel("Priming Check")
+        lbl_title.setFont(Fonts.h3())
+        lbl_title.setAlignment(Qt.AlignCenter)
+        lbl_title.setStyleSheet(f"color: {Colors.TEXT_PRIMARY};")
+
+        lbl_msg = QLabel(f"Priming done at {priming_pos:.1f}mm.\nUse this position?")
+        lbl_msg.setFont(Fonts.body())
+        lbl_msg.setAlignment(Qt.AlignCenter)
+        lbl_msg.setWordWrap(True)
+        lbl_msg.setStyleSheet(f"color: {Colors.TEXT_SECONDARY};")
+
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(12)
+
+        btn_no = QPushButton("No")
+        btn_no.setFixedSize(140, 44)
+        btn_no.setFont(Fonts.body())
+        btn_no.setCursor(Qt.PointingHandCursor)
+        btn_no.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.BG_SECONDARY};
+                color: {Colors.TEXT_PRIMARY};
+                border: 1px solid {Colors.BORDER};
+                border-radius: 8px;
+            }}
+            QPushButton:pressed {{ background-color: {Colors.BG_TERTIARY}; }}
+        """)
+        btn_no.clicked.connect(dialog.reject)
+
+        btn_yes = QPushButton("Yes")
+        btn_yes.setFixedSize(140, 44)
+        btn_yes.setFont(Fonts.body())
+        btn_yes.setCursor(Qt.PointingHandCursor)
+        btn_yes.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.CYAN};
+                color: {Colors.WHITE};
+                border: none;
+                border-radius: 8px;
+            }}
+            QPushButton:pressed {{ background-color: #0891B2; }}
+        """)
+        btn_yes.clicked.connect(dialog.accept)
+
+        btn_layout.addWidget(btn_no)
+        btn_layout.addWidget(btn_yes)
+
+        layout.addWidget(lbl_title)
+        layout.addWidget(lbl_msg)
+        layout.addStretch()
+        layout.addLayout(btn_layout)
+
+        return dialog
+
+    def _execute_print(self, file_path: str, params: dict, y_priming_position: float):
+        """실제 프린트 실행"""
+        print(f"[Print] 프린트 실행: {file_path}")
         print(f"  - 파라미터: {params}")
+        print(f"  - Y 프라이밍 위치: {y_priming_position}mm")
 
         # 썸네일 가져오기
         thumbnail = None
@@ -496,19 +604,18 @@ class MainWindow(QMainWindow):
         # 파라미터 추출
         total_layers = params.get('totalLayer', 100)
         blade_speed = params.get('bladeSpeed', 300)
-        led_power_percent = params.get('ledPower', 43)   # 퍼센트 (100% = 1023, 43% = 440)
-        led_power = int(1023 * led_power_percent / 100)  # 실제 LED 값으로 변환
+        led_power_percent = params.get('ledPower', 43)
+        led_power = int(1023 * led_power_percent / 100)
         leveling_cycles = params.get('levelingCycles', 1)
-        blade_cycles = params.get('bladeCycles', 1)  # 매 레이어 블레이드 왕복 횟수
-        # blade_mode 제거 - 편도(oneway) 모드 고정
+        blade_cycles = params.get('bladeCycles', 1)
 
         # Y축 토출 파라미터
         y_dispense_distance = params.get('yDispenseDistance', 1.0)
-        y_dispense_speed = params.get('yDispenseSpeed', 300)  # 이미 mm/min
+        y_dispense_speed = params.get('yDispenseSpeed', 300)
         y_dispense_delay = params.get('yDispenseDelay', 2.0)
 
         # 추가 파라미터 (run.gcode에서 추출된 값)
-        estimated_time = int(params.get('estimatedPrintTime', 0))  # 초 단위
+        estimated_time = int(params.get('estimatedPrintTime', 0))
         layer_height = float(params.get('layerHeight', 0.0))
         bottom_exposure = float(params.get('bottomLayerExposureTime', 0.0))
         normal_exposure = float(params.get('normalExposureTime', 0.0))
@@ -523,7 +630,7 @@ class MainWindow(QMainWindow):
             thumbnail=thumbnail,
             total_layers=total_layers,
             blade_speed=blade_speed,
-            led_power=led_power_percent,  # 퍼센트로 전달
+            led_power=led_power_percent,
             estimated_time=estimated_time,
             layer_height=layer_height,
             bottom_exposure=bottom_exposure,
@@ -578,7 +685,8 @@ class MainWindow(QMainWindow):
             blade_cycles=blade_cycles,
             y_dispense_distance=y_dispense_distance,
             y_dispense_speed=y_dispense_speed,
-            y_dispense_delay=y_dispense_delay
+            y_dispense_delay=y_dispense_delay,
+            y_priming_position=y_priming_position,
         )
 
     def _on_progress_updated(self, current: int, total: int):
@@ -774,6 +882,20 @@ class MainWindow(QMainWindow):
         """Setting 페이지에서 Y축 Home"""
         print("[Setting] Y Axis Home")
         self._start_motor_operation("y_home")
+
+    def _setting_y_prime_start(self):
+        """Setting 페이지에서 프라이밍 시작 (Y홈 실행)"""
+        print("[Setting] Y Priming Start - Homing...")
+        self._start_motor_operation(
+            "y_home",
+            on_finished=self.setting_page.y_panel.on_home_completed
+        )
+
+    def _setting_y_prime_done(self):
+        """Setting 페이지에서 프라이밍 완료 (좌표 저장)"""
+        y_pos = self.motor._y_position
+        print(f"[Setting] Y Priming Done - Position: {y_pos}mm")
+        self.settings.set_y_priming_position(y_pos)
 
     # ==================== 설정 저장/동기화 ====================
 

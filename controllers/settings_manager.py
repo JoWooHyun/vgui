@@ -61,6 +61,7 @@ class PrintSettings:
     y_dispense_distance: float = 1.0   # Y축 토출 거리 (mm/레이어)
     y_dispense_speed: int = 5          # Y축 토출 속도 (mm/s)
     y_dispense_delay: float = 2.0      # Y축 토출 후 대기 (초)
+    y_priming_position: float = 0.0    # Y축 프라이밍 완료 위치 (mm)
 
 
 @dataclass
@@ -122,7 +123,8 @@ class SettingsManager:
                 blade_speed=print_data.get('blade_speed', 5),
                 y_dispense_distance=print_data.get('y_dispense_distance', 1.0),
                 y_dispense_speed=print_data.get('y_dispense_speed', 5),
-                y_dispense_delay=print_data.get('y_dispense_delay', 2.0)
+                y_dispense_delay=print_data.get('y_dispense_delay', 2.0),
+                y_priming_position=print_data.get('y_priming_position', 0.0)
             )
 
             # 기타 설정 로드
@@ -307,6 +309,17 @@ class SettingsManager:
         self._settings.print_settings.y_dispense_delay = value
         self.save()
 
+    # ==================== Y Priming Position ====================
+
+    def get_y_priming_position(self) -> float:
+        return self._settings.print_settings.y_priming_position
+
+    def set_y_priming_position(self, value: float):
+        value = max(0.0, min(91.0, value))
+        self._settings.print_settings.y_priming_position = value
+        self.save()
+        print(f"[Settings] Y축 프라이밍 위치 저장: {value}mm")
+
     # ==================== Language ====================
 
     def get_language(self) -> str:
@@ -347,6 +360,8 @@ class SettingsManager:
             return self._settings.print_settings.y_dispense_speed
         elif key == "y_dispense_delay":
             return self._settings.print_settings.y_dispense_delay
+        elif key == "y_priming_position":
+            return self._settings.print_settings.y_priming_position
         return default
 
     def set(self, key: str, value):
@@ -365,6 +380,8 @@ class SettingsManager:
             self._settings.print_settings.y_dispense_speed = value
         elif key == "y_dispense_delay":
             self._settings.print_settings.y_dispense_delay = value
+        elif key == "y_priming_position":
+            self._settings.print_settings.y_priming_position = value
         self.save()
 
 
