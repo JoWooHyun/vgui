@@ -471,7 +471,7 @@ class YAxisPanel(QFrame):
                     background-color: {Colors.BG_TERTIARY};
                     border: 2px solid {Colors.BORDER};
                     border-radius: {Radius.MD}px;
-                    color: {Colors.TEXT_TERTIARY};
+                    color: {Colors.TEXT_DISABLED};
                     font-weight: 600;
                 }}
             """)
