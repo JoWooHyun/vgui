@@ -18,12 +18,12 @@ SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
 class MaterialPreset:
     """소재별 프린트 프리셋"""
     name: str = "Default"
-    blade_speed: int = 5            # Blade 속도 (1-15 mm/s)
+    blade_speed: int = 5            # Blade 속도 (1-30 mm/s)
     led_power: int = 43             # LED 파워 (9-100%)
     blade_cycles: int = 1           # 블레이드 반복 횟수 (1~3)
-    y_dispense_distance: float = 1.0  # Y축 토출 거리 (mm/레이어, 0.1~5.0)
-    y_dispense_speed: int = 5       # Y축 토출 속도 (mm/s, 1~15)
-    y_dispense_delay: float = 2.0   # Y축 토출 후 대기 (초, 0.5~10.0)
+    y_dispense_distance: float = 1.0  # 레진 토출거리 (mm/레이어, 0.1~5.0)
+    y_dispense_speed: int = 3       # 토출속도 (mm/s, 1~15)
+    y_dispense_delay: float = 5.0   # 토출 대기시간 (초, 0.5~20.0)
     # 확장 항목
     leveling_cycles: int = 1        # 레진 평탄화 횟수 (0~5)
     lift_height: float = 5.0        # 리프트 높이 (mm, 1.0~20.0)
@@ -35,19 +35,19 @@ DEFAULT_MATERIALS = [
     MaterialPreset(
         name="Zirconia",
         blade_speed=5, led_power=43, blade_cycles=1,
-        y_dispense_distance=1.0, y_dispense_speed=5, y_dispense_delay=2.0,
+        y_dispense_distance=1.0, y_dispense_speed=3, y_dispense_delay=5.0,
         leveling_cycles=1, lift_height=5.0, drop_speed=150
     ),
     MaterialPreset(
         name="Alumina",
         blade_speed=5, led_power=50, blade_cycles=1,
-        y_dispense_distance=1.0, y_dispense_speed=5, y_dispense_delay=2.0,
+        y_dispense_distance=1.0, y_dispense_speed=3, y_dispense_delay=5.0,
         leveling_cycles=1, lift_height=5.0, drop_speed=150
     ),
     MaterialPreset(
         name="Hydroxyapatite",
         blade_speed=4, led_power=45, blade_cycles=1,
-        y_dispense_distance=1.2, y_dispense_speed=4, y_dispense_delay=2.5,
+        y_dispense_distance=1.2, y_dispense_speed=3, y_dispense_delay=5.0,
         leveling_cycles=1, lift_height=5.0, drop_speed=120
     ),
 ]
@@ -57,10 +57,10 @@ DEFAULT_MATERIALS = [
 class PrintSettings:
     """프린트 관련 설정"""
     led_power: int = 43         # LED 파워 (9-100%, 1023=100%, 440=43%)
-    blade_speed: int = 5        # Blade 속도 (1-15 mm/s, 리드스크류)
-    y_dispense_distance: float = 1.0   # Y축 토출 거리 (mm/레이어)
-    y_dispense_speed: int = 5          # Y축 토출 속도 (mm/s)
-    y_dispense_delay: float = 2.0      # Y축 토출 후 대기 (초)
+    blade_speed: int = 5        # Blade 속도 (1-30 mm/s)
+    y_dispense_distance: float = 1.0   # 레진 토출거리 (mm/레이어)
+    y_dispense_speed: int = 3          # 토출속도 (mm/s)
+    y_dispense_delay: float = 5.0      # 토출 대기시간 (초)
     y_priming_position: float = 0.0    # Y축 프라이밍 완료 위치 (mm)
 
 

@@ -455,9 +455,9 @@ class FilePreviewPage(BasePage):
             ("Blade Speed", "blade_speed", "mm/s"),
             ("LED Power", "led_power", "%"),
             ("Blade Cycles", "blade_cycles", "회"),
-            ("Y Dispense", "y_dispense_distance", "mm"),
-            ("Y Speed", "y_dispense_speed", "mm/s"),
-            ("Y Delay", "y_dispense_delay", "s"),
+            ("레진 토출거리", "y_dispense_distance", "mm"),
+            ("토출속도", "y_dispense_speed", "mm/s"),
+            ("토출 대기시간", "y_dispense_delay", "s"),
         ]
 
         for label, key, unit in preset_items:

@@ -313,20 +313,18 @@ class MaterialPage(BasePage):
         right_layout.addSpacing(4)
 
         # 편집 행들
-        self.row_blade_speed = MaterialEditRow("Blade Speed", 5, "mm/s", 1, 15)
+        self.row_blade_speed = MaterialEditRow("Blade Speed", 5, "mm/s", 1, 30)
         self.row_led_power = MaterialEditRow("LED Power", 43, "%", 9, 100)
         self.row_blade_cycles = MaterialEditRow("Blade Cycles", 1, "회", 1, 3)
-        self.row_y_dispense = MaterialEditRow("Y Dispense", 1.0, "mm", 0.1, 5.0, allow_decimal=True)
-        self.row_y_speed = MaterialEditRow("Y Speed", 5, "mm/s", 1, 15)
-        self.row_y_delay = MaterialEditRow("Y Delay", 2.0, "s", 0.5, 10.0, allow_decimal=True)
-        self.row_leveling = MaterialEditRow("Leveling Cycles", 1, "회", 0, 5)
-        self.row_lift_height = MaterialEditRow("Lift Height", 5.0, "mm", 1.0, 20.0, allow_decimal=True)
-        self.row_drop_speed = MaterialEditRow("Drop Speed", 150, "mm/min", 10, 300)
+        self.row_y_dispense = MaterialEditRow("레진 토출거리", 1.0, "mm", 0.1, 5.0, allow_decimal=True)
+        self.row_y_speed = MaterialEditRow("토출속도", 3, "mm/s", 1, 15)
+        self.row_y_delay = MaterialEditRow("토출 대기시간", 5.0, "s", 0.5, 20.0, allow_decimal=True)
+        self.row_leveling = MaterialEditRow("평탄화 횟수", 1, "회", 0, 5)
 
         self._edit_rows = [
             self.row_blade_speed, self.row_led_power, self.row_blade_cycles,
             self.row_y_dispense, self.row_y_speed, self.row_y_delay,
-            self.row_leveling, self.row_lift_height, self.row_drop_speed
+            self.row_leveling
         ]
 
         for row in self._edit_rows:
@@ -416,8 +414,6 @@ class MaterialPage(BasePage):
         self.row_y_speed.set_value(preset.y_dispense_speed)
         self.row_y_delay.set_value(preset.y_dispense_delay)
         self.row_leveling.set_value(preset.leveling_cycles)
-        self.row_lift_height.set_value(preset.lift_height)
-        self.row_drop_speed.set_value(preset.drop_speed)
 
         self._update_list_styles()
 
@@ -435,8 +431,6 @@ class MaterialPage(BasePage):
             y_dispense_speed=int(self.row_y_speed.get_value()),
             y_dispense_delay=self.row_y_delay.get_value(),
             leveling_cycles=int(self.row_leveling.get_value()),
-            lift_height=self.row_lift_height.get_value(),
-            drop_speed=int(self.row_drop_speed.get_value()),
         )
         get_settings().update_material(self._current_material_name, preset)
 
