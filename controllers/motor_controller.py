@@ -283,7 +283,7 @@ class MotorController:
         print("[Motor] X축 홈 이동 시작")
         success = self.send_gcode("G28 X", timeout=120)
         if success:
-            self._x_position = 150.0
+            self._x_position = 0.0
             self._x_is_homed = True
             self.wait_for_movement_complete(timeout=120)
             print("[Motor] X축 홈 이동 완료")
@@ -382,8 +382,8 @@ class MotorController:
         return self.x_move_absolute(self.config.x_max, speed)
 
     def x_to_home(self, speed: Optional[int] = None) -> bool:
-        """X축 홈(150mm)으로 이동 (G0 이동, G28 아님)"""
-        return self.x_move_absolute(150, speed)
+        """X축 홈(0mm)으로 이동 (G0 이동, G28 아님)"""
+        return self.x_move_absolute(0, speed)
 
     # ==================== Y축 제어 ====================
 

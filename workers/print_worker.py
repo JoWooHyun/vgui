@@ -286,7 +286,7 @@ class PrintWorker(QThread):
             self._is_stopped = True
             return
 
-        # X축 홈 (150mm) → 140mm 대기 위치로 이동
+        # X축 홈 (0mm) → 140mm 대기 위치로 이동
         if self._check_stopped():
             return
         if not self._motor_x_home():
