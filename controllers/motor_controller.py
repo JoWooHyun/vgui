@@ -535,16 +535,16 @@ class MotorController:
         for cycle in range(cycles):
             print(f"\n[Motor] --- 평탄화 {cycle + 1}/{cycles}회 ---")
 
-            print("[Motor] X축 140mm → 0mm 이동")
-            if not self.x_move_absolute(0, speed):
-                print("[Motor] X축 0mm 이동 실패 - 평탄화 중단")
+            print("[Motor] X축 0mm → 140mm 이동")
+            if not self.x_move_absolute(140, speed):
+                print("[Motor] X축 140mm 이동 실패 - 평탄화 중단")
                 return False
 
             time.sleep(0.2)
 
-            print("[Motor] X축 0mm → 140mm 이동")
-            if not self.x_move_absolute(140, speed):
-                print("[Motor] X축 140mm 이동 실패 - 평탄화 중단")
+            print("[Motor] X축 140mm → 0mm 이동")
+            if not self.x_move_absolute(0, speed):
+                print("[Motor] X축 0mm 이동 실패 - 평탄화 중단")
                 return False
 
             time.sleep(0.2)
