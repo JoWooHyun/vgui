@@ -286,11 +286,15 @@ class PrintWorker(QThread):
             self._is_stopped = True
             return
 
-        # X축 홈
+        # X축 홈 (150mm) → 140mm 대기 위치로 이동
         if self._check_stopped():
             return
         if not self._motor_x_home():
             self.error_occurred.emit("X축 홈 이동 실패")
+            self._is_stopped = True
+            return
+        if not self._motor_x_move(140, job.blade_speed):
+            self.error_occurred.emit("X축 대기 위치 이동 실패")
             self._is_stopped = True
             return
 
@@ -360,10 +364,11 @@ class PrintWorker(QThread):
 
         Flow:
         1. Z축 레이어 높이로 이동
-        2. X축 편도 (140→0) × N회
-        3. 이미지 투영 → LED ON → 노광 → LED OFF
-        4. Z축 리프트 (+5mm, 블레이드 복귀 공간 확보)
-        5. X축 복귀 (0→140)
+        2. Y축 레진 토출
+        3. X축 편도 (140→0) × N회 (평탄화)
+        4. X축 복귀 (0→140, LED 안 가리는 위치)
+        5. 이미지 투영 → LED ON → 노광 → LED OFF
+        6. Z축 리프트 (+5mm)
 
         Returns:
             bool: 성공 시 True, 실패 시 False (이미지 로드 실패 등)
@@ -439,6 +444,12 @@ class PrintWorker(QThread):
         #             self._is_stopped = True
         #             return False
 
+        # 4. X축 복귀 (0→140, LED 안 가리는 위치로)
+        if not self._motor_x_move(140, job.blade_speed):
+            self.error_occurred.emit(f"레이어 {layer_idx}: X축 복귀 실패")
+            self._is_stopped = True
+            return False
+
         # 정지/일시정지 체크 (LED ON 전에)
         if self._check_stopped():
             return True
@@ -446,18 +457,18 @@ class PrintWorker(QThread):
         if self._check_stopped():
             return True
 
-        # 3. 이미지 투영 (실패 시 프린트 중지)
+        # 5. 이미지 투영 (실패 시 프린트 중지)
         if not self._show_layer_image(job.file_path, layer_idx):
             self._mutex.lock()
             self._is_stopped = True
             self._mutex.unlock()
             return False
 
-        # 4. LED ON + 노광
+        # 6. LED ON + 노광 (블레이드 140mm = 빛 안 가림)
         self._dlp_led_on(job.led_power)
         self._wait_exposure(exposure_time)
 
-        # 5. LED OFF
+        # 7. LED OFF
         self._dlp_led_off()
         self.clear_image.emit()
 
@@ -468,16 +479,10 @@ class PrintWorker(QThread):
         if self._check_stopped():
             return True
 
-        # 6. Z축 리프트 (+5mm, 블레이드 복귀 공간 확보)
+        # 8. Z축 리프트 (+5mm, 다음 레이어 준비)
         z_lift_position = z_position + 5.0
         if not self._motor_z_move(z_lift_position):
             self.error_occurred.emit(f"레이어 {layer_idx}: Z축 리프트 실패")
-            self._is_stopped = True
-            return False
-
-        # 7. X축 복귀 (0→140)
-        if not self._motor_x_move(140, job.blade_speed):
-            self.error_occurred.emit(f"레이어 {layer_idx}: X축 복귀 실패")
             self._is_stopped = True
             return False
 
