@@ -410,7 +410,7 @@ class PrintWorker(QThread):
 
             # 토출 실행 (disable 안 된 경우)
             if not self._y_dispensing_disabled:
-                if not self._motor_y_move(job.y_dispense_distance, job.y_dispense_speed):
+                if not self._motor_y_move(-job.y_dispense_distance, job.y_dispense_speed):
                     self.error_occurred.emit(f"레이어 {layer_idx}: Y축 토출 실패")
                     self._is_stopped = True
                     return False
