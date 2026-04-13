@@ -477,14 +477,13 @@ class YAxisPanel(QFrame):
             """)
 
     def _on_prime_click(self):
-        """PRIME 버튼 클릭 → 홈 실행 + 프라이밍 모드 진입"""
+        """PRIME 버튼 클릭 → 현재 위치를 0으로 리셋 + 프라이밍 모드 진입"""
         self._is_priming = True
-        self.status_label.setText("Homing...")
         self.btn_prime.setEnabled(False)
-        self.priming_started.emit()
+        self.priming_started.emit()  # main.py에서 G92 Y0 실행
 
-    def on_home_completed(self):
-        """홈 완료 후 호출 (main.py에서 호출)"""
+    def on_position_reset_completed(self):
+        """위치 리셋 완료 후 호출 (main.py에서 호출)"""
         self.status_label.setText("Move until resin appears, then OK")
         self.distance_selector.setEnabled(True)
         self.btn_up.setEnabled(True)

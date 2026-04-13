@@ -298,26 +298,9 @@ class PrintWorker(QThread):
         #     self._is_stopped = True
         #     return
 
-        # Y축: 프라이밍 완료 여부에 따라 분기
-        if job.y_priming_position > 0:
-            # 프라이밍 완료 상태 → Y홈/오프셋 생략, 저장된 위치에서 시작
-            print(f"[PrintWorker] Y축 프라이밍 완료 상태 - 시작 위치: {job.y_priming_position}mm")
-            self._y_position = job.y_priming_position
-        else:
-            # 프라이밍 미완료 → 기존 방식 (Y홈 + 6mm 오프셋)
-            if self._check_stopped():
-                return
-            if not self._motor_y_home():
-                self.error_occurred.emit("Y축 홈 이동 실패")
-                self._is_stopped = True
-                return
-
-            Y_HOME_TO_50CC_OFFSET = 6.0  # mm
-            if not self._motor_y_move(Y_HOME_TO_50CC_OFFSET, job.y_dispense_speed):
-                self.error_occurred.emit("Y축 50cc 보정 이동 실패")
-                self._is_stopped = True
-                return
-            self._y_position = Y_HOME_TO_50CC_OFFSET  # 6mm 위치에서 시작
+        # Y축: 프라이밍 위치에서 시작 (프라이밍 필수)
+        print(f"[PrintWorker] Y축 프라이밍 위치에서 시작: {job.y_priming_position}mm")
+        self._y_position = job.y_priming_position
 
         # 2. 레진 평탄화 (X축 왕복 + Z축 홈 복귀)
         if job.leveling_cycles > 0:

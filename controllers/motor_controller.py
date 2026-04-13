@@ -387,6 +387,15 @@ class MotorController:
 
     # ==================== Y축 제어 ====================
 
+    def y_reset_position(self) -> bool:
+        """Y축 현재 위치를 0으로 리셋 (G92 Y0)"""
+        print("[Motor] Y축 위치 리셋 (G92 Y0)")
+        success = self.send_gcode("G92 Y0", timeout=10)
+        if success:
+            self._y_position = 0.0
+            print("[Motor] Y축 위치 0으로 리셋 완료")
+        return success
+
     def y_home(self) -> bool:
         """Y축 홈으로 이동"""
         print("[Motor] Y축 홈 이동 시작")

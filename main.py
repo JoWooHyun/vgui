@@ -58,6 +58,8 @@ class MotorWorker(QObject):
                 self.motor.y_move_relative(distance)
             elif self.operation == "y_home":
                 self.motor.y_home()
+            elif self.operation == "y_reset_position":
+                self.motor.y_reset_position()
         except Exception as e:
             self.error.emit(str(e))
         finally:
@@ -492,101 +494,18 @@ class MainWindow(QMainWindow):
         """프린트 시작 - 프라이밍 확인 후 진행"""
         print(f"[Print] 프린트 시작 요청: {file_path}")
 
-        # 프라이밍 확인 팝업
         priming_pos = self.settings.get_y_priming_position()
-        y_priming_position = 0.0
 
         if priming_pos > 0:
-            # 저장된 프라이밍 위치가 있음 → 사용할지 확인
-            dialog = self._create_priming_confirm_dialog(priming_pos)
-            result = dialog.exec()
-
-            if result == QDialog.Accepted:
-                # "예" → 저장된 프라이밍 위치 사용
-                y_priming_position = priming_pos
-                print(f"[Print] 저장된 프라이밍 위치 사용: {priming_pos}mm")
-            else:
-                # "아니오" → 프라이밍 미완료로 진행 (기존 Y홈+오프셋 방식)
-                y_priming_position = 0.0
-                print("[Print] 프라이밍 없이 진행 (기존 Y홈+오프셋)")
+            # 프라이밍 완료 → 바로 출력 시작
+            print(f"[Print] 프라이밍 위치 사용: {priming_pos}mm")
+            self._execute_print(file_path, params, priming_pos)
         else:
-            print("[Print] 프라이밍 기록 없음 → 기존 Y홈+오프셋 방식")
-
-        # 프라이밍 위치 초기화 (사용 후 리셋)
-        self.settings.set_y_priming_position(0.0)
-
-        self._execute_print(file_path, params, y_priming_position)
-
-    def _create_priming_confirm_dialog(self, priming_pos: float) -> QDialog:
-        """프라이밍 확인 다이얼로그 생성"""
-        dialog = QDialog(self)
-        dialog.setWindowFlags(Qt.FramelessWindowHint | Qt.Dialog)
-        dialog.setFixedSize(400, 200)
-        dialog.setStyleSheet(f"""
-            QDialog {{
-                background-color: {Colors.BG_PRIMARY};
-                border: 2px solid {Colors.BORDER};
-                border-radius: 16px;
-            }}
-        """)
-
-        layout = QVBoxLayout(dialog)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(16)
-
-        lbl_title = QLabel("Priming Check")
-        lbl_title.setFont(Fonts.h3())
-        lbl_title.setAlignment(Qt.AlignCenter)
-        lbl_title.setStyleSheet(f"color: {Colors.TEXT_PRIMARY};")
-
-        lbl_msg = QLabel(f"Priming done at {priming_pos:.1f}mm.\nUse this position?")
-        lbl_msg.setFont(Fonts.body())
-        lbl_msg.setAlignment(Qt.AlignCenter)
-        lbl_msg.setWordWrap(True)
-        lbl_msg.setStyleSheet(f"color: {Colors.TEXT_SECONDARY};")
-
-        btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(12)
-
-        btn_no = QPushButton("No")
-        btn_no.setFixedSize(140, 44)
-        btn_no.setFont(Fonts.body())
-        btn_no.setCursor(Qt.PointingHandCursor)
-        btn_no.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {Colors.BG_SECONDARY};
-                color: {Colors.TEXT_PRIMARY};
-                border: 1px solid {Colors.BORDER};
-                border-radius: 8px;
-            }}
-            QPushButton:pressed {{ background-color: {Colors.BG_TERTIARY}; }}
-        """)
-        btn_no.clicked.connect(dialog.reject)
-
-        btn_yes = QPushButton("Yes")
-        btn_yes.setFixedSize(140, 44)
-        btn_yes.setFont(Fonts.body())
-        btn_yes.setCursor(Qt.PointingHandCursor)
-        btn_yes.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {Colors.CYAN};
-                color: {Colors.WHITE};
-                border: none;
-                border-radius: 8px;
-            }}
-            QPushButton:pressed {{ background-color: #0891B2; }}
-        """)
-        btn_yes.clicked.connect(dialog.accept)
-
-        btn_layout.addWidget(btn_no)
-        btn_layout.addWidget(btn_yes)
-
-        layout.addWidget(lbl_title)
-        layout.addWidget(lbl_msg)
-        layout.addStretch()
-        layout.addLayout(btn_layout)
-
-        return dialog
+            # 프라이밍 미완료 → 알림 후 출력 안 함
+            print("[Print] 프라이밍 기록 없음 → 출력 차단")
+            alert = SimpleAlert("셋팅페이지에서 프라이밍을 설정하세요.", self)
+            alert.exec()
+            return
 
     def _execute_print(self, file_path: str, params: dict, y_priming_position: float):
         """실제 프린트 실행"""
@@ -884,11 +803,11 @@ class MainWindow(QMainWindow):
         self._start_motor_operation("y_home")
 
     def _setting_y_prime_start(self):
-        """Setting 페이지에서 프라이밍 시작 (Y홈 실행)"""
-        print("[Setting] Y Priming Start - Homing...")
+        """Setting 페이지에서 프라이밍 시작 (현재 위치를 0으로 리셋)"""
+        print("[Setting] Y Priming Start - Reset position to 0...")
         self._start_motor_operation(
-            "y_home",
-            on_finished=self.setting_page.y_panel.on_home_completed
+            "y_reset_position",
+            on_finished=self.setting_page.y_panel.on_position_reset_completed
         )
 
     def _setting_y_prime_done(self):
