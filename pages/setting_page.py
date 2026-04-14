@@ -486,7 +486,7 @@ class YAxisPanel(QFrame):
         """위치 리셋 완료 후 호출 (main.py에서 호출)"""
         self.status_label.setText("Move until resin appears, then OK")
         self.distance_selector.setEnabled(True)
-        self.btn_up.setEnabled(True)
+        self.btn_up.setEnabled(False)  # 음수 방향 비활성화 (G92 Y0 후 +방향만 가능)
         self.btn_down.setEnabled(True)
         self.btn_ok.setEnabled(True)
         self._update_ok_style()
