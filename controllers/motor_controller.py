@@ -388,9 +388,9 @@ class MotorController:
     # ==================== Y축 제어 ====================
 
     def y_reset_position(self) -> bool:
-        """Y축 현재 위치를 0으로 리셋 (G92 Y0) - 이후 +방향으로만 이동"""
-        print("[Motor] Y축 위치 리셋 (G92 Y0)")
-        success = self.send_gcode("G92 Y0", timeout=10)
+        """Y축 현재 위치를 0으로 리셋 - 이후 +방향으로만 이동"""
+        print("[Motor] Y축 위치 리셋 (SET_KINEMATIC_POSITION Y=0)")
+        success = self.send_gcode("SET_KINEMATIC_POSITION Y=0", timeout=10)
         if success:
             self._y_position = 0.0
             print("[Motor] Y축 위치 리셋 완료: Klipper=0, 소프트웨어=0")
