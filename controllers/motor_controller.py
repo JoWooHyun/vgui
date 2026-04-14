@@ -23,8 +23,8 @@ class MotorConfig:
     x_max: float = 150.0        # X축 최대 위치 (mm) - printer.cfg position_max
     z_min: float = 0.0          # Z축 최소 위치 (mm)
     z_max: float = 80.0         # Z축 최대 위치 (mm) - 실제 스펙
-    y_min: float = -100.0       # Y축 최소 위치 (mm) - 토출 방향 (음수)
-    y_max: float = 100.0        # Y축 최대 위치 (mm)
+    y_min: float = -75.0        # Y축 최소 위치 (mm) - 토출 방향
+    y_max: float = 75.0         # Y축 최대 위치 (mm)
     drop_speed: int = 150       # Z축 하강 속도 (mm/min)
 
 
@@ -388,12 +388,12 @@ class MotorController:
     # ==================== Y축 제어 ====================
 
     def y_reset_position(self) -> bool:
-        """Y축 현재 위치를 0으로 리셋 (G92 Y0)"""
-        print("[Motor] Y축 위치 리셋 (G92 Y0)")
-        success = self.send_gcode("G92 Y0", timeout=10)
+        """Y축 현재 위치를 중간값으로 리셋 (양방향 이동 가능하도록)"""
+        print("[Motor] Y축 위치 리셋 (SET_KINEMATIC_POSITION Y=75)")
+        success = self.send_gcode("SET_KINEMATIC_POSITION Y=75", timeout=10)
         if success:
             self._y_position = 0.0
-            print("[Motor] Y축 위치 0으로 리셋 완료")
+            print("[Motor] Y축 위치 리셋 완료 (소프트웨어: 0mm)")
         return success
 
     def y_home(self) -> bool:
