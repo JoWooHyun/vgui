@@ -76,7 +76,7 @@ class PrintWorker(QThread):
     error_occurred = Signal(str)  # error message
     print_completed = Signal()
     print_stopped = Signal()
-    resin_empty = Signal()  # 레진 부족 알림 (Y축 91mm 도달)
+    resin_empty = Signal()  # 레진 부족 알림 (Y축 position_min=0 도달)
     priming_requested = Signal()  # 프라이밍 요청 (프린트 중 프라이밍 필요 시)
 
     # 이미지 표시 요청 시그널 (ProjectorWindow로 전달)
@@ -374,13 +374,12 @@ class PrintWorker(QThread):
             self._is_stopped = True
             return False
 
-        # 2. Y축 레진 토출 (토출 전 91mm 체크)
+        # 2. Y축 레진 토출 (- 방향으로 토출, Y<=0 = 레진 소진)
         if not self._y_dispensing_disabled and job.y_dispense_distance > 0:
-            # 91mm 도달 체크 (토출 전) - 실측: 홈→91mm가 물리적 끝
-            Y_MAX_POSITION = 91.0
-            if self._y_position >= Y_MAX_POSITION:
+            # Y<=0 체크 (토출 전) - G28 Y 기준 position_min=0이 레진 소진 위치
+            if self._y_position <= 0:
                 # 레진 부족 → 일시정지 + 알림
-                print(f"[PrintWorker] Y축 {self._y_position}mm 도달 → 레진 부족 알림")
+                print(f"[PrintWorker] Y축 {self._y_position}mm (홈 도달) → 레진 부족 알림")
                 self._y_resin_waiting = True
                 self.resin_empty.emit()
                 # 유저 응답 대기
@@ -391,14 +390,15 @@ class PrintWorker(QThread):
                 if self._check_stopped():
                     return True
 
-            # 토출 실행 (disable 안 된 경우)
+            # 토출 실행 (disable 안 된 경우, -방향으로 토출)
             if not self._y_dispensing_disabled:
-                if not self._motor_y_move(job.y_dispense_distance, job.y_dispense_speed):
+                dispense_dist = -job.y_dispense_distance  # 음수 = 홈 방향 = 레진 토출
+                if not self._motor_y_move(dispense_dist, job.y_dispense_speed):
                     self.error_occurred.emit(f"레이어 {layer_idx}: Y축 토출 실패")
                     self._is_stopped = True
                     return False
-                self._y_position += job.y_dispense_distance
-                print(f"[PrintWorker] Y축 토출 {job.y_dispense_distance}mm (누적: {self._y_position}mm)")
+                self._y_position += dispense_dist  # 음수이므로 감소
+                print(f"[PrintWorker] Y축 토출 {dispense_dist}mm (현재 위치: {self._y_position:.1f}mm)")
                 # 토출 후 대기
                 time.sleep(job.y_dispense_delay)
 

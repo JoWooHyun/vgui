@@ -803,11 +803,11 @@ class MainWindow(QMainWindow):
         self._start_motor_operation("y_home")
 
     def _setting_y_prime_start(self):
-        """Setting 페이지에서 프라이밍 시작 (현재 위치를 0으로 리셋)"""
-        print("[Setting] Y Priming Start - Reset position to 0...")
+        """Setting 페이지에서 프라이밍 시작 (G28 Y 홈잉으로 절대 0점 확보)"""
+        print("[Setting] Y Priming Start - G28 Y homing...")
         self._start_motor_operation(
-            "y_reset_position",
-            on_finished=self.setting_page.y_panel.on_position_reset_completed
+            "y_home",
+            on_finished=self.setting_page.y_panel.on_homing_completed
         )
 
     def _setting_y_prime_done(self):

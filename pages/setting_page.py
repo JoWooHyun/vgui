@@ -346,12 +346,21 @@ class BladePanel(QFrame):
 
 
 class YAxisPanel(QFrame):
-    """Y축 프라이밍 패널 (PRIME → HOME → UP/DOWN 이동 → OK 저장)"""
+    """Y축 프라이밍 패널
 
-    move_positive = Signal(float)  # 홈 반대방향 (전진)
-    move_negative = Signal(float)  # 홈 방향 (후진)
+    플로우:
+    1. PRIME 클릭 → G28 Y 홈잉 (빈 상태, 주사기 없이) → Y=0 절대 좌표 확보
+    2. 주사기 장착 → 양방향 이동으로 플런저 위치 맞춤 + 레진 토출 확인
+    3. OK 클릭 → 현재 Y 위치 저장 (홈 기준 절대 좌표)
+
+    출력 시: 저장된 위치에서 -방향(홈 방향)으로 토출
+    → Y=0 도달 시 Klipper position_min이 이동 거부 → 레진 소진
+    """
+
+    move_positive = Signal(float)  # 홈 반대방향 (전진, +)
+    move_negative = Signal(float)  # 홈 방향 (후진, -)
     home_axis = Signal()           # 홈 이동
-    priming_started = Signal()     # 프라이밍 시작 (HOME 실행 요청)
+    priming_started = Signal()     # 프라이밍 시작 (G28 Y 홈잉 요청)
     priming_done = Signal()        # 프라이밍 완료 (좌표 저장 요청)
 
     def __init__(self, parent=None):
@@ -477,17 +486,20 @@ class YAxisPanel(QFrame):
             """)
 
     def _on_prime_click(self):
-        """PRIME 버튼 클릭 → 현재 위치를 0으로 리셋 + 프라이밍 모드 진입"""
+        """PRIME 버튼 클릭 → G28 Y 홈잉 시작 (빈 상태에서 0점 확보)"""
         self._is_priming = True
         self.btn_prime.setEnabled(False)
-        self.priming_started.emit()  # main.py에서 G92 Y0 실행
+        self.status_label.setText("Homing Y axis...")
+        self.priming_started.emit()  # main.py에서 G28 Y 실행
 
-    def on_position_reset_completed(self):
-        """위치 리셋 완료 후 호출 (main.py에서 호출)"""
-        self.status_label.setText("Move until resin appears, then OK")
+    def on_homing_completed(self):
+        """G28 Y 홈잉 완료 후 호출 (main.py에서 호출)
+
+        홈잉 완료 → 주사기 장착 → 양방향 이동 가능"""
+        self.status_label.setText("Mount syringe, adjust & test, then OK")
         self.distance_selector.setEnabled(True)
-        self.btn_up.setEnabled(False)  # 음수 방향 비활성화 (G92 Y0 후 +방향만 가능)
-        self.btn_down.setEnabled(True)
+        self.btn_up.setEnabled(True)   # + 방향 (홈에서 멀어짐)
+        self.btn_down.setEnabled(True)  # - 방향 (홈 쪽으로)
         self.btn_ok.setEnabled(True)
         self._update_ok_style()
 
@@ -504,14 +516,14 @@ class YAxisPanel(QFrame):
         self.priming_done.emit()
 
     def _on_move_up(self):
-        """위로 이동 (홈 방향 = 음의 방향)"""
-        distance = self.distance_selector.get_selected_distance()
-        self.move_negative.emit(distance)
-
-    def _on_move_down(self):
-        """아래로 이동 (홈 반대방향 = 양의 방향)"""
+        """위로 이동 (홈 반대방향 = 양의 방향, 주사기 빼기)"""
         distance = self.distance_selector.get_selected_distance()
         self.move_positive.emit(distance)
+
+    def _on_move_down(self):
+        """아래로 이동 (홈 방향 = 음의 방향, 레진 토출)"""
+        distance = self.distance_selector.get_selected_distance()
+        self.move_negative.emit(distance)
 
 
 class SettingPage(BasePage):
