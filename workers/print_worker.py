@@ -50,9 +50,9 @@ class PrintJob:
     leveling_cycles: int = 1
     blade_cycles: int = 1  # 매 레이어 블레이드 왕복 횟수
     # blade_mode: str = "roundtrip"  # 편도 모드 고정 (왕복 필요 시 주석 해제)
-    y_dispense_distance: float = 1.0   # Y축 토출 거리 (mm/레이어)
-    y_dispense_speed: int = 300        # Y축 토출 속도 (mm/min)
-    y_dispense_delay: float = 2.0      # Y축 토출 후 대기 (초)
+    y_dispense_distance: float = 1.0   # Resin 토출 거리 (mm/레이어)
+    y_dispense_speed: int = 300        # Resin 토출 속도 (mm/min)
+    y_dispense_delay: float = 2.0      # Resin 토출 후 대기 (초)
     y_priming_position: float = 0.0    # 프라이밍 완료 위치 (mm, 0이면 미완료)
 
 
@@ -76,7 +76,7 @@ class PrintWorker(QThread):
     error_occurred = Signal(str)  # error message
     print_completed = Signal()
     print_stopped = Signal()
-    resin_empty = Signal()  # 레진 부족 알림 (Y축 position_min=0 도달)
+    resin_empty = Signal()  # Resin 부족 알림 (position_min=0 도달)
     priming_requested = Signal()  # 프라이밍 요청 (프린트 중 프라이밍 필요 시)
 
     # 이미지 표시 요청 시그널 (ProjectorWindow로 전달)
@@ -104,10 +104,10 @@ class PrintWorker(QThread):
         self._resin_mutex = QMutex()
         self._resin_condition = QWaitCondition()
 
-        # Y축 레진 토출 상태
-        self._y_position = 0.0           # Y축 현재 위치 (누적)
+        # Resin 토출 상태
+        self._y_position = 0.0           # Resin pump 현재 위치
         self._y_dispensing_disabled = False  # True면 토출 스킵 (수동 공급 모드)
-        self._y_resin_waiting = False     # 레진 부족 응답 대기 중
+        self._y_resin_waiting = False     # Resin 부족 응답 대기 중
 
         # 현재 작업
         self._job: Optional[PrintJob] = None
@@ -208,7 +208,7 @@ class PrintWorker(QThread):
         self._is_paused = False
         self._pause_condition.wakeAll()
         self._mutex.unlock()
-        # 레진 대기 중이면 깨우기
+        # Resin 대기 중이면 깨우기
         self._resin_mutex.lock()
         self._y_resin_waiting = False
         self._resin_condition.wakeAll()
@@ -217,22 +217,22 @@ class PrintWorker(QThread):
         print("[PrintWorker] 정지 요청")
 
     def disable_y_dispensing(self):
-        """레진 부족 → OK: Y토출 비활성화하고 프린팅 계속"""
+        """Resin empty → OK: 토출 비활성화, 수동 공급 모드로 계속"""
         self._y_dispensing_disabled = True
         self._resin_mutex.lock()
         self._y_resin_waiting = False
         self._resin_condition.wakeAll()
         self._resin_mutex.unlock()
-        print("[PrintWorker] Y축 토출 비활성화 (수동 공급 모드)")
+        print("[PrintWorker] Resin dispensing disabled (manual supply mode)")
 
     def stop_by_resin_empty(self):
-        """레진 부족 → NO: 프린팅 중지"""
+        """Resin empty → NO: 프린팅 중지"""
         self._resin_mutex.lock()
         self._y_resin_waiting = False
         self._resin_condition.wakeAll()
         self._resin_mutex.unlock()
         self.stop()
-        print("[PrintWorker] 레진 부족으로 프린팅 중지")
+        print("[PrintWorker] Stopped by resin empty")
 
     # ==================== 메인 루프 ====================
 
@@ -298,8 +298,8 @@ class PrintWorker(QThread):
             self._is_stopped = True
             return
 
-        # Y축: 프라이밍 위치에서 시작 (프라이밍 필수)
-        print(f"[PrintWorker] Y축 프라이밍 위치에서 시작: {job.y_priming_position}mm")
+        # Resin: 프라이밍 위치에서 시작
+        print(f"[PrintWorker] Resin start position: {job.y_priming_position}mm")
         self._y_position = job.y_priming_position
 
         # 2. 레진 평탄화 (X축 왕복 + Z축 홈 복귀)
@@ -347,11 +347,11 @@ class PrintWorker(QThread):
 
         Flow:
         1. Z축 레이어 높이로 이동
-        2. Y축 레진 토출 + 대기 (블레이드 0mm=홈)
-        3. X축 0→140 (평탄화) - 블레이드 140mm 대기
-        4. 이미지 투영 → LED ON → 노광 → LED OFF (블레이드 140mm=빛 안 가림)
+        2. Resin 토출 + 대기
+        3. X축 10→140 (평탄화)
+        4. 이미지 투영 → LED ON → 노광 → LED OFF
         5. Z축 리프트 (+5mm)
-        6. X축 140→0 (홈 복귀, 다음 레이어 토출 준비)
+        6. X축 140→10 (대기 위치 복귀)
 
         Returns:
             bool: 성공 시 True, 실패 시 False (이미지 로드 실패 등)
@@ -374,12 +374,12 @@ class PrintWorker(QThread):
             self._is_stopped = True
             return False
 
-        # 2. Y축 레진 토출 (- 방향으로 토출, Y<=0 = 레진 소진)
+        # 2. Resin 토출 (- 방향, Y<=0 = resin empty)
         if not self._y_dispensing_disabled and job.y_dispense_distance > 0:
-            # Y<=0 체크 (토출 전) - G28 Y 기준 position_min=0이 레진 소진 위치
+            # Y<=0 체크 (토출 전) - position_min=0이 resin empty 위치
             if self._y_position <= 0:
-                # 레진 부족 → 일시정지 + 알림
-                print(f"[PrintWorker] Y축 {self._y_position}mm (홈 도달) → 레진 부족 알림")
+                # Resin empty → 일시정지 + 알림
+                print(f"[PrintWorker] Resin empty at {self._y_position}mm")
                 self._y_resin_waiting = True
                 self.resin_empty.emit()
                 # 유저 응답 대기
@@ -392,13 +392,13 @@ class PrintWorker(QThread):
 
             # 토출 실행 (disable 안 된 경우, -방향으로 토출)
             if not self._y_dispensing_disabled:
-                dispense_dist = -job.y_dispense_distance  # 음수 = 홈 방향 = 레진 토출
+                dispense_dist = -job.y_dispense_distance  # 음수 = 홈 방향 = resin dispense
                 if not self._motor_y_move(dispense_dist, job.y_dispense_speed):
-                    self.error_occurred.emit(f"레이어 {layer_idx}: Y축 토출 실패")
+                    self.error_occurred.emit(f"Layer {layer_idx}: Resin dispense failed")
                     self._is_stopped = True
                     return False
                 self._y_position += dispense_dist  # 음수이므로 감소
-                print(f"[PrintWorker] Y축 토출 {dispense_dist}mm (현재 위치: {self._y_position:.1f}mm)")
+                print(f"[PrintWorker] Resin dispensed {dispense_dist}mm (pos: {self._y_position:.1f}mm)")
                 # 토출 후 대기
                 time.sleep(job.y_dispense_delay)
 
@@ -494,8 +494,8 @@ class PrintWorker(QThread):
             return True
 
     def _motor_y_home(self) -> bool:
-        """Y축 홈"""
-        print("[PrintWorker] Y축 홈 이동")
+        """Resin pump 홈"""
+        print("[PrintWorker] Resin pump homing")
         if self.motor and not self.simulation:
             return self.motor.y_home()
         else:
@@ -503,7 +503,7 @@ class PrintWorker(QThread):
             return True
 
     def _motor_y_move(self, distance: float, speed: int = 300) -> bool:
-        """Y축 상대 이동"""
+        """Resin pump 상대 이동"""
         if self.motor and not self.simulation:
             return self.motor.y_move_relative(distance, speed)
         else:

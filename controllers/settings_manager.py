@@ -21,11 +21,11 @@ class MaterialPreset:
     blade_speed: int = 5            # Blade 속도 (1-30 mm/s)
     led_power: int = 43             # LED 파워 (9-100%)
     blade_cycles: int = 1           # 블레이드 반복 횟수 (1~3)
-    y_dispense_distance: float = 1.0  # 레진 토출거리 (mm/레이어, 0.1~5.0)
-    y_dispense_speed: int = 3       # 토출속도 (mm/s, 1~15)
-    y_dispense_delay: float = 5.0   # 토출 대기시간 (초, 0.5~20.0)
+    y_dispense_distance: float = 1.0  # Resin 토출거리 (mm/레이어, 0.1~5.0)
+    y_dispense_speed: int = 3       # Resin 토출속도 (mm/s, 1~15)
+    y_dispense_delay: float = 5.0   # Resin 토출 대기시간 (초, 0.5~20.0)
     # 확장 항목
-    leveling_cycles: int = 1        # 레진 평탄화 횟수 (0~5)
+    leveling_cycles: int = 1        # Resin 평탄화 횟수 (0~5)
     lift_height: float = 5.0        # 리프트 높이 (mm, 1.0~20.0)
     drop_speed: int = 150           # Z축 하강 속도 (mm/min, 10~300)
 
@@ -58,10 +58,10 @@ class PrintSettings:
     """프린트 관련 설정"""
     led_power: int = 43         # LED 파워 (9-100%, 1023=100%, 440=43%)
     blade_speed: int = 5        # Blade 속도 (1-30 mm/s)
-    y_dispense_distance: float = 1.0   # 레진 토출거리 (mm/레이어)
-    y_dispense_speed: int = 3          # 토출속도 (mm/s)
-    y_dispense_delay: float = 5.0      # 토출 대기시간 (초)
-    y_priming_position: float = 0.0    # Y축 프라이밍 완료 위치 (mm)
+    y_dispense_distance: float = 1.0   # Resin 토출거리 (mm/레이어)
+    y_dispense_speed: int = 3          # Resin 토출속도 (mm/s)
+    y_dispense_delay: float = 5.0      # Resin 토출 대기시간 (초)
+    y_priming_position: float = 0.0    # Resin 프라이밍 완료 위치 (mm)
 
 
 @dataclass
@@ -309,7 +309,7 @@ class SettingsManager:
         self._settings.print_settings.y_dispense_delay = value
         self.save()
 
-    # ==================== Y Priming Position ====================
+    # ==================== Resin Priming Position ====================
 
     def get_y_priming_position(self) -> float:
         return self._settings.print_settings.y_priming_position
@@ -318,7 +318,7 @@ class SettingsManager:
         value = max(0.0, min(85.0, value))
         self._settings.print_settings.y_priming_position = value
         self.save()
-        print(f"[Settings] Y축 프라이밍 위치 저장: {value}mm")
+        print(f"[Settings] Resin priming position saved: {value}mm")
 
     # ==================== Language ====================
 

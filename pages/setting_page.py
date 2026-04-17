@@ -346,12 +346,12 @@ class BladePanel(QFrame):
 
 
 class YAxisPanel(QFrame):
-    """Y축 프라이밍 패널
+    """Resin 프라이밍 패널
 
     플로우:
     1. PRIME 클릭 → G28 Y 홈잉 (빈 상태, 주사기 없이) → Y=0 절대 좌표 확보
     2. 주사기 장착 → 양방향 이동으로 플런저 위치 맞춤 + 레진 토출 확인
-    3. OK 클릭 → 현재 Y 위치 저장 (홈 기준 절대 좌표)
+    3. OK 클릭 → 현재 위치 저장 (홈 기준 절대 좌표)
 
     출력 시: 저장된 위치에서 -방향(홈 방향)으로 토출
     → Y=0 도달 시 Klipper position_min이 이동 거부 → 레진 소진
@@ -489,7 +489,7 @@ class YAxisPanel(QFrame):
         """PRIME 버튼 클릭 → G28 Y 홈잉 시작 (빈 상태에서 0점 확보)"""
         self._is_priming = True
         self.btn_prime.setEnabled(False)
-        self.status_label.setText("Homing Y axis...")
+        self.status_label.setText("Homing resin pump...")
         self.priming_started.emit()  # main.py에서 G28 Y 실행
 
     def on_homing_completed(self):
@@ -527,7 +527,7 @@ class YAxisPanel(QFrame):
 
 
 class SettingPage(BasePage):
-    """설정 페이지 (LED Power + Blade + Y Axis)"""
+    """설정 페이지 (LED Power + Blade + Resin)"""
 
     # LED 시그널
     led_power_changed = Signal(int)
@@ -539,9 +539,9 @@ class SettingPage(BasePage):
     blade_move = Signal()  # MOVE 버튼 클릭
     blade_home = Signal()
 
-    # Y축 시그널
-    y_move = Signal(float)    # Y축 이동 (거리)
-    y_home = Signal()         # Y축 홈
+    # Resin 시그널
+    y_move = Signal(float)    # Resin pump 이동 (거리)
+    y_home = Signal()         # Resin pump 홈
     y_prime_start = Signal()  # 프라이밍 시작 (홈 요청)
     y_prime_done = Signal()   # 프라이밍 완료 (좌표 저장 요청)
 
@@ -567,7 +567,7 @@ class SettingPage(BasePage):
         self.blade_panel.blade_move.connect(self.blade_move.emit)
         self.blade_panel.home_axis.connect(self.blade_home.emit)
 
-        # Y축 프라이밍 패널
+        # Resin 프라이밍 패널
         self.y_panel = YAxisPanel()
         self.y_panel.move_positive.connect(lambda d: self.y_move.emit(d))
         self.y_panel.move_negative.connect(lambda d: self.y_move.emit(-d))

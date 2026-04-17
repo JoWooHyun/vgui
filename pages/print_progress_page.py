@@ -5,7 +5,7 @@ VERICOM DLP 3D Printer GUI - Print Progress Page
 
 import os
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout,
+    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QPushButton, QLabel, QFrame, QDialog, QProgressBar
 )
 from PySide6.QtCore import Signal, Qt, QTimer
@@ -368,31 +368,47 @@ class PrintProgressPage(BasePage):
 
         preview_layout.addWidget(self.lbl_layer_image)
 
-        # 오른쪽: 정보 세로 나열
+        # 오른쪽: 정보 (2열 그리드 + 실시간 정보)
         info_layout = QVBoxLayout()
         info_layout.setSpacing(6)
         info_layout.setAlignment(Qt.AlignTop)
 
-        # 정보 행들 (세로 나열)
-        self.row_bottom_exposure = ProgressInfoRow(Icons.EXPOSURE_BOTTOM)  # 바닥 노출
-        self.row_normal_exposure = ProgressInfoRow(Icons.EXPOSURE_NORMAL)  # 일반 노출
-        self.row_layer_height = ProgressInfoRow(Icons.RULER)  # 레이어 높이
-        self.row_layer = ProgressInfoRow(Icons.STACK)  # 현재/총 레이어
-        self.row_bottom_layers = ProgressInfoRow(Icons.BOTTOM_LAYERS)  # 바닥 레이어 수
-        self.row_blade_speed = ProgressInfoRow(Icons.BLADE_SPEED)  # 블레이드 속도
-        self.row_led_power = ProgressInfoRow(Icons.LED_POWER)  # LED 파워
-        self.row_elapsed = ProgressInfoRow(Icons.CLOCK)  # 경과 시간
+        # 실시간 정보 (레이어, 시간) - 상단
+        self.row_layer = ProgressInfoRow(Icons.STACK)       # 현재/총 레이어
+        self.row_elapsed = ProgressInfoRow(Icons.CLOCK)     # 경과 시간
         self.row_total_time = ProgressInfoRow(Icons.HOURGLASS)  # 총 예상 시간
+        self.row_resin_level = ProgressInfoRow(Icons.RESIN_LEVEL)  # Resin 잔량 %
 
-        info_layout.addWidget(self.row_bottom_exposure)
-        info_layout.addWidget(self.row_normal_exposure)
-        info_layout.addWidget(self.row_layer_height)
         info_layout.addWidget(self.row_layer)
-        info_layout.addWidget(self.row_bottom_layers)
-        info_layout.addWidget(self.row_blade_speed)
-        info_layout.addWidget(self.row_led_power)
         info_layout.addWidget(self.row_elapsed)
         info_layout.addWidget(self.row_total_time)
+        info_layout.addWidget(self.row_resin_level)
+
+        info_layout.addSpacing(4)
+
+        # 설정 정보 (2열 그리드) - 하단
+        info_grid = QGridLayout()
+        info_grid.setSpacing(4)
+
+        self.row_layer_height = ProgressInfoRow(Icons.RULER)          # 레이어 높이
+        self.row_bottom_exposure = ProgressInfoRow(Icons.EXPOSURE_BOTTOM)  # 바닥 노출
+        self.row_normal_exposure = ProgressInfoRow(Icons.EXPOSURE_NORMAL)  # 일반 노출
+        self.row_led_power = ProgressInfoRow(Icons.LED_POWER)         # LED 파워
+        self.row_blade_speed = ProgressInfoRow(Icons.BLADE_SPEED)     # 블레이드 속도
+        self.row_resin_dist = ProgressInfoRow(Icons.SYRINGE)          # Resin 토출거리
+        self.row_resin_speed = ProgressInfoRow(Icons.DISPENSE_SPEED)  # Resin 토출속도
+        self.row_resin_delay = ProgressInfoRow(Icons.DELAY)           # Resin 대기시간
+
+        info_grid.addWidget(self.row_layer_height, 0, 0)
+        info_grid.addWidget(self.row_bottom_exposure, 0, 1)
+        info_grid.addWidget(self.row_normal_exposure, 1, 0)
+        info_grid.addWidget(self.row_led_power, 1, 1)
+        info_grid.addWidget(self.row_blade_speed, 2, 0)
+        info_grid.addWidget(self.row_resin_dist, 2, 1)
+        info_grid.addWidget(self.row_resin_speed, 3, 0)
+        info_grid.addWidget(self.row_resin_delay, 3, 1)
+
+        info_layout.addLayout(info_grid)
         info_layout.addStretch()
 
         top_layout.addWidget(self.preview_frame)
@@ -688,25 +704,12 @@ class PrintProgressPage(BasePage):
                        bottom_exposure: float = 0.0, normal_exposure: float = 0.0,
                        bottom_layer_count: int = 0, blade_cycles: int = 1,
                        lift_height: float = 5.0, lift_speed: int = 65,
-                       drop_speed: int = 150):
-        """프린트 정보 설정 (시작 시 호출)
-
-        Args:
-            file_path: 파일 경로
-            thumbnail: 썸네일 이미지
-            total_layers: 총 레이어 수
-            blade_speed: 블레이드 속도 (mm/min)
-            led_power: LED 파워 (%)
-            estimated_time: 예상 시간 (초, 미사용)
-            layer_height: 레이어 높이 (mm)
-            bottom_exposure: 바닥 노출 시간 (초)
-            normal_exposure: 일반 노출 시간 (초)
-            bottom_layer_count: 바닥 레이어 개수
-            blade_cycles: 블레이드 왕복 횟수
-            lift_height: Z축 리프트 높이 (mm)
-            lift_speed: Z축 리프트 속도 (mm/min)
-            drop_speed: Z축 하강 속도 (mm/min)
-        """
+                       drop_speed: int = 150,
+                       y_dispense_distance: float = 0.0,
+                       y_dispense_speed: int = 0,
+                       y_dispense_delay: float = 0.0,
+                       y_priming_position: float = 0.0):
+        """프린트 정보 설정 (시작 시 호출)"""
         self._file_path = file_path
         self._total_layers = total_layers
         self._blade_speed = blade_speed
@@ -734,20 +737,27 @@ class PrintProgressPage(BasePage):
         )
         self._total_estimated_time = total_estimated_time
 
-        # 왼쪽 열: 진행 정보
+        # 실시간 정보
         self.row_layer.set_value(f"0 / {total_layers}")
         self.row_elapsed.set_value("00:00")
         self.row_total_time.set_value(self._format_time(total_estimated_time) if total_estimated_time > 0 else "--:--")
 
-        # 중앙 열: 레이어 정보
+        # Resin 잔량 % (y_priming_position / 85 * 100)
+        self._y_priming_position = y_priming_position
+        self._y_current_position = y_priming_position
+        self._y_dispense_distance = y_dispense_distance
+        resin_pct = int(y_priming_position / 85.0 * 100) if y_priming_position > 0 else 0
+        self.row_resin_level.set_value(f"{resin_pct} %")
+
+        # 설정 정보 (2열 그리드)
         self.row_layer_height.set_value(f"{layer_height:.3f} mm" if layer_height > 0 else "-")
         self.row_bottom_exposure.set_value(f"{bottom_exposure:.1f} s" if bottom_exposure > 0 else "-")
         self.row_normal_exposure.set_value(f"{normal_exposure:.1f} s" if normal_exposure > 0 else "-")
-
-        # 오른쪽 열: 설정 정보
-        self.row_bottom_layers.set_value(f"{bottom_layer_count}" if bottom_layer_count > 0 else "-")
-        self.row_blade_speed.set_value(f"{blade_speed / 60:.0f} mm/s")  # mm/min을 mm/s로 표시
+        self.row_blade_speed.set_value(f"{blade_speed / 60:.0f} mm/s")
         self.row_led_power.set_value(f"{led_power} %")
+        self.row_resin_dist.set_value(f"{y_dispense_distance:.1f} mm" if y_dispense_distance > 0 else "-")
+        self.row_resin_speed.set_value(f"{y_dispense_speed / 60:.0f} mm/s" if y_dispense_speed > 0 else "-")
+        self.row_resin_delay.set_value(f"{y_dispense_delay:.1f} s" if y_dispense_delay > 0 else "-")
 
         self.progress_bar.setValue(0)
         self.lbl_percent.setText("0%")
@@ -774,6 +784,12 @@ class PrintProgressPage(BasePage):
         self.progress_bar.setValue(percent)
         self.lbl_percent.setText(f"{percent}%")
         self.row_layer.set_value(f"{current_layer} / {total_layers}")
+
+        # Resin 잔량 업데이트
+        if hasattr(self, '_y_current_position') and hasattr(self, '_y_dispense_distance'):
+            self._y_current_position -= self._y_dispense_distance
+            resin_pct = max(0, int(self._y_current_position / 85.0 * 100))
+            self.row_resin_level.set_value(f"{resin_pct} %")
 
         self._update_time_display()
 

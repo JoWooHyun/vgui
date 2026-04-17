@@ -417,13 +417,13 @@ class MainWindow(QMainWindow):
         self._start_motor_operation("x_home")
 
     def _manual_y_move(self, distance: float):
-        """Manual 페이지에서 Y축 이동"""
-        print(f"[Manual] Y Axis Move: {distance}mm")
+        """Manual 페이지에서 Resin pump 이동"""
+        print(f"[Manual] Resin Move: {distance}mm")
         self._start_motor_operation("y_move", distance=distance)
 
     def _manual_y_home(self):
-        """Manual 페이지에서 Y축 Home"""
-        print("[Manual] Y Axis Home")
+        """Manual 페이지에서 Resin pump Home"""
+        print("[Manual] Resin Home")
         self._start_motor_operation("y_home")
 
     # ==================== Leveling 페이지 제어 ====================
@@ -511,7 +511,7 @@ class MainWindow(QMainWindow):
         """실제 프린트 실행"""
         print(f"[Print] 프린트 실행: {file_path}")
         print(f"  - 파라미터: {params}")
-        print(f"  - Y 프라이밍 위치: {y_priming_position}mm")
+        print(f"  - Resin priming position: {y_priming_position}mm")
 
         # 썸네일 가져오기
         thumbnail = None
@@ -528,7 +528,7 @@ class MainWindow(QMainWindow):
         leveling_cycles = params.get('levelingCycles', 1)
         blade_cycles = params.get('bladeCycles', 1)
 
-        # Y축 토출 파라미터
+        # Resin 토출 파라미터
         y_dispense_distance = params.get('yDispenseDistance', 1.0)
         y_dispense_speed = params.get('yDispenseSpeed', 300)
         y_dispense_delay = params.get('yDispenseDelay', 2.0)
@@ -558,7 +558,11 @@ class MainWindow(QMainWindow):
             blade_cycles=blade_cycles,
             lift_height=lift_height,
             lift_speed=lift_speed,
-            drop_speed=drop_speed
+            drop_speed=drop_speed,
+            y_dispense_distance=y_dispense_distance,
+            y_dispense_speed=y_dispense_speed,
+            y_dispense_delay=y_dispense_delay,
+            y_priming_position=y_priming_position,
         )
         self._go_to_page(self.PAGE_PRINT_PROGRESS)
 
@@ -638,13 +642,13 @@ class MainWindow(QMainWindow):
         self.print_progress_page.show_error(message)
 
     def _on_resin_empty(self):
-        """레진 부족 알림 (Y축 80mm 도달)"""
-        print("[Print] 레진 부족 알림")
+        """Resin 부족 알림 (Y=0 도달)"""
+        print("[Print] Resin empty 알림")
 
         from pages.file_preview_page import ConfirmDialog
         dialog = ConfirmDialog(
-            "레진 부족",
-            "레진이 다 떨어졌습니다.\n계속 프린팅하시겠습니까?",
+            "Resin Empty",
+            "Resin is depleted.\nContinue printing?",
             self
         )
         # "Delete" 텍스트를 "NO"로, "Cancel"을 "OK"로 변경
@@ -654,13 +658,13 @@ class MainWindow(QMainWindow):
         result = dialog.exec()
 
         if result == 0:
-            # Cancel(OK) 클릭 → Y토출 없이 프린팅 계속
-            print("[Print] 레진 부족 → OK: 수동 공급 모드로 계속")
+            # Cancel(OK) 클릭 → Resin 토출 없이 프린팅 계속
+            print("[Print] Resin empty → OK: manual supply mode")
             if self.print_worker:
                 self.print_worker.disable_y_dispensing()
         else:
             # Confirm(NO) 클릭 → 프린팅 중지
-            print("[Print] 레진 부족 → NO: 프린팅 중지")
+            print("[Print] Resin empty → NO: stop printing")
             if self.print_worker:
                 self.print_worker.stop_by_resin_empty()
 
@@ -793,18 +797,18 @@ class MainWindow(QMainWindow):
             self.motor.x_move_absolute(140, blade_speed)
 
     def _setting_y_move(self, distance: float):
-        """Setting 페이지에서 Y축 이동"""
-        print(f"[Setting] Y Axis Move: {distance}mm")
+        """Setting 페이지에서 Resin pump 이동"""
+        print(f"[Setting] Resin Move: {distance}mm")
         self._start_motor_operation("y_move", distance=distance)
 
     def _setting_y_home(self):
-        """Setting 페이지에서 Y축 Home"""
-        print("[Setting] Y Axis Home")
+        """Setting 페이지에서 Resin pump Home"""
+        print("[Setting] Resin Home")
         self._start_motor_operation("y_home")
 
     def _setting_y_prime_start(self):
         """Setting 페이지에서 프라이밍 시작 (G28 Y 홈잉으로 절대 0점 확보)"""
-        print("[Setting] Y Priming Start - G28 Y homing...")
+        print("[Setting] Resin Priming Start - G28 Y homing...")
         self._start_motor_operation(
             "y_home",
             on_finished=self.setting_page.y_panel.on_homing_completed
@@ -814,7 +818,7 @@ class MainWindow(QMainWindow):
         """Setting 페이지에서 프라이밍 완료 (Klipper 실제 좌표 조회 후 저장)"""
         self.motor.get_position()  # Klipper에서 실제 위치 조회 → _y_position 갱신
         y_pos = self.motor._y_position
-        print(f"[Setting] Y Priming Done - Position: {y_pos}mm (Klipper 조회)")
+        print(f"[Setting] Resin Priming Done - Position: {y_pos}mm (Klipper)")
         self.settings.set_y_priming_position(y_pos)
 
     # ==================== 설정 저장/동기화 ====================

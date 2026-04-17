@@ -16,15 +16,13 @@ class MotorConfig:
     """모터 설정"""
     z_speed: int = 300          # Z축 이동 속도 (mm/min)
     x_speed: int = 300          # X축 이동 속도 (mm/min) - 리드스크류
-    y_speed: int = 300          # Y축 이동 속도 (mm/min)
-    z_home_speed: int = 300     # Z축 홈 속도
-    x_home_speed: int = 300     # X축 홈 속도 - 리드스크류
+    y_speed: int = 300          # Resin pump 이동 속도 (mm/min)
     x_min: float = 0.0          # X축 최소 위치 (mm)
     x_max: float = 150.0        # X축 최대 위치 (mm) - printer.cfg position_max
     z_min: float = 0.0          # Z축 최소 위치 (mm)
     z_max: float = 80.0         # Z축 최대 위치 (mm) - 실제 스펙
-    y_min: float = 0.0          # Y축 최소 위치 (mm) - G28 Y 홈 = 레진 소진 위치
-    y_max: float = 85.0         # Y축 최대 위치 (mm) - printer.cfg position_max
+    y_min: float = 0.0          # Resin pump 최소 위치 (mm) - 홈 = resin empty
+    y_max: float = 85.0         # Resin pump 최대 위치 (mm) - printer.cfg position_max
     drop_speed: int = 150       # Z축 하강 속도 (mm/min)
 
 
@@ -385,34 +383,34 @@ class MotorController:
         """X축 홈(0mm)으로 이동 (G0 이동, G28 아님)"""
         return self.x_move_absolute(0, speed)
 
-    # ==================== Y축 제어 ====================
+    # ==================== Resin Pump 제어 ====================
 
     def y_reset_position(self) -> bool:
-        """Y축 현재 위치를 0으로 리셋 - 이후 +방향으로만 이동"""
-        print("[Motor] Y축 위치 리셋 (SET_KINEMATIC_POSITION Y=0)")
+        """Resin pump 위치를 0으로 리셋"""
+        print("[Motor] Resin pump position reset (SET_KINEMATIC_POSITION Y=0)")
         success = self.send_gcode("SET_KINEMATIC_POSITION Y=0", timeout=10)
         if success:
             self._y_position = 0.0
-            print("[Motor] Y축 위치 리셋 완료: Klipper=0, 소프트웨어=0")
+            print("[Motor] Resin pump position reset complete")
         return success
 
     def y_home(self) -> bool:
-        """Y축 홈으로 이동"""
-        print("[Motor] Y축 홈 이동 시작")
+        """Resin pump 홈으로 이동"""
+        print("[Motor] Resin pump homing...")
         success = self.send_gcode("G28 Y", timeout=120)
         if success:
             self._y_position = 0.0
             self._y_is_homed = True
             self.wait_for_movement_complete(timeout=120)
-            print("[Motor] Y축 홈 이동 완료")
+            print("[Motor] Resin pump homing complete")
         return success
 
     def y_move_relative(self, distance: float, speed: Optional[int] = None) -> bool:
         """
-        Y축 상대 이동
+        Resin pump 상대 이동
 
         Args:
-            distance: 이동 거리 (양수: 홈 반대방향, 음수: 홈 방향)
+            distance: 이동 거리 (양수: 홈 반대방향, 음수: 홈 방향=토출)
             speed: 이동 속도 (mm/min), None이면 기본값
         """
         speed = speed or self.config.y_speed
@@ -423,14 +421,14 @@ class MotorController:
         actual_distance = target_position - self._y_position
 
         if actual_distance == 0:
-            print(f"[Motor] Y축 이미 한계 위치 ({self._y_position:.1f}mm) - 이동 생략")
+            print(f"[Motor] Resin pump at limit ({self._y_position:.1f}mm) - skip")
             return True
 
         if abs(actual_distance) != abs(distance):
-            print(f"[Motor] Y축 이동 제한: {distance}mm → {actual_distance:.1f}mm (범위: {self.config.y_min}~{self.config.y_max}mm)")
+            print(f"[Motor] Resin pump clamped: {distance}mm → {actual_distance:.1f}mm (range: {self.config.y_min}~{self.config.y_max}mm)")
 
         gcode = f"G91\nG1 Y{actual_distance} F{speed}\nG90"
-        print(f"[Motor] Y축 상대 이동: {actual_distance:.1f}mm @ {speed}mm/min")
+        print(f"[Motor] Resin pump move: {actual_distance:.1f}mm @ {speed}mm/min")
         success = self.send_gcode(gcode)
         if success:
             self._y_position = target_position
