@@ -293,10 +293,10 @@ class PrintWorker(QThread):
             self.error_occurred.emit("X축 홈 이동 실패")
             self._is_stopped = True
             return
-        # if not self._motor_x_move(140, job.blade_speed):
-        #     self.error_occurred.emit("X축 대기 위치 이동 실패")
-        #     self._is_stopped = True
-        #     return
+        if not self._motor_x_move(10, job.blade_speed):
+            self.error_occurred.emit("X축 대기 위치(10mm) 이동 실패")
+            self._is_stopped = True
+            return
 
         # Y축: 프라이밍 위치에서 시작 (프라이밍 필수)
         print(f"[PrintWorker] Y축 프라이밍 위치에서 시작: {job.y_priming_position}mm")
@@ -444,8 +444,8 @@ class PrintWorker(QThread):
             self._is_stopped = True
             return False
 
-        # 8. X축 홈 복귀 (140→0, 다음 레이어 토출 준비)
-        if not self._motor_x_move(0, job.blade_speed):
+        # 8. X축 대기 위치 복귀 (140→10, 다음 레이어 토출 준비)
+        if not self._motor_x_move(10, job.blade_speed):
             self.error_occurred.emit(f"레이어 {layer_idx}: X축 홈 복귀 실패")
             self._is_stopped = True
             return False
