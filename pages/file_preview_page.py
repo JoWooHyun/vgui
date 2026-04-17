@@ -61,42 +61,6 @@ class InfoRow(QFrame):
         self.lbl_value.setText(value)
 
 
-class ReadOnlyRow(QFrame):
-    """읽기 전용 정보 행 (라벨 + 값)"""
-
-    def __init__(self, label: str, value: str = "-", parent=None):
-        super().__init__(parent)
-
-        self.setFixedHeight(32)
-        self.setStyleSheet(f"""
-            QFrame {{
-                background-color: {Colors.BG_SECONDARY};
-                border: none;
-                border-radius: 6px;
-            }}
-        """)
-
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(10, 0, 10, 0)
-        layout.setSpacing(8)
-
-        self.lbl_label = QLabel(label)
-        self.lbl_label.setFont(Fonts.body_small())
-        self.lbl_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; background: transparent; border: none;")
-        self.lbl_label.setFixedWidth(110)
-
-        self.lbl_value = QLabel(value)
-        self.lbl_value.setFont(Fonts.body_small())
-        self.lbl_value.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.lbl_value.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; background: transparent; border: none; font-weight: 600;")
-
-        layout.addWidget(self.lbl_label)
-        layout.addWidget(self.lbl_value, 1)
-
-    def set_value(self, value: str):
-        self.lbl_value.setText(value)
-
-
 class MaterialSelectDialog(QDialog):
     """소재 선택 팝업 다이얼로그"""
 
@@ -431,40 +395,42 @@ class FilePreviewPage(BasePage):
 
         right_layout.addSpacing(4)
 
-        # 읽기 전용 정보 행들 (아이콘 + 값) - gcode 파라미터
+        # 2열 그리드 정보 (아이콘 + 값 통일)
         self.info_rows = {}
-
-        info_items = [
-            (Icons.STACK, "totalLayer"),
-            (Icons.TIMER, "estimatedPrintTime"),
-            (Icons.RULER, "layerHeight"),
-            (Icons.EXPOSURE_BOTTOM, "bottomLayerExposureTime"),
-            (Icons.EXPOSURE_NORMAL, "normalExposureTime"),
-        ]
-
-        for icon_svg, key in info_items:
-            row = InfoRow(icon_svg)
-            self.info_rows[key] = row
-            right_layout.addWidget(row)
-
-        right_layout.addSpacing(4)
-
-        # 소재 프리셋 값 읽기 전용 표시
         self.preset_rows = {}
-        preset_items = [
-            ("Blade Speed", "blade_speed", "mm/s"),
-            ("LED Power", "led_power", "%"),
-            ("Blade Cycles", "blade_cycles", "회"),
-            ("레진 토출거리", "y_dispense_distance", "mm"),
-            ("토출속도", "y_dispense_speed", "mm/s"),
-            ("토출 대기시간", "y_dispense_delay", "s"),
+
+        info_grid = QGridLayout()
+        info_grid.setSpacing(4)
+
+        # 모든 항목: (아이콘, 키, 타입) - 타입: "info" or ("preset", unit)
+        all_items = [
+            # 왼쪽 열 (row 0~5)             오른쪽 열 (row 0~5)
+            (Icons.STACK, "totalLayer", "info"),
+            (Icons.RULER, "layerHeight", "info"),
+            (Icons.TIMER, "estimatedPrintTime", "info"),
+            (Icons.EXPOSURE_BOTTOM, "bottomLayerExposureTime", "info"),
+            (Icons.EXPOSURE_NORMAL, "normalExposureTime", "info"),
+            (Icons.LED_POWER, "led_power", ("preset", "%")),
+            (Icons.BLADE_SPEED, "blade_speed", ("preset", "mm/s")),
+            (Icons.CYCLE, "blade_cycles", ("preset", "")),
+            (Icons.SYRINGE, "y_dispense_distance", ("preset", "mm")),
+            (Icons.DISPENSE_SPEED, "y_dispense_speed", ("preset", "mm/s")),
+            (Icons.DELAY, "y_dispense_delay", ("preset", "s")),
         ]
 
-        for label, key, unit in preset_items:
-            row = ReadOnlyRow(label, "-")
-            self.preset_rows[key] = (row, unit)
-            right_layout.addWidget(row)
+        for idx, (icon_svg, key, item_type) in enumerate(all_items):
+            row_pos = idx // 2
+            col_pos = idx % 2
+            info_row = InfoRow(icon_svg)
+            info_grid.addWidget(info_row, row_pos, col_pos)
 
+            if item_type == "info":
+                self.info_rows[key] = info_row
+            else:
+                _, unit = item_type
+                self.preset_rows[key] = (info_row, unit)
+
+        right_layout.addLayout(info_grid)
         right_layout.addStretch()
 
         # 버튼들
@@ -624,6 +590,8 @@ class FilePreviewPage(BasePage):
         """정보 초기화"""
         self._print_params = {}
         for row in self.info_rows.values():
+            row.set_value("-")
+        for row, unit in self.preset_rows.values():
             row.set_value("-")
 
     def _on_delete(self):

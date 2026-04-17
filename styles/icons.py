@@ -616,8 +616,51 @@ class Icons:
     </svg>
     """
 
+    # 주사기/토출 (syringe)
+    SYRINGE = """
+    <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 3l4 4"/>
+        <path d="M19 5L7.5 16.5"/>
+        <path d="M5.5 14.5L3 22l7.5-2.5"/>
+        <path d="M9 11l4 4"/>
+        <path d="M11 9l4 4"/>
+    </svg>
+    """
+
+    # 토출 속도 (물방울 + 속도)
+    DISPENSE_SPEED = """
+    <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+        <path d="M9 13l3-3 3 3"/>
+    </svg>
+    """
+
+    # 대기 시간 (모래시계/일시정지)
+    DELAY = """
+    <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 2h12"/>
+        <path d="M6 22h12"/>
+        <path d="M7 2v4l5 6-5 6v4"/>
+        <path d="M17 2v4l-5 6 5 6v4"/>
+    </svg>
+    """
+
+    # 반복/사이클 (회전 화살표)
+    CYCLE = """
+    <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 2v6h-6"/>
+        <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+        <path d="M3 22v-6h6"/>
+        <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+    </svg>
+    """
+
     @staticmethod
-    def get_pixmap(svg_template: str, size: int = 24, 
+    def get_pixmap(svg_template: str, size: int = 24,
                    color: str = None) -> QPixmap:
         """SVG 템플릿에서 QPixmap 생성"""
         if color is None:
