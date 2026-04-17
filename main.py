@@ -811,9 +811,10 @@ class MainWindow(QMainWindow):
         )
 
     def _setting_y_prime_done(self):
-        """Setting 페이지에서 프라이밍 완료 (좌표 저장)"""
+        """Setting 페이지에서 프라이밍 완료 (Klipper 실제 좌표 조회 후 저장)"""
+        self.motor.get_position()  # Klipper에서 실제 위치 조회 → _y_position 갱신
         y_pos = self.motor._y_position
-        print(f"[Setting] Y Priming Done - Position: {y_pos}mm")
+        print(f"[Setting] Y Priming Done - Position: {y_pos}mm (Klipper 조회)")
         self.settings.set_y_priming_position(y_pos)
 
     # ==================== 설정 저장/동기화 ====================
