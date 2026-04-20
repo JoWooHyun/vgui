@@ -313,12 +313,12 @@ class MaterialPage(BasePage):
         right_layout.addSpacing(4)
 
         # 편집 행들
-        self.row_blade_speed = MaterialEditRow("Blade Speed", 5, "mm/s", 1, 30)
+        self.row_blade_speed = MaterialEditRow("Blade Speed", 5, "mm/s", 1, 100)
         self.row_led_power = MaterialEditRow("LED Power", 43, "%", 9, 100)
         self.row_blade_cycles = MaterialEditRow("Blade Cycles", 1, "회", 1, 3)
         self.row_y_dispense = MaterialEditRow("Resin Dist.", 1.0, "mm", 0.1, 5.0, allow_decimal=True)
         self.row_y_speed = MaterialEditRow("Resin Speed", 3, "mm/s", 1, 15)
-        self.row_y_delay = MaterialEditRow("Resin Delay", 5.0, "s", 0.5, 20.0, allow_decimal=True)
+        self.row_y_delay = MaterialEditRow("Resin Delay", 5.0, "s", 0.5, 60.0, allow_decimal=True)
         self.row_leveling = MaterialEditRow("평탄화 횟수", 1, "회", 0, 5)
 
         self._edit_rows = [
