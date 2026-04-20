@@ -318,7 +318,7 @@ class MainWindow(QMainWindow):
         self.print_page.file_selected.connect(self._on_file_selected)
         
         # 노출 테스트 페이지
-        self.exposure_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TOOL))
+        self.exposure_page.go_back.connect(self._on_exposure_back)
         self.exposure_page.exposure_start.connect(self._start_exposure)
         self.exposure_page.exposure_stop.connect(self._stop_exposure)
 
@@ -730,11 +730,16 @@ class MainWindow(QMainWindow):
         """노출 테스트 정지"""
         print("[NVR] 노출 테스트 정지")
         self.dlp.led_off()
-        # 프로젝터는 끄지 않음 (앱 실행 동안 계속 ON)
 
         if self.projector_window:
             self.projector_window.clear_screen()
+
+    def _on_exposure_back(self):
+        """Exposure 페이지에서 나갈 때"""
+        self._stop_exposure()
+        if self.projector_window:
             self.projector_window.close()
+        self._go_to_page(self.PAGE_TOOL)
 
     # ==================== Setting 페이지 제어 ====================
 
