@@ -651,8 +651,20 @@ class PrintProgressPage(BasePage):
                                blade_cycles: int, bottom_layer_count: int,
                                bottom_exposure: float, normal_exposure: float,
                                lift_height: float, lift_speed: int,
-                               drop_speed: int) -> int:
-        """총 예상 시간 계산
+                               drop_speed: int,
+                               y_dispense_distance: float = 0.0,
+                               y_dispense_speed: int = 0,
+                               y_dispense_delay: float = 0.0,
+                               leveling_cycles: int = 0) -> int:
+        """총 예상 시간 계산 (실제 프린트 시퀀스 기반)
+
+        레이어별 시퀀스:
+        1. Z축 하강 (레이어 높이)
+        2. 레진 토출 + 대기
+        3. X축 10→140 (평탄화)
+        4. 노광
+        5. Z축 리프트 (+5mm)
+        6. X축 140→10 (복귀)
 
         Args:
             total_layers: 총 레이어 수
@@ -664,37 +676,52 @@ class PrintProgressPage(BasePage):
             lift_height: 리프트 높이 (mm)
             lift_speed: 리프트 속도 (mm/min)
             drop_speed: 하강 속도 (mm/min)
+            y_dispense_distance: 레진 토출 거리 (mm)
+            y_dispense_speed: 레진 토출 속도 (mm/min)
+            y_dispense_delay: 레진 토출 후 대기 (초)
+            leveling_cycles: 초기 평탄화 횟수
 
         Returns:
             총 예상 시간 (초)
         """
-        BLADE_DISTANCE = 280.0  # mm (140→0→140 왕복)
-
         # 블레이드 속도 (mm/min → mm/s)
         blade_speed_mm_s = blade_speed / 60.0
         if blade_speed_mm_s <= 0:
             blade_speed_mm_s = 5.0
 
-        # 블레이드 1회 왕복 시간 × 사이클 수
-        blade_time = (BLADE_DISTANCE / blade_speed_mm_s) * blade_cycles
+        # X축 이동 시간: 10→140 (130mm) + 140→10 (130mm)
+        x_forward_time = 130.0 / blade_speed_mm_s   # 10→140
+        x_return_time = 130.0 / blade_speed_mm_s     # 140→10
+        x_time = (x_forward_time + x_return_time) * blade_cycles
 
-        # Z축 리프트 + 하강 시간
+        # Z축 리프트(+5mm) + 하강 시간
         lift_speed_mm_s = lift_speed / 60.0 if lift_speed > 0 else 5.0
         drop_speed_mm_s = drop_speed / 60.0 if drop_speed > 0 else 2.5
         z_lift_time = lift_height / lift_speed_mm_s
         z_drop_time = lift_height / drop_speed_mm_s
         z_time = z_lift_time + z_drop_time
 
+        # 레진 토출 시간 + 대기
+        resin_time = 0.0
+        if y_dispense_distance > 0 and y_dispense_speed > 0:
+            y_speed_mm_s = y_dispense_speed / 60.0
+            resin_time = (y_dispense_distance / y_speed_mm_s) + y_dispense_delay
+
         # 바닥 레이어 시간
-        bottom_time_per_layer = blade_time + bottom_exposure + z_time
+        bottom_time_per_layer = resin_time + x_time + bottom_exposure + z_time
         total_bottom_time = bottom_time_per_layer * bottom_layer_count
 
         # 일반 레이어 시간
         normal_layers = max(0, total_layers - bottom_layer_count)
-        normal_time_per_layer = blade_time + normal_exposure + z_time
+        normal_time_per_layer = resin_time + x_time + normal_exposure + z_time
         total_normal_time = normal_time_per_layer * normal_layers
 
-        return int(total_bottom_time + total_normal_time)
+        # 초기 평탄화 시간 (0→140→0 왕복 × cycles + Z홈)
+        leveling_time = 0.0
+        if leveling_cycles > 0:
+            leveling_time = (280.0 / blade_speed_mm_s) * leveling_cycles
+
+        return int(leveling_time + total_bottom_time + total_normal_time)
 
     # === Public API (Worker에서 호출) ===
     
@@ -708,7 +735,8 @@ class PrintProgressPage(BasePage):
                        y_dispense_distance: float = 0.0,
                        y_dispense_speed: int = 0,
                        y_dispense_delay: float = 0.0,
-                       y_priming_position: float = 0.0):
+                       y_priming_position: float = 0.0,
+                       leveling_cycles: int = 0):
         """프린트 정보 설정 (시작 시 호출)"""
         self._file_path = file_path
         self._total_layers = total_layers
@@ -729,11 +757,13 @@ class PrintProgressPage(BasePage):
         else:
             self.lbl_layer_image.setPixmap(Icons.get_pixmap(Icons.FILE, 64, Colors.TEXT_DISABLED))
 
-        # 총 예상 시간 계산 (블레이드 + 노광 + Z축 시간)
+        # 총 예상 시간 계산 (실제 프린트 시퀀스 기반)
         total_estimated_time = self._calculate_total_time(
             total_layers, blade_speed, blade_cycles,
             bottom_layer_count, bottom_exposure, normal_exposure,
-            lift_height, lift_speed, drop_speed
+            lift_height, lift_speed, drop_speed,
+            y_dispense_distance, y_dispense_speed, y_dispense_delay,
+            leveling_cycles
         )
         self._total_estimated_time = total_estimated_time
 
