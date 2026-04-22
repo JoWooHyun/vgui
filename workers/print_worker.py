@@ -593,6 +593,7 @@ class PrintWorker(QThread):
 
         노광 중에는 LED가 켜져있으므로 일시정지하면 안 됨.
         노광 완료 후 LED OFF → 일시정지 체크는 _process_layer에서 처리.
+        정지 시 즉시 LED OFF 후 return.
 
         Args:
             duration: 노광 시간 (초)
@@ -602,6 +603,8 @@ class PrintWorker(QThread):
 
         while elapsed < duration:
             if self._check_stopped():
+                self._dlp_led_off()
+                self.clear_image.emit()
                 return
 
             time.sleep(interval)
