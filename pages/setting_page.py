@@ -5,14 +5,14 @@ LED Power 및 Blade 설정 페이지
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QFrame
+    QPushButton, QFrame, QDialog
 )
 from PySide6.QtCore import Signal, Qt
 
 from pages.base_page import BasePage
 from components.numeric_keypad import NumericKeypad
 from components.icon_button import ControlButton, HomeButton
-from components.number_dial import DistanceSelector
+
 from styles.colors import Colors
 from styles.fonts import Fonts
 from styles.icons import Icons
@@ -399,10 +399,15 @@ class YAxisPanel(QFrame):
 
         layout.addStretch(1)
 
-        # 거리 선택기 (0.1, 1.0, 10.0 mm)
-        self.distance_selector = DistanceSelector()
-        self.distance_selector.setEnabled(False)  # 프라이밍 모드에서만 활성화
-        layout.addWidget(self.distance_selector)
+        # 거리 입력 버튼 (클릭하면 NumericKeypad 열림)
+        self._distance = 1.0
+        self.btn_distance = QPushButton("1 mm")
+        self.btn_distance.setFixedHeight(44)
+        self.btn_distance.setCursor(Qt.PointingHandCursor)
+        self.btn_distance.setStyleSheet(get_distance_button_active_style())
+        self.btn_distance.clicked.connect(self._on_distance_click)
+        self.btn_distance.setEnabled(False)  # 프라이밍 모드에서만 활성화
+        layout.addWidget(self.btn_distance)
 
         layout.addStretch(1)
 
@@ -497,7 +502,7 @@ class YAxisPanel(QFrame):
 
         홈잉 완료 → 주사기 장착 → 양방향 이동 가능"""
         self.status_label.setText("Mount syringe, adjust & test, then OK")
-        self.distance_selector.setEnabled(True)
+        self.btn_distance.setEnabled(True)
         self.btn_up.setEnabled(True)   # + 방향 (홈에서 멀어짐)
         self.btn_down.setEnabled(True)  # - 방향 (홈 쪽으로)
         self.btn_ok.setEnabled(True)
@@ -507,7 +512,7 @@ class YAxisPanel(QFrame):
         """OK 버튼 클릭 → 프라이밍 완료, 좌표 저장 요청"""
         self._is_priming = False
         self.status_label.setText("Priming saved!")
-        self.distance_selector.setEnabled(False)
+        self.btn_distance.setEnabled(False)
         self.btn_up.setEnabled(False)
         self.btn_down.setEnabled(False)
         self.btn_ok.setEnabled(False)
@@ -515,15 +520,31 @@ class YAxisPanel(QFrame):
         self._update_ok_style()
         self.priming_done.emit()
 
+    def _on_distance_click(self):
+        """거리 버튼 클릭 → NumericKeypad 열기"""
+        keypad = NumericKeypad(
+            title="Move Distance",
+            value=self._distance,
+            unit="mm",
+            min_val=0.05,
+            max_val=10.0,
+            allow_decimal=True,
+            parent=self.window()
+        )
+        if keypad.exec() == QDialog.Accepted:
+            self._distance = keypad.get_value()
+            if self._distance == int(self._distance):
+                self.btn_distance.setText(f"{int(self._distance)} mm")
+            else:
+                self.btn_distance.setText(f"{self._distance:g} mm")
+
     def _on_move_up(self):
         """위로 이동 (홈 반대방향 = 양의 방향, 주사기 빼기)"""
-        distance = self.distance_selector.get_selected_distance()
-        self.move_positive.emit(distance)
+        self.move_positive.emit(self._distance)
 
     def _on_move_down(self):
         """아래로 이동 (홈 방향 = 음의 방향, 레진 토출)"""
-        distance = self.distance_selector.get_selected_distance()
-        self.move_negative.emit(distance)
+        self.move_negative.emit(self._distance)
 
 
 class SettingPage(BasePage):

@@ -10,7 +10,6 @@ from PySide6.QtCore import Signal, Qt
 
 from pages.base_page import BasePage
 from components.icon_button import ControlButton, HomeButton
-from components.number_dial import DistanceSelector
 from components.numeric_keypad import NumericKeypad
 from styles.colors import Colors
 from styles.fonts import Fonts
@@ -23,23 +22,26 @@ from styles.stylesheets import (
 
 class AxisControlPanel(QFrame):
     """축 제어 패널"""
-    
+
     # 이동 시그널
     move_positive = Signal(float)  # 양의 방향 이동 (거리)
     move_negative = Signal(float)  # 음의 방향 이동 (거리)
     home_axis = Signal()           # 홈 위치로
-    
+
     def __init__(self, axis_name: str, is_horizontal: bool = False,
-                 distances: list = None, parent=None):
+                 default_distance: float = 1.0,
+                 min_distance: float = 0.05, max_distance: float = 10.0,
+                 parent=None):
         super().__init__(parent)
 
         self._axis_name = axis_name
         self._is_horizontal = is_horizontal  # True면 좌우, False면 상하
-        self._distances = distances  # 커스텀 거리 목록
-        self._current_value = 0.0
+        self._distance = default_distance
+        self._min_distance = min_distance
+        self._max_distance = max_distance
 
         self._setup_ui()
-    
+
     def _setup_ui(self):
         """UI 구성"""
         self.setStyleSheet(get_axis_panel_style())
@@ -58,12 +60,13 @@ class AxisControlPanel(QFrame):
 
         layout.addStretch(1)
 
-        # 거리 선택기
-        if self._distances:
-            self.distance_selector = DistanceSelector(distances=self._distances)
-        else:
-            self.distance_selector = DistanceSelector()
-        layout.addWidget(self.distance_selector)
+        # 거리 입력 버튼 (클릭하면 NumericKeypad 열림)
+        self.btn_distance = QPushButton(self._format_distance(self._distance))
+        self.btn_distance.setFixedHeight(44)
+        self.btn_distance.setCursor(Qt.PointingHandCursor)
+        self.btn_distance.setStyleSheet(get_distance_button_active_style())
+        self.btn_distance.clicked.connect(self._on_distance_click)
+        layout.addWidget(self.btn_distance)
 
         layout.addStretch(1)
 
@@ -95,19 +98,44 @@ class AxisControlPanel(QFrame):
 
         layout.addStretch(1)
 
+    def _format_distance(self, value: float) -> str:
+        """거리 표시 포맷"""
+        if value == int(value):
+            return f"{int(value)} mm"
+        else:
+            # 불필요한 0 제거
+            return f"{value:g} mm"
+
+    def _on_distance_click(self):
+        """거리 버튼 클릭 → NumericKeypad 열기"""
+        keypad = NumericKeypad(
+            title="Move Distance",
+            value=self._distance,
+            unit="mm",
+            min_val=self._min_distance,
+            max_val=self._max_distance,
+            allow_decimal=True,
+            parent=self.window()
+        )
+        if keypad.exec() == QDialog.Accepted:
+            self._distance = keypad.get_value()
+            self.btn_distance.setText(self._format_distance(self._distance))
+
     def _on_move_positive(self):
         """양의 방향 이동"""
-        distance = self.distance_selector.get_selected_distance()
-        self.move_positive.emit(distance)
-    
+        self.move_positive.emit(self._distance)
+
     def _on_move_negative(self):
         """음의 방향 이동"""
-        distance = self.distance_selector.get_selected_distance()
-        self.move_negative.emit(distance)
-    
+        self.move_negative.emit(self._distance)
+
+    def get_distance(self) -> float:
+        """현재 거리 반환"""
+        return self._distance
+
     def set_value(self, value: float):
         """현재 값 업데이트 (사용 안함)"""
-        self._current_value = value
+        pass
 
 
 class ManualPage(BasePage):
@@ -139,9 +167,8 @@ class ManualPage(BasePage):
         self.z_panel.move_negative.connect(lambda d: self.z_move.emit(-d))
         self.z_panel.home_axis.connect(self.z_home.emit)
 
-        # X축 패널 (블레이드) - 거리 1, 10, 100
-        self.x_panel = AxisControlPanel("X Axis (Blade)", is_horizontal=True,
-                                         distances=[1, 10, 100])
+        # X축 패널 (블레이드)
+        self.x_panel = AxisControlPanel("X Axis (Blade)", is_horizontal=True)
         self.x_panel.move_positive.connect(lambda d: self.x_move.emit(d))
         self.x_panel.move_negative.connect(lambda d: self.x_move.emit(-d))
         self.x_panel.home_axis.connect(self.x_home.emit)
@@ -157,7 +184,7 @@ class ManualPage(BasePage):
         panels_layout.addWidget(self.y_panel)
 
         self.content_layout.addLayout(panels_layout)
-    
+
     def update_z_position(self, value: float):
         """Z축 위치 업데이트"""
         self.z_panel.set_value(value)
@@ -165,4 +192,3 @@ class ManualPage(BasePage):
     def update_x_position(self, value: float):
         """X축 위치 업데이트"""
         self.x_panel.set_value(value)
-
