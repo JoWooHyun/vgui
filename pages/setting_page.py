@@ -18,7 +18,7 @@ from styles.fonts import Fonts
 from styles.icons import Icons
 from styles.stylesheets import (
     get_axis_panel_style, get_axis_title_style,
-    Radius
+    get_distance_button_active_style, Radius
 )
 
 
