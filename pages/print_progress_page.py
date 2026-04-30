@@ -689,9 +689,9 @@ class PrintProgressPage(BasePage):
         if blade_speed_mm_s <= 0:
             blade_speed_mm_s = 5.0
 
-        # X축 이동 시간: 10→140 (130mm) + 140→10 (130mm)
-        x_forward_time = 130.0 / blade_speed_mm_s   # 10→140
-        x_return_time = 130.0 / blade_speed_mm_s     # 140→10
+        # X축 이동 시간: 10→140 (130mm, 설정 속도) + 140→10 (130mm, 고정 50mm/s)
+        x_forward_time = 130.0 / blade_speed_mm_s   # 10→140 (평탄화)
+        x_return_time = 130.0 / 50.0                 # 140→10 (복귀, 고정 50mm/s)
         x_time = (x_forward_time + x_return_time) * blade_cycles
 
         # Z축 리프트(+5mm) + 하강 시간

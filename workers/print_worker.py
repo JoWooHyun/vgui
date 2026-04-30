@@ -458,7 +458,8 @@ class PrintWorker(QThread):
             return False
 
         # 8. X축 대기 위치 복귀 (140→10, 다음 레이어 토출 준비)
-        if not self._motor_x_move(10, job.blade_speed):
+        # 복귀는 평탄화가 아니므로 빠른 고정 속도 사용 (50mm/s = 3000mm/min)
+        if not self._motor_x_move(10, 3000):
             self.error_occurred.emit(f"레이어 {layer_idx}: X축 홈 복귀 실패")
             self._is_stopped = True
             return False
