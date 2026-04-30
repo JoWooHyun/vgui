@@ -1,6 +1,6 @@
 # MAZIC CERA GUI - 페이지별 기능 정리
 
-> 최종 업데이트: 2025-04-16
+> 최종 업데이트: 2025-04-30
 
 ## 페이지 네비게이션 구조
 
@@ -74,16 +74,17 @@ Main Page (MAZIC CERA)
 ### UI 구성
 3개 축 패널 수평 배열:
 
-| 패널 | 축 | 거리 선택 | 버튼 |
-|------|-----|-----------|------|
-| Z Axis | Z축 (빌드 플레이트) | 0.1 / 1.0 / 10.0 mm | HOME, UP, DOWN |
-| X Axis (Blade) | X축 (블레이드) | 1 / 10 / 100 mm | HOME, LEFT, RIGHT |
-| Resin Feeder | Y축 (레진 토출) | 0.1 / 1.0 / 10.0 mm | HOME, UP, DOWN |
+| 패널 | 축 | 거리 입력 | 속도 입력 | 버튼 |
+|------|-----|-----------|-----------|------|
+| Z Axis | Z축 (빌드 플레이트) | 0.05~10.0 mm (키패드) | - | HOME, UP, DOWN |
+| X Axis (Blade) | X축 (블레이드) | 0.05~10.0 mm (키패드) | 5~9999 mm/s (키패드) | HOME, LEFT, RIGHT |
+| Resin Feeder | Y축 (레진 토출) | 0.05~10.0 mm (키패드) | - | HOME, UP, DOWN |
 
 ### 기능
-- 각 축 독립적 이동 (거리 선택 → 방향 버튼)
+- 각 축 독립적 이동 (거리 입력 → 방향 버튼 클릭)
+- X축 전용: 속도 직접 입력 (기본 10mm/s, 최소 5mm/s)
 - HOME 버튼: 해당 축 원점 복귀
-- 모터 작업 중 버튼 비활성화 (UI 잠금)
+- 거리/속도 클릭 시 NumericKeypad 팝업
 
 ---
 
@@ -107,7 +108,7 @@ Main Page (MAZIC CERA)
 
 ### ZIP 검증 항목
 1. `run.gcode` 파일 존재 여부
-2. 머신 설정 일치 (해상도, 출력영역)
+2. 머신 설정 일치 (해상도 1920x1080, 출력영역 124.8x70.2x80)
 3. `preview.png`, `preview_cropping.png` 존재
 4. 레이어 이미지 연속성 (1.png, 2.png, ... N.png)
 
@@ -129,18 +130,11 @@ Main Page (MAZIC CERA)
 **우측:**
 - 소재 선택 배지 (Cyan, 클릭 시 소재 변경 가능)
 - 파일 정보 (읽기 전용):
-  - Total Layers
-  - Estimated Print Time
-  - Layer Height
-  - Bottom Layer Exposure Time
-  - Normal Exposure Time
+  - Total Layers, Estimated Print Time, Layer Height
+  - Bottom/Normal Exposure Time
 - 소재 프리셋 값 (읽기 전용):
-  - Blade Speed (mm/s)
-  - LED Power (%)
-  - Blade Cycles (회)
-  - Y Dispense Distance (mm)
-  - Y Dispense Speed (mm/s)
-  - Y Dispense Delay (s)
+  - Blade Speed, LED Power, Blade Cycles
+  - Y Dispense Distance/Speed/Delay
 - 버튼: Delete (빨간색), Start (Cyan)
 
 ### 기능
@@ -161,28 +155,33 @@ Main Page (MAZIC CERA)
 
 **상단:**
 - 레이어 미리보기 (270x270px)
-- 9개 정보 행: Bottom/Normal 노출시간, 레이어 높이, 현재/총 레이어, 바닥 레이어 수, 블레이드 속도, LED 파워, 경과 시간, 총 예상 시간
+- 정보 행: Bottom/Normal 노출시간, 레이어 높이, 현재/총 레이어, 바닥 레이어 수, 블레이드 속도, LED 파워, 레진 레벨, 경과 시간, 총 예상 시간
 
 **하단:**
 - 파일명
-- 프로그레스 바 (Cyan 그라데이션)
-- 퍼센트 표시
+- 프로그레스 바 (Cyan 그라데이션) + 퍼센트 표시
 - 상태별 버튼:
 
 | 상태 | 버튼 |
 |------|------|
 | 프린팅 중 | PAUSE (Amber) + STOP (빨간) |
 | 일시정지 | RESUME (Cyan) + STOP |
-| 완료/에러 | GUI HOME (Cyan) + Z AXIS HOME |
+| 완료/에러/정지 | GUI HOME (Cyan) + Z AXIS HOME |
 
 ### 기능
-- 실시간 레이어 이미지 업데이트
+- 실시간 레이어 이미지 업데이트 (프로젝터 동기)
 - 경과 시간 1초 단위 업데이트
 - PAUSE: 노출 완료 후 일시정지 (Klipper에 PAUSE 알림)
 - RESUME: 재개 (Klipper shutdown 시 자동 firmware restart)
-- STOP: 확인 다이얼로그 후 정지
+- STOP: 확인 다이얼로그 후 정지 (노출 중이면 즉시 LED OFF)
 - 완료 시: CompletedDialog 팝업
 - 에러 시: ErrorDialog 팝업
+- 레진 부족 시: 사용자 선택 (Y축 비활성화 계속 / 출력 종료)
+
+### 예상 시간 계산
+- 레이어별: Z 이동 + 레진 토출 + 레진 대기 + X 블레이드 왕복(130mm×2) + LED 노출 + Z 리프트(5mm)
+- 바닥 레이어와 일반 레이어 분리 계산
+- 레벨링 시간 포함
 
 ---
 
@@ -198,7 +197,7 @@ Main Page (MAZIC CERA)
   1. **Gradient** - 밝기 램프 (최대 60초)
   2. **Checker** - 체커보드 (최대 60초)
   3. **Logo** - 로고 패턴 (최대 60초)
-  4. **20x20** - 20x20mm 정사각형 (최대 60초)
+  4. **20x20** - 20x20mm 정사각형 테스트 이미지 (최대 60초)
   5. **Clean** - 전체화면 클리닝 (최대 120초)
 - 시간 설정 버튼 (클릭 → NumberDial)
 - START / STOP 버튼
@@ -207,7 +206,8 @@ Main Page (MAZIC CERA)
 - 패턴 선택 → 시간 설정 → START
 - 프로젝터 2차 모니터에 패턴 표시 + LED ON
 - 설정 시간 경과 후 자동 STOP
-- 수동 STOP 가능
+- 수동 STOP: LED OFF + 이미지 클리어 (프로젝터 윈도우는 닫지 않음)
+- 페이지 나갈 때: 프로젝터 윈도우 close
 
 ---
 
@@ -224,7 +224,7 @@ Main Page (MAZIC CERA)
 |------|------|------|
 | 0 | Z축 홈 | 스테이지 설치, 잠금 안 함, 버튼 누르기 |
 | 1 | X축 홈 | 블레이드 설치, 잠금 나사 풀기, 버튼 누르기 |
-| 2 | X축 75mm 이동 | 블레이드 중앙 이동, 버튼 누르기 |
+| 2 | X축 75mm 이동 (10mm/s) | 블레이드 중앙 이동, 버튼 누르기 |
 | 완료 | Done | 블레이드 잠금, 스테이지 잠금 |
 
 ### 기능
@@ -246,12 +246,12 @@ Main Page (MAZIC CERA)
 | 패널 | 항목 | 범위 | 기능 |
 |------|------|------|------|
 | LED SET | LED Power | 9-100% | 값 클릭 → 키패드, ON/OFF 토글 |
-| BLADE SET | Blade Speed | 1-15 mm/s | 값 클릭 → 키패드, HOME/MOVE 버튼 |
-| Y Axis | 거리 선택 | 0.1/1.0/10.0mm | HOME, UP, DOWN 버튼 |
+| BLADE SET | Blade Speed | 1-100 mm/s | 값 클릭 → 키패드, HOME/MOVE 버튼 |
+| Y Axis | 거리 입력 | 0.05~10.0mm (키패드) | HOME, UP, DOWN 버튼 |
 
 ### 기능
-- LED ON: 프로젝터에 테스트 이미지 표시 + LED 켜기
-- LED OFF: LED 끄기 + 프로젝터 닫기
+- LED ON: 프로젝터에 테스트 이미지(1.png) 표시 + LED 켜기
+- LED OFF: LED 끄기 + 프로젝터 이미지 클리어
 - BLADE MOVE: 0mm ↔ 140mm 토글 이동
 - Y축: 수동 이동 (Setting 페이지 전용)
 - **Y축 프라이밍**:
@@ -285,12 +285,12 @@ Main Page (MAZIC CERA)
 
 | 파라미터 | 범위 | 단위 |
 |----------|------|------|
-| Blade Speed | 1-15 | mm/s |
+| Blade Speed | 1-100 | mm/s |
 | LED Power | 9-100 | % |
 | Blade Cycles | 1-3 | 회 |
 | Y Dispense | 0.1-5.0 | mm |
 | Y Speed | 1-15 | mm/s |
-| Y Delay | 0.5-10.0 | s |
+| Y Delay | 0.5-300 | s |
 | Leveling Cycles | 0-5 | 회 |
 | Lift Height | 1.0-20.0 | mm |
 | Drop Speed | 10-300 | mm/min |
@@ -341,7 +341,7 @@ Main Page (MAZIC CERA)
 | 모델명 | MAZIC CERA |
 | 해상도 | 1920 x 1080 |
 | 출력 영역 | 124.8 x 70.2 x 80 mm |
-| 픽셀 | 65 μm |
+| 픽셀 | 65 um |
 | 펌웨어 ver | V 2.0.0 |
 
 ---
@@ -406,5 +406,5 @@ Main Page (MAZIC CERA)
 
 ### 설정 영속성
 - `data/settings.json`에 저장
-- 저장 항목: LED 파워, 블레이드 속도, 소재 프리셋, 선택 소재, 테마, 언어
+- 저장 항목: LED 파워, 블레이드 속도, 소재 프리셋, 선택 소재, Y축 프라이밍 위치, 테마, 언어
 - 앱 시작 시 자동 로드

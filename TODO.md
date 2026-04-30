@@ -1,6 +1,6 @@
 # MAZIC CERA GUI - TODO
 
-> 최종 업데이트: 2025-04-16
+> 최종 업데이트: 2025-04-30
 
 ---
 
@@ -30,7 +30,7 @@
 |---|------|------|------|
 | 1 | I2C 쓰기 오류 17 (LED 밝기 간헐적 실패) | dlp_controller.py | 조사 필요 |
 | 2 | 일시정지 시 LED 상태 미처리 (LED 켜진 채로 일시정지) | print_worker.py | 미수정 |
-| 3 | _process_layer() 후 stop 체크 누락 | print_worker.py | 미수정 |
+| 3 | NVR2 exposure 테스트 시 데스크탑 플리커 | projector_window.py | NVR2 SET 버튼 테스트 필요 |
 
 ---
 
@@ -40,8 +40,7 @@
 |---|------|------|
 | 4 | 레이어 인덱스 0-based vs 1-based 혼용 | print_worker.py, progress_page |
 | 5 | PrintSettings와 MaterialPreset 필드 중복 | settings_manager.py |
-| 6 | X축 엔드스톱 위치 미확정 (cleanup 시 홈 복귀) | print_worker.py |
-| 7 | 파라미터 기본값과 실제 gcode 값 불일치 가능 | print_worker.py |
+| 6 | 파라미터 기본값과 실제 gcode 값 불일치 가능 | print_worker.py |
 
 ---
 
@@ -92,6 +91,18 @@
 ---
 
 ## 완료된 항목 (Done)
+
+### v4.2 - 프린트 안전성 강화 및 UI 개선 (2025-04-30)
+
+- [x] 정지 시 LED 즉시 OFF (`_wait_exposure()`에서 즉시 `_dlp_led_off()`)
+- [x] 레벨링 전 초기 레진 토출 추가 (레진 없이 평탄화 방지)
+- [x] Exposure 정지 시 `clear_screen()` 사용 (프로젝터 close → 페이지 나갈 때만)
+- [x] Blade Speed 입력 범위 확대 (최대 100 mm/s)
+- [x] Resin Delay 입력 범위 확대 (최대 300초 = 5분)
+- [x] X축 max position 140mm으로 통일 (printer.cfg 기준)
+- [x] Manual X축 속도 컨트롤 추가 (NumericKeypad, 기본 10mm/s)
+- [x] DistanceSelector → NumericKeypad 전환 (Manual/Setting 페이지)
+- [x] 예상 프린트 시간 재계산 (레진/블레이드/레벨링 시간 포함)
 
 ### v4.1 - Y축 프라이밍 개편 (2025-04)
 
