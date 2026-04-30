@@ -31,14 +31,20 @@ class AxisControlPanel(QFrame):
     def __init__(self, axis_name: str, is_horizontal: bool = False,
                  default_distance: float = 1.0,
                  min_distance: float = 0.05, max_distance: float = 10.0,
+                 show_speed: bool = False, default_speed: int = 10,
+                 min_speed: int = 5, max_speed: int = 9999,
                  parent=None):
         super().__init__(parent)
 
         self._axis_name = axis_name
-        self._is_horizontal = is_horizontal  # True면 좌우, False면 상하
+        self._is_horizontal = is_horizontal
         self._distance = default_distance
         self._min_distance = min_distance
         self._max_distance = max_distance
+        self._show_speed = show_speed
+        self._speed = default_speed
+        self._min_speed = min_speed
+        self._max_speed = max_speed
 
         self._setup_ui()
 
@@ -61,12 +67,21 @@ class AxisControlPanel(QFrame):
         layout.addStretch(1)
 
         # 거리 입력 버튼 (클릭하면 NumericKeypad 열림)
-        self.btn_distance = QPushButton(self._format_distance(self._distance))
+        self.btn_distance = QPushButton(self._format_value(self._distance, "mm"))
         self.btn_distance.setFixedHeight(44)
         self.btn_distance.setCursor(Qt.PointingHandCursor)
         self.btn_distance.setStyleSheet(get_distance_button_active_style())
         self.btn_distance.clicked.connect(self._on_distance_click)
         layout.addWidget(self.btn_distance)
+
+        # 속도 입력 버튼 (show_speed=True일 때만)
+        if self._show_speed:
+            self.btn_speed = QPushButton(f"{self._speed} mm/s")
+            self.btn_speed.setFixedHeight(44)
+            self.btn_speed.setCursor(Qt.PointingHandCursor)
+            self.btn_speed.setStyleSheet(get_distance_button_active_style())
+            self.btn_speed.clicked.connect(self._on_speed_click)
+            layout.addWidget(self.btn_speed)
 
         layout.addStretch(1)
 
@@ -98,13 +113,12 @@ class AxisControlPanel(QFrame):
 
         layout.addStretch(1)
 
-    def _format_distance(self, value: float) -> str:
-        """거리 표시 포맷"""
+    def _format_value(self, value: float, unit: str) -> str:
+        """값 표시 포맷"""
         if value == int(value):
-            return f"{int(value)} mm"
+            return f"{int(value)} {unit}"
         else:
-            # 불필요한 0 제거
-            return f"{value:g} mm"
+            return f"{value:g} {unit}"
 
     def _on_distance_click(self):
         """거리 버튼 클릭 → NumericKeypad 열기"""
@@ -119,7 +133,22 @@ class AxisControlPanel(QFrame):
         )
         if keypad.exec() == QDialog.Accepted:
             self._distance = keypad.get_value()
-            self.btn_distance.setText(self._format_distance(self._distance))
+            self.btn_distance.setText(self._format_value(self._distance, "mm"))
+
+    def _on_speed_click(self):
+        """속도 버튼 클릭 → NumericKeypad 열기"""
+        keypad = NumericKeypad(
+            title="Move Speed",
+            value=self._speed,
+            unit="mm/s",
+            min_val=self._min_speed,
+            max_val=self._max_speed,
+            allow_decimal=False,
+            parent=self.window()
+        )
+        if keypad.exec() == QDialog.Accepted:
+            self._speed = int(keypad.get_value())
+            self.btn_speed.setText(f"{self._speed} mm/s")
 
     def _on_move_positive(self):
         """양의 방향 이동"""
@@ -133,6 +162,10 @@ class AxisControlPanel(QFrame):
         """현재 거리 반환"""
         return self._distance
 
+    def get_speed(self) -> int:
+        """현재 속도 반환 (mm/s)"""
+        return self._speed
+
     def set_value(self, value: float):
         """현재 값 업데이트 (사용 안함)"""
         pass
@@ -145,7 +178,7 @@ class ManualPage(BasePage):
     z_move = Signal(float)      # Z축 이동 (+ 상승, - 하강)
     z_home = Signal()           # Z축 홈
 
-    x_move = Signal(float)      # X축(블레이드) 이동
+    x_move = Signal(float, int) # X축(블레이드) 이동 (거리, 속도 mm/min)
     x_home = Signal()           # X축 홈
 
     y_move = Signal(float)      # Y축(Resin Feeder) 이동
@@ -167,10 +200,14 @@ class ManualPage(BasePage):
         self.z_panel.move_negative.connect(lambda d: self.z_move.emit(-d))
         self.z_panel.home_axis.connect(self.z_home.emit)
 
-        # X축 패널 (블레이드)
-        self.x_panel = AxisControlPanel("X Axis (Blade)", is_horizontal=True)
-        self.x_panel.move_positive.connect(lambda d: self.x_move.emit(d))
-        self.x_panel.move_negative.connect(lambda d: self.x_move.emit(-d))
+        # X축 패널 (블레이드) - 속도 설정 포함
+        self.x_panel = AxisControlPanel("X Axis (Blade)", is_horizontal=True,
+                                         show_speed=True, default_speed=10,
+                                         min_speed=5)
+        self.x_panel.move_positive.connect(
+            lambda d: self.x_move.emit(d, self.x_panel.get_speed() * 60))
+        self.x_panel.move_negative.connect(
+            lambda d: self.x_move.emit(-d, self.x_panel.get_speed() * 60))
         self.x_panel.home_axis.connect(self.x_home.emit)
 
         # Y축 패널 (Resin Feeder)

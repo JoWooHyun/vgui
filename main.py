@@ -406,10 +406,10 @@ class MainWindow(QMainWindow):
         print("[Motor] Z축 홈으로 이동")
         self._start_motor_operation("z_home")
 
-    def _move_x(self, distance: float):
+    def _move_x(self, distance: float, speed: int = 600):
         """X축(블레이드) 이동 (비동기)"""
-        print(f"[Motor] X축 이동: {distance}mm")
-        self._start_motor_operation("x_move", distance=distance, speed=600)
+        print(f"[Motor] X축 이동: {distance}mm @ {speed}mm/min")
+        self._start_motor_operation("x_move", distance=distance, speed=speed)
 
     def _home_x(self):
         """X축 홈 (비동기)"""
