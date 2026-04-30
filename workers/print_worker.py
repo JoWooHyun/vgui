@@ -302,7 +302,20 @@ class PrintWorker(QThread):
         print(f"[PrintWorker] Resin start position: {job.y_priming_position}mm")
         self._y_position = job.y_priming_position
 
-        # 2. 레진 평탄화 (X축 왕복 + Z축 홈 복귀)
+        # 2. 평탄화 전 첫 레진 토출
+        if not self._y_dispensing_disabled and job.y_dispense_distance > 0 and self._y_position > 0:
+            if self._check_stopped():
+                return
+            dispense_dist = -job.y_dispense_distance
+            if not self._motor_y_move(dispense_dist, job.y_dispense_speed):
+                self.error_occurred.emit("초기 레진 토출 실패")
+                self._is_stopped = True
+                return
+            self._y_position += dispense_dist
+            print(f"[PrintWorker] Initial resin dispensed {dispense_dist}mm (pos: {self._y_position:.1f}mm)")
+            time.sleep(job.y_dispense_delay)
+
+        # 3. 레진 평탄화 (X축 왕복 + Z축 홈 복귀)
         if job.leveling_cycles > 0:
             self._set_status(PrintStatus.LEVELING)
             if self._check_stopped():
