@@ -18,7 +18,7 @@ class MotorConfig:
     x_speed: int = 300          # X축 이동 속도 (mm/min) - 리드스크류
     y_speed: int = 300          # Resin pump 이동 속도 (mm/min)
     x_min: float = 0.0          # X축 최소 위치 (mm)
-    x_max: float = 150.0        # X축 최대 위치 (mm) - printer.cfg position_max
+    x_max: float = 140.0        # X축 최대 위치 (mm) - printer.cfg position_max
     z_min: float = 0.0          # Z축 최소 위치 (mm)
     z_max: float = 80.0         # Z축 최대 위치 (mm) - 실제 스펙
     y_min: float = 0.0          # Resin pump 최소 위치 (mm) - 홈 = resin empty
