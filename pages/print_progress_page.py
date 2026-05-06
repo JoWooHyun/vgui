@@ -772,11 +772,11 @@ class PrintProgressPage(BasePage):
         self.row_elapsed.set_value("00:00")
         self.row_total_time.set_value(self._format_time(total_estimated_time) if total_estimated_time > 0 else "--:--")
 
-        # Resin 잔량 % (y_priming_position / 85 * 100)
+        # Resin 잔량 % (y_priming_position / 125 * 100)
         self._y_priming_position = y_priming_position
         self._y_current_position = y_priming_position
         self._y_dispense_distance = y_dispense_distance
-        resin_pct = int(y_priming_position / 85.0 * 100) if y_priming_position > 0 else 0
+        resin_pct = int(y_priming_position / 125.0 * 100) if y_priming_position > 0 else 0
         self.row_resin_level.set_value(f"{resin_pct} %")
 
         # 설정 정보 (2열 그리드)
@@ -818,7 +818,7 @@ class PrintProgressPage(BasePage):
         # Resin 잔량 업데이트
         if hasattr(self, '_y_current_position') and hasattr(self, '_y_dispense_distance'):
             self._y_current_position -= self._y_dispense_distance
-            resin_pct = max(0, int(self._y_current_position / 85.0 * 100))
+            resin_pct = max(0, int(self._y_current_position / 125.0 * 100))
             self.row_resin_level.set_value(f"{resin_pct} %")
 
         self._update_time_display()

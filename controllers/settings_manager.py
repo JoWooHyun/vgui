@@ -315,7 +315,7 @@ class SettingsManager:
         return self._settings.print_settings.y_priming_position
 
     def set_y_priming_position(self, value: float):
-        value = max(0.0, min(85.0, value))
+        value = max(0.0, min(125.0, value))
         self._settings.print_settings.y_priming_position = value
         self.save()
         print(f"[Settings] Resin priming position saved: {value}mm")
