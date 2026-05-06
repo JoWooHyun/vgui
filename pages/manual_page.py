@@ -203,7 +203,7 @@ class ManualPage(BasePage):
         # X축 패널 (블레이드) - 속도 설정 포함
         self.x_panel = AxisControlPanel("X Axis (Blade)", is_horizontal=True,
                                          show_speed=True, default_speed=10,
-                                         min_speed=5)
+                                         min_speed=5, max_distance=140.0)
         self.x_panel.move_positive.connect(
             lambda d: self.x_move.emit(d, self.x_panel.get_speed() * 60))
         self.x_panel.move_negative.connect(
