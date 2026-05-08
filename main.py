@@ -699,11 +699,13 @@ class MainWindow(QMainWindow):
         """파일 삭제됨"""
         print(f"[Print] 파일 삭제됨: {file_path}")
     
-    def _start_exposure(self, pattern: str, time: float):
+    def _start_exposure(self, pattern: str, time: float, image_path: str = ""):
         """노출 테스트 시작"""
         print(f"[NVR] 노출 테스트 시작")
         print(f"  - 패턴: {pattern}")
         print(f"  - 시간: {time}초")
+        if image_path:
+            print(f"  - 이미지: {image_path}")
 
         # 1. LED OFF 먼저 (이전 상태가 켜져 있을 수 있음)
         self.dlp.led_off()
@@ -716,7 +718,11 @@ class MainWindow(QMainWindow):
         if len(screens) > 1:
             self.projector_window.show_on_screen(1)
 
-            if pattern == "clean":
+            if pattern == "custom" and image_path:
+                from PySide6.QtGui import QPixmap
+                pixmap = QPixmap(image_path)
+                self.projector_window.show_image(pixmap)
+            elif pattern == "clean":
                 self.projector_window.show_white_screen()
             elif pattern == "test_image":
                 self.projector_window.show_test_image()

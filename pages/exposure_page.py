@@ -3,7 +3,8 @@ VERICOM DLP 3D Printer GUI - Exposure Page
 NVR2+ 테스트 패턴 노출 + 트레이 클리닝 통합
 """
 
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QPushButton, QLabel
+import os
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFileDialog
 from PySide6.QtCore import Signal, Qt, QTimer, QSize
 
 from pages.base_page import BasePage
@@ -17,11 +18,11 @@ from styles.icons import Icons
 # 패턴 정의
 PATTERNS = [
     {
-        "key": "ramp",
-        "label": "Gradient",
-        "icon": Icons.PATTERN_RAMP,
-        "desc": "밝기 그라데이션 패턴을 노출합니다",
-        "max_time": 60,
+        "key": "custom",
+        "label": "Image",
+        "icon": Icons.IMAGE,
+        "desc": "USB에서 이미지를 선택하세요",
+        "max_time": 120,
     },
     {
         "key": "checker",
@@ -141,7 +142,7 @@ class ExposurePage(BasePage):
     """노출 테스트 페이지 (Exposure + Clean 통합)"""
 
     # 노출 시작/정지 시그널
-    exposure_start = Signal(str, float)  # pattern_key, time
+    exposure_start = Signal(str, float, str)  # pattern_key, time, image_path
     exposure_stop = Signal()
 
     def __init__(self, parent=None):
@@ -150,6 +151,7 @@ class ExposurePage(BasePage):
         self._current_pattern_idx = 1  # 기본: checker
         self._exposure_time = 5
         self._is_running = False
+        self._custom_image_path = ""  # 사용자 선택 이미지 경로
 
         # 타이머 (자동 정지용)
         self._timer = QTimer(self)
@@ -278,8 +280,32 @@ class ExposurePage(BasePage):
         for i, btn in enumerate(self._pattern_buttons):
             btn.set_selected(i == idx)
 
-        # 설명 텍스트 업데이트
-        self.lbl_desc.setText(PATTERNS[idx]["desc"])
+        pattern = PATTERNS[idx]
+        if pattern["key"] == "custom":
+            self._open_image_dialog()
+        else:
+            self._custom_image_path = ""
+            self.lbl_desc.setText(pattern["desc"])
+
+    def _open_image_dialog(self):
+        """USB에서 이미지 파일 선택 다이얼로그"""
+        start_dir = "/media"
+        if not os.path.exists(start_dir):
+            start_dir = ""
+
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Image",
+            start_dir,
+            "Images (*.png *.jpg *.jpeg *.bmp *.tiff)"
+        )
+
+        if file_path:
+            self._custom_image_path = file_path
+            filename = os.path.basename(file_path)
+            self.lbl_desc.setText(f"Selected: {filename}")
+        else:
+            self.lbl_desc.setText("USB에서 이미지를 선택하세요")
 
     def _show_time_dial(self):
         """시간 설정 다이얼 표시"""
@@ -305,6 +331,13 @@ class ExposurePage(BasePage):
 
     def _on_start(self):
         """노출 시작"""
+        pattern_key = PATTERNS[self._current_pattern_idx]["key"]
+
+        # custom 패턴인데 이미지 미선택 시 차단
+        if pattern_key == "custom" and not self._custom_image_path:
+            self.lbl_desc.setText("Please select an image first")
+            return
+
         self._is_running = True
 
         # UI 업데이트
@@ -320,8 +353,8 @@ class ExposurePage(BasePage):
         self._timer.start(int(self._exposure_time * 1000))
 
         # 시그널 발생
-        pattern_key = PATTERNS[self._current_pattern_idx]["key"]
-        self.exposure_start.emit(pattern_key, self._exposure_time)
+        image_path = self._custom_image_path if pattern_key == "custom" else ""
+        self.exposure_start.emit(pattern_key, self._exposure_time, image_path)
 
     def _on_stop(self):
         """노출 정지"""

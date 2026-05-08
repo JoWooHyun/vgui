@@ -62,15 +62,13 @@ class Icons:
     </svg>
     """
     
-    # Ramp 패턴 아이콘
-    PATTERN_RAMP = """
-    <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" 
+    # 이미지 파일 아이콘 (사진)
+    IMAGE = """
+    <svg viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2"
          stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="2"/>
-        <path d="M3 21L21 3"/>
-        <line x1="8" y1="21" x2="8" y2="16"/>
-        <line x1="13" y1="21" x2="13" y2="11"/>
-        <line x1="18" y1="21" x2="18" y2="6"/>
+        <circle cx="8.5" cy="8.5" r="1.5"/>
+        <path d="M21 15l-5-5L5 21"/>
     </svg>
     """
     
