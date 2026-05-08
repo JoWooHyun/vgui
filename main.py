@@ -197,6 +197,8 @@ class MainWindow(QMainWindow):
         # DLP 초기화 성공 시 프로젝터 ON (앱 실행 동안 계속 켜둠)
         if dlp_success:
             self.dlp.projector_on()
+            import time
+            time.sleep(0.5)
             self.dlp.set_flip(horizontal=True)
             print("[System] 프로젝터 ON (앱 시작, 좌우반전 ON)")
         else:
