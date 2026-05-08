@@ -527,7 +527,7 @@ class YAxisPanel(QFrame):
             value=self._distance,
             unit="mm",
             min_val=0.05,
-            max_val=10.0,
+            max_val=100.0,
             allow_decimal=True,
             parent=self.window()
         )

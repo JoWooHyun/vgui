@@ -30,7 +30,7 @@ class AxisControlPanel(QFrame):
 
     def __init__(self, axis_name: str, is_horizontal: bool = False,
                  default_distance: float = 1.0,
-                 min_distance: float = 0.05, max_distance: float = 10.0,
+                 min_distance: float = 0.05, max_distance: float = 100.0,
                  show_speed: bool = False, default_speed: int = 10,
                  min_speed: int = 5, max_speed: int = 9999,
                  parent=None):
