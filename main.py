@@ -497,11 +497,16 @@ class MainWindow(QMainWindow):
         """프린트 시작 - 프라이밍 확인 후 진행"""
         print(f"[Print] 프린트 시작 요청: {file_path}")
 
-        priming_pos = self.settings.get_y_priming_position()
+        # Klipper에서 실제 Y 위치 조회 (프라이밍 후 Manual 이동 반영)
+        self.motor.get_position()
+        klipper_y = self.motor._y_position
+        saved_pos = self.settings.get_y_priming_position()
+
+        # Klipper 위치가 유효하면 사용, 아니면 저장값 fallback
+        priming_pos = klipper_y if klipper_y > 0 else saved_pos
 
         if priming_pos > 0:
-            # 프라이밍 완료 → 바로 출력 시작
-            print(f"[Print] 프라이밍 위치 사용: {priming_pos}mm")
+            print(f"[Print] Resin 시작 위치: {priming_pos}mm (Klipper: {klipper_y}, saved: {saved_pos})")
             self._execute_print(file_path, params, priming_pos)
         else:
             # 프라이밍 미완료 → 알림 후 출력 안 함
@@ -623,6 +628,7 @@ class MainWindow(QMainWindow):
     def _on_print_completed(self):
         """프린트 완료"""
         print("[Print] 프린트 완료!")
+        self._save_current_y_position()
         if self.projector_window:
             self.projector_window.close()
         self.print_progress_page.show_completed()
@@ -630,9 +636,17 @@ class MainWindow(QMainWindow):
     def _on_print_stopped_by_worker(self):
         """워커에 의한 프린트 정지"""
         print("[Print] 프린트 정지됨")
+        self._save_current_y_position()
         if self.projector_window:
             self.projector_window.close()
         self.print_progress_page.show_stopped()
+
+    def _save_current_y_position(self):
+        """Klipper에서 현재 Y 위치 조회 후 저장"""
+        self.motor.get_position()
+        y_pos = self.motor._y_position
+        self.settings.set_y_priming_position(y_pos)
+        print(f"[Print] Resin position saved: {y_pos}mm")
 
     def _on_print_error(self, message: str):
         """프린트 오류"""
