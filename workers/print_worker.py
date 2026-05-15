@@ -274,6 +274,18 @@ class PrintWorker(QThread):
                 # 이전 일시정지 상태 초기화
                 self.motor.klipper_clear_pause()
 
+        # X축 홈 → 대기 위치 (X 먼저)
+        if self._check_stopped():
+            return
+        if not self._motor_x_home():
+            self.error_occurred.emit("X축 홈 이동 실패")
+            self._is_stopped = True
+            return
+        if not self._motor_x_move(10, job.blade_speed):
+            self.error_occurred.emit("X축 대기 위치(10mm) 이동 실패")
+            self._is_stopped = True
+            return
+
         # Z축 홈 → 0.1mm 이동
         if self._check_stopped():
             return
@@ -286,34 +298,29 @@ class PrintWorker(QThread):
             self._is_stopped = True
             return
 
-        # X축 홈
-        if self._check_stopped():
-            return
-        if not self._motor_x_home():
-            self.error_occurred.emit("X축 홈 이동 실패")
-            self._is_stopped = True
-            return
-        if not self._motor_x_move(10, job.blade_speed):
-            self.error_occurred.emit("X축 대기 위치(10mm) 이동 실패")
-            self._is_stopped = True
-            return
-
         # Resin: 프라이밍 위치에서 시작
         print(f"[PrintWorker] Resin start position: {job.y_priming_position}mm")
         self._y_position = job.y_priming_position
 
-        # 2. 평탄화 전 첫 레진 토출
-        if not self._y_dispensing_disabled and job.y_dispense_distance > 0 and self._y_position > 0:
+        # 2. 평탄화 전 첫 레진 토출 (고정값: 1mm, 3mm/s, 60초 대기)
+        INITIAL_DISPENSE_DIST = -1.0     # mm
+        INITIAL_DISPENSE_SPEED = 180     # mm/min (3mm/s)
+        INITIAL_DISPENSE_DELAY = 60.0    # 초
+        if not self._y_dispensing_disabled and self._y_position > 0:
             if self._check_stopped():
                 return
-            dispense_dist = -job.y_dispense_distance
-            if not self._motor_y_move(dispense_dist, job.y_dispense_speed):
+            if not self._motor_y_move(INITIAL_DISPENSE_DIST, INITIAL_DISPENSE_SPEED):
                 self.error_occurred.emit("초기 레진 토출 실패")
                 self._is_stopped = True
                 return
-            self._y_position += dispense_dist
-            print(f"[PrintWorker] Initial resin dispensed {dispense_dist}mm (pos: {self._y_position:.1f}mm)")
-            time.sleep(job.y_dispense_delay)
+            self._y_position += INITIAL_DISPENSE_DIST
+            print(f"[PrintWorker] Initial resin dispensed {INITIAL_DISPENSE_DIST}mm (pos: {self._y_position:.1f}mm)")
+            # 토출 후 대기 (정지 반응성 확보)
+            wait_start = time.monotonic()
+            while (time.monotonic() - wait_start) < INITIAL_DISPENSE_DELAY:
+                if self._check_stopped():
+                    return
+                time.sleep(0.1)
 
         # 3. 레진 평탄화 (X축 왕복 + Z축 홈 복귀)
         if job.leveling_cycles > 0:
@@ -412,8 +419,12 @@ class PrintWorker(QThread):
                     return False
                 self._y_position += dispense_dist  # 음수이므로 감소
                 print(f"[PrintWorker] Resin dispensed {dispense_dist}mm (pos: {self._y_position:.1f}mm)")
-                # 토출 후 대기
-                time.sleep(job.y_dispense_delay)
+                # 토출 후 대기 (정지 반응성 확보)
+                wait_start = time.monotonic()
+                while (time.monotonic() - wait_start) < job.y_dispense_delay:
+                    if self._check_stopped():
+                        return False
+                    time.sleep(0.1)
 
         # 3. X축 평탄화 (0→140)
         if not self._motor_x_move(140, job.blade_speed):
@@ -612,17 +623,15 @@ class PrintWorker(QThread):
         Args:
             duration: 노광 시간 (초)
         """
-        elapsed = 0.0
-        interval = 0.1  # 100ms 간격으로 체크
+        start = time.monotonic()
 
-        while elapsed < duration:
+        while (time.monotonic() - start) < duration:
             if self._check_stopped():
                 self._dlp_led_off()
                 self.clear_image.emit()
                 return
 
-            time.sleep(interval)
-            elapsed += interval
+            time.sleep(0.1)  # 100ms 간격으로 정지 체크
 
     def _check_stopped(self) -> bool:
         """정지 여부 확인"""
@@ -704,9 +713,9 @@ class PrintWorker(QThread):
         # 이미지 클리어
         self.clear_image.emit()
 
-        # X축 홈 복귀 주석처리 (엔드스톱 센서 위치 미정)
-        # 마지막 레이어의 0→140 복귀로 블레이드는 140mm 위치에 있음
-        # self._motor_x_home()
+        # Z축은 현재 위치 유지 (빌드 플레이트 그대로)
+        # X축 홈 복귀
+        self._motor_x_home()
 
         # Klipper 일시정지 상태 초기화 + 프린트 종료 알림
         if self.motor and not self.simulation:
