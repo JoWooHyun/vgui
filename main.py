@@ -199,8 +199,8 @@ class MainWindow(QMainWindow):
             self.dlp.projector_on()
             import time
             time.sleep(0.5)
-            self.dlp.set_flip(horizontal=True)
-            print("[System] 프로젝터 ON (앱 시작, 좌우반전 ON)")
+            self.dlp.set_flip(horizontal=False)
+            print("[System] 프로젝터 ON (앱 시작, 반전 없음)")
         else:
             # 초기화 실패 시 경고 팝업 (QTimer로 지연 - UI 초기화 후 표시)
             QTimer.singleShot(500, self._show_dlp_error_popup)
