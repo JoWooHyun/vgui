@@ -315,16 +315,19 @@ class MaterialPage(BasePage):
         # 편집 행들
         self.row_blade_speed = MaterialEditRow("Blade Speed", 5, "mm/s", 1, 100)
         self.row_led_power = MaterialEditRow("LED Power", 43, "%", 9, 100)
-        self.row_blade_cycles = MaterialEditRow("Blade Cycles", 1, "회", 1, 3)
         self.row_y_dispense = MaterialEditRow("Resin Dist.", 1.0, "mm", 0.1, 5.0, allow_decimal=True)
         self.row_y_speed = MaterialEditRow("Resin Speed", 3, "mm/s", 1, 15)
         self.row_y_delay = MaterialEditRow("Resin Delay", 5.0, "s", 0.5, 300.0, allow_decimal=True)
-        self.row_leveling = MaterialEditRow("평탄화 횟수", 1, "회", 0, 5)
+        self.row_y_pull_dist = MaterialEditRow("Pull Dist.", 0.0, "mm", 0.0, 5.0, allow_decimal=True)
+        self.row_y_pull_delay = MaterialEditRow("Pull Delay", 2.0, "s", 0.1, 20.0, allow_decimal=True)
+        self.row_y_return_dist = MaterialEditRow("Return Dist.", 0.0, "mm", 0.0, 5.0, allow_decimal=True)
+        self.row_y_return_delay = MaterialEditRow("Return Delay", 2.0, "s", 0.1, 20.0, allow_decimal=True)
 
         self._edit_rows = [
-            self.row_blade_speed, self.row_led_power, self.row_blade_cycles,
+            self.row_blade_speed, self.row_led_power,
             self.row_y_dispense, self.row_y_speed, self.row_y_delay,
-            self.row_leveling
+            self.row_y_pull_dist, self.row_y_pull_delay,
+            self.row_y_return_dist, self.row_y_return_delay,
         ]
 
         for row in self._edit_rows:
@@ -409,11 +412,13 @@ class MaterialPage(BasePage):
         self.lbl_material_name.setText(name)
         self.row_blade_speed.set_value(preset.blade_speed)
         self.row_led_power.set_value(preset.led_power)
-        self.row_blade_cycles.set_value(preset.blade_cycles)
         self.row_y_dispense.set_value(preset.y_dispense_distance)
         self.row_y_speed.set_value(preset.y_dispense_speed)
         self.row_y_delay.set_value(preset.y_dispense_delay)
-        self.row_leveling.set_value(preset.leveling_cycles)
+        self.row_y_pull_dist.set_value(preset.y_pull_distance)
+        self.row_y_pull_delay.set_value(preset.y_pull_delay)
+        self.row_y_return_dist.set_value(preset.y_return_distance)
+        self.row_y_return_delay.set_value(preset.y_return_delay)
 
         self._update_list_styles()
 
@@ -426,11 +431,13 @@ class MaterialPage(BasePage):
             name=self._current_material_name,
             blade_speed=int(self.row_blade_speed.get_value()),
             led_power=int(self.row_led_power.get_value()),
-            blade_cycles=int(self.row_blade_cycles.get_value()),
             y_dispense_distance=self.row_y_dispense.get_value(),
             y_dispense_speed=int(self.row_y_speed.get_value()),
             y_dispense_delay=self.row_y_delay.get_value(),
-            leveling_cycles=int(self.row_leveling.get_value()),
+            y_pull_distance=self.row_y_pull_dist.get_value(),
+            y_pull_delay=self.row_y_pull_delay.get_value(),
+            y_return_distance=self.row_y_return_dist.get_value(),
+            y_return_delay=self.row_y_return_delay.get_value(),
         )
         get_settings().update_material(self._current_material_name, preset)
 

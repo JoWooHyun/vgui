@@ -361,6 +361,8 @@ class MainWindow(QMainWindow):
         self.print_progress_page.resume_requested.connect(self._on_print_resume)
         self.print_progress_page.stop_requested.connect(self._on_print_stop)
         self.print_progress_page.z_home_requested.connect(self._on_z_home_requested)
+        self.print_progress_page.refill_completed.connect(self._on_refill_completed)
+        self.print_progress_page.manual_feed_selected.connect(self._on_manual_feed)
 
     def _go_to_page(self, page_index: int):
         """페이지 전환"""
@@ -540,6 +542,10 @@ class MainWindow(QMainWindow):
         y_dispense_distance = params.get('yDispenseDistance', 1.0)
         y_dispense_speed = params.get('yDispenseSpeed', 300)
         y_dispense_delay = params.get('yDispenseDelay', 2.0)
+        y_pull_distance = params.get('yPullDistance', 0.0)
+        y_pull_delay = params.get('yPullDelay', 2.0)
+        y_return_distance = params.get('yReturnDistance', 0.0)
+        y_return_delay = params.get('yReturnDelay', 2.0)
 
         # 추가 파라미터 (run.gcode에서 추출된 값)
         estimated_time = int(params.get('estimatedPrintTime', 0))
@@ -619,6 +625,10 @@ class MainWindow(QMainWindow):
             y_dispense_speed=y_dispense_speed,
             y_dispense_delay=y_dispense_delay,
             y_priming_position=y_priming_position,
+            y_pull_distance=y_pull_distance,
+            y_pull_delay=y_pull_delay,
+            y_return_distance=y_return_distance,
+            y_return_delay=y_return_delay,
         )
 
     def _on_progress_updated(self, current: int, total: int):
@@ -660,31 +670,24 @@ class MainWindow(QMainWindow):
         self.print_progress_page.show_error(message)
 
     def _on_resin_empty(self):
-        """Resin 부족 알림 (Y=0 도달)"""
-        print("[Print] Resin empty 알림")
+        """Resin 부족 알림 — PrintProgressPage에 버튼 표시"""
+        print("[Print] Resin empty — 주사기 교체 대기")
+        self.print_progress_page.show_resin_empty()
 
-        from pages.file_preview_page import ConfirmDialog
-        dialog = ConfirmDialog(
-            "Resin Empty",
-            "Resin is depleted.\nContinue printing?",
-            self
-        )
-        # "Delete" 텍스트를 "NO"로, "Cancel"을 "OK"로 변경
-        dialog.btn_confirm.setText("NO")
-        dialog.btn_cancel.setText("OK")
+    def _on_refill_completed(self):
+        """주사기 리필 완료 — Klipper에서 새 Y 위치 읽어서 worker에 전달"""
+        self.motor.get_position()
+        new_y = self.motor._y_position
+        print(f"[Print] Refill completed, new Y position: {new_y}mm")
+        if self.print_worker and self.print_worker.isRunning():
+            self.print_worker.refill_resin(new_y)
+        self.settings.set_y_priming_position(new_y)
 
-        result = dialog.exec()
-
-        if result == 0:
-            # Cancel(OK) 클릭 → Resin 토출 없이 프린팅 계속
-            print("[Print] Resin empty → OK: manual supply mode")
-            if self.print_worker:
-                self.print_worker.disable_y_dispensing()
-        else:
-            # Confirm(NO) 클릭 → 프린팅 중지
-            print("[Print] Resin empty → NO: stop printing")
-            if self.print_worker:
-                self.print_worker.stop_by_resin_empty()
+    def _on_manual_feed(self):
+        """수동배급 선택 — Y축 비활성화, delay는 유지"""
+        print("[Print] Manual feed selected — Y dispensing disabled, delay preserved")
+        if self.print_worker and self.print_worker.isRunning():
+            self.print_worker.disable_y_dispensing()
 
     def _on_print_pause(self):
         """프린트 일시정지"""

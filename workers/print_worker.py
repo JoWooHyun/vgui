@@ -49,11 +49,14 @@ class PrintJob:
     led_power: int = 440
     leveling_cycles: int = 1
     blade_cycles: int = 1  # 매 레이어 블레이드 왕복 횟수
-    # blade_mode: str = "roundtrip"  # 편도 모드 고정 (왕복 필요 시 주석 해제)
     y_dispense_distance: float = 1.0   # Resin 토출 거리 (mm/레이어)
     y_dispense_speed: int = 300        # Resin 토출 속도 (mm/min)
     y_dispense_delay: float = 2.0      # Resin 토출 후 대기 (초)
     y_priming_position: float = 0.0    # 프라이밍 완료 위치 (mm, 0이면 미완료)
+    y_pull_distance: float = 0.0       # Resin 되돌리기 거리 (mm, 0=비활성)
+    y_pull_delay: float = 2.0          # Pull 구간 시간 (초) → speed 자동계산
+    y_return_distance: float = 0.0     # 다시 밀기 거리 (mm, 0=비활성)
+    y_return_delay: float = 2.0        # Return 구간 시간 (초) → speed 자동계산
 
 
 class PrintWorker(QThread):
@@ -134,7 +137,11 @@ class PrintWorker(QThread):
                    y_dispense_distance: float = 1.0,
                    y_dispense_speed: int = 300,
                    y_dispense_delay: float = 2.0,
-                   y_priming_position: float = 0.0):
+                   y_priming_position: float = 0.0,
+                   y_pull_distance: float = 0.0,
+                   y_pull_delay: float = 2.0,
+                   y_return_distance: float = 0.0,
+                   y_return_delay: float = 2.0):
         """
         프린트 시작
 
@@ -149,6 +156,10 @@ class PrintWorker(QThread):
             y_dispense_speed: Y축 토출 속도 (mm/min)
             y_dispense_delay: Y축 토출 후 대기 (초)
             y_priming_position: 프라이밍 완료 위치 (mm, 0이면 미완료)
+            y_pull_distance: Resin 되돌리기 거리 (mm, 0=비활성)
+            y_pull_delay: Pull 구간 시간 (초)
+            y_return_distance: 다시 밀기 거리 (mm, 0=비활성)
+            y_return_delay: Return 구간 시간 (초)
         """
         if self.isRunning():
             print("[PrintWorker] 이미 실행 중")
@@ -172,6 +183,10 @@ class PrintWorker(QThread):
             y_dispense_speed=y_dispense_speed,
             y_dispense_delay=y_dispense_delay,
             y_priming_position=y_priming_position,
+            y_pull_distance=y_pull_distance,
+            y_pull_delay=y_pull_delay,
+            y_return_distance=y_return_distance,
+            y_return_delay=y_return_delay,
         )
 
         # 플래그 초기화
@@ -223,7 +238,10 @@ class PrintWorker(QThread):
         self._y_resin_waiting = False
         self._resin_condition.wakeAll()
         self._resin_mutex.unlock()
+        # 수동 공급 모드: 블레이드를 0mm으로 이동 (공간 확보)
         print("[PrintWorker] Resin dispensing disabled (manual supply mode)")
+        self._motor_x_move(0, 3000)
+        print("[PrintWorker] Blade moved to 0mm for manual supply")
 
     def stop_by_resin_empty(self):
         """Resin empty → NO: 프린팅 중지"""
@@ -233,6 +251,16 @@ class PrintWorker(QThread):
         self._resin_mutex.unlock()
         self.stop()
         print("[PrintWorker] Stopped by resin empty")
+
+    def refill_resin(self, new_y_position: float):
+        """주사기 교체 후 새 Y 위치로 재개"""
+        self._y_position = new_y_position
+        self._y_dispensing_disabled = False
+        self._resin_mutex.lock()
+        self._y_resin_waiting = False
+        self._resin_condition.wakeAll()
+        self._resin_mutex.unlock()
+        print(f"[PrintWorker] Resin refilled, new Y position: {new_y_position}mm")
 
     # ==================== 메인 루프 ====================
 
@@ -302,25 +330,13 @@ class PrintWorker(QThread):
         print(f"[PrintWorker] Resin start position: {job.y_priming_position}mm")
         self._y_position = job.y_priming_position
 
-        # 2. 평탄화 전 첫 레진 토출 (고정값: 1mm, 3mm/s, 60초 대기)
-        INITIAL_DISPENSE_DIST = -1.0     # mm
+        # 2. 평탄화 전 첫 레진 토출 (3mm/s 고정속도로 3단계 토출)
         INITIAL_DISPENSE_SPEED = 180     # mm/min (3mm/s)
-        INITIAL_DISPENSE_DELAY = 60.0    # 초
         if not self._y_dispensing_disabled and self._y_position > 0:
             if self._check_stopped():
                 return
-            if not self._motor_y_move(INITIAL_DISPENSE_DIST, INITIAL_DISPENSE_SPEED):
-                self.error_occurred.emit("초기 레진 토출 실패")
-                self._is_stopped = True
+            if not self._dispense_3step(-1, job, push_speed_override=INITIAL_DISPENSE_SPEED):
                 return
-            self._y_position += INITIAL_DISPENSE_DIST
-            print(f"[PrintWorker] Initial resin dispensed {INITIAL_DISPENSE_DIST}mm (pos: {self._y_position:.1f}mm)")
-            # 토출 후 대기 (정지 반응성 확보)
-            wait_start = time.monotonic()
-            while (time.monotonic() - wait_start) < INITIAL_DISPENSE_DELAY:
-                if self._check_stopped():
-                    return
-                time.sleep(0.1)
 
         # 3. 레진 평탄화 (X축 왕복 + Z축 홈 복귀)
         if job.leveling_cycles > 0:
@@ -394,37 +410,37 @@ class PrintWorker(QThread):
             self._is_stopped = True
             return False
 
-        # 2. Resin 토출 (- 방향, Y<=0 = resin empty)
-        if not self._y_dispensing_disabled and job.y_dispense_distance > 0:
-            # Y<=0 체크 (토출 전) - position_min=0이 resin empty 위치
-            if self._y_position <= 0:
-                # Resin empty → 일시정지 + 알림
+        # 2. Resin 토출 (3단계: Push → Pull → Return)
+        if job.y_dispense_distance > 0:
+            if self._y_dispensing_disabled:
+                # 수동 공급 모드: Y축 스킵, delay만 유지
+                print(f"[PrintWorker] Layer {layer_idx}: Manual feed mode — Y skip, waiting {job.y_dispense_delay}s")
+                if not self._wait_interruptible(job.y_dispense_delay):
+                    return False
+            elif self._y_position <= 0:
+                # Resin empty → 알림 + 유저 응답 대기
                 print(f"[PrintWorker] Resin empty at {self._y_position}mm")
                 self._y_resin_waiting = True
                 self.resin_empty.emit()
-                # 유저 응답 대기
                 self._resin_mutex.lock()
                 while self._y_resin_waiting and not self._is_stopped:
                     self._resin_condition.wait(self._resin_mutex, 1000)
                 self._resin_mutex.unlock()
                 if self._check_stopped():
                     return True
-
-            # 토출 실행 (disable 안 된 경우, -방향으로 토출)
-            if not self._y_dispensing_disabled:
-                dispense_dist = -job.y_dispense_distance  # 음수 = 홈 방향 = resin dispense
-                if not self._motor_y_move(dispense_dist, job.y_dispense_speed):
-                    self.error_occurred.emit(f"Layer {layer_idx}: Resin dispense failed")
-                    self._is_stopped = True
-                    return False
-                self._y_position += dispense_dist  # 음수이므로 감소
-                print(f"[PrintWorker] Resin dispensed {dispense_dist}mm (pos: {self._y_position:.1f}mm)")
-                # 토출 후 대기 (정지 반응성 확보)
-                wait_start = time.monotonic()
-                while (time.monotonic() - wait_start) < job.y_dispense_delay:
-                    if self._check_stopped():
+                # refill 또는 manual feed 선택 후 재진입
+                if self._y_dispensing_disabled:
+                    print(f"[PrintWorker] Layer {layer_idx}: Manual feed mode — Y skip, waiting {job.y_dispense_delay}s")
+                    if not self._wait_interruptible(job.y_dispense_delay):
                         return False
-                    time.sleep(0.1)
+                else:
+                    # refill 완료 → 정상 토출
+                    if not self._dispense_3step(layer_idx, job):
+                        return False
+            else:
+                # 정상 토출
+                if not self._dispense_3step(layer_idx, job):
+                    return False
 
         # 3. X축 평탄화 (0→140)
         if not self._motor_x_move(140, job.blade_speed):
@@ -468,9 +484,11 @@ class PrintWorker(QThread):
             self._is_stopped = True
             return False
 
-        # 8. X축 대기 위치 복귀 (140→10, 다음 레이어 토출 준비)
+        # 8. X축 대기 위치 복귀
+        # 수동 공급 모드: 0mm (공간 확보), 일반 모드: 10mm (토출 준비)
         # 복귀는 평탄화가 아니므로 빠른 고정 속도 사용 (50mm/s = 3000mm/min)
-        if not self._motor_x_move(10, 3000):
+        x_return_position = 0 if self._y_dispensing_disabled else 10
+        if not self._motor_x_move(x_return_position, 3000):
             self.error_occurred.emit(f"레이어 {layer_idx}: X축 홈 복귀 실패")
             self._is_stopped = True
             return False
@@ -527,13 +545,16 @@ class PrintWorker(QThread):
             time.sleep(0.3)
             return True
 
-    def _motor_y_move(self, distance: float, speed: int = 300) -> bool:
-        """Resin pump 상대 이동"""
+    def _motor_y_move(self, distance: float, speed: int = 300) -> tuple:
+        """Resin pump 상대 이동 → (success, actual_distance) 반환"""
         if self.motor and not self.simulation:
-            return self.motor.y_move_relative(distance, speed)
+            before = self.motor._y_position
+            success = self.motor.y_move_relative(distance, speed)
+            actual = self.motor._y_position - before
+            return success, actual
         else:
             time.sleep(0.1)
-            return True
+            return True, distance
 
     def _dlp_projector_on(self):
         """프로젝터 ON"""
@@ -595,6 +616,107 @@ class PrintWorker(QThread):
                     return False
 
         return False
+
+    # ==================== 토출 헬퍼 ====================
+
+    def _wait_interruptible(self, seconds: float) -> bool:
+        """지정 시간 대기, 정지 시 False 반환"""
+        start = time.monotonic()
+        while (time.monotonic() - start) < seconds:
+            if self._check_stopped():
+                return False
+            time.sleep(0.1)
+        return True
+
+    def _dispense_3step(self, layer_idx: int, job: PrintJob,
+                        push_speed_override: int = 0) -> bool:
+        """
+        3단계 토출: Push → [Resin Delay] → Pull → Return
+        - Pull/Return 거리가 0이면 해당 단계 스킵
+        - layer_idx=-1이면 초기 토출
+        """
+        label = "Initial" if layer_idx < 0 else f"Layer {layer_idx}"
+        push_speed = push_speed_override if push_speed_override else job.y_dispense_speed
+
+        # === Step 1: Push ===
+        push_dist = -job.y_dispense_distance
+        success, actual = self._motor_y_move(push_dist, push_speed)
+        if not success:
+            self.error_occurred.emit(f"{label}: Resin push failed")
+            self._is_stopped = True
+            return False
+        self._y_position += actual
+        print(f"[PrintWorker] {label}: Push {actual:.2f}mm (pos: {self._y_position:.1f}mm)")
+
+        # Push 후 소진 체크 — Pull/Return 스킵, Resin Delay만 대기
+        if self._y_position <= 0:
+            print(f"[PrintWorker] {label}: Resin exhausted (pos: {self._y_position:.1f}mm), skipping pull/return")
+            if not self._wait_interruptible(job.y_dispense_delay):
+                return False
+            return True
+
+        # === Resin Delay: Push 후 대기 ===
+        if job.y_dispense_delay > 0:
+            print(f"[PrintWorker] {label}: Resin Delay {job.y_dispense_delay}s")
+            if not self._wait_interruptible(job.y_dispense_delay):
+                return False
+
+        # Pull 거리 없으면 여기서 종료
+        if job.y_pull_distance <= 0:
+            return True
+
+        # === Step 2: Pull (speed = dist / delay 자동계산) ===
+        if job.y_pull_delay > 0:
+            pull_speed = int(job.y_pull_distance / job.y_pull_delay * 60)
+            if pull_speed < 1:
+                pull_speed = 1
+        else:
+            pull_speed = 600
+        pull_start = time.monotonic()
+        print(f"[PrintWorker] {label}: Pull +{job.y_pull_distance}mm @ {pull_speed}mm/min (delay {job.y_pull_delay}s)")
+        success, actual_pull = self._motor_y_move(job.y_pull_distance, pull_speed)
+        if not success:
+            self.error_occurred.emit(f"{label}: Resin pull failed")
+            self._is_stopped = True
+            return False
+        self._y_position += actual_pull
+        print(f"[PrintWorker] {label}: Pull done +{actual_pull:.2f}mm (pos: {self._y_position:.1f}mm)")
+
+        # Pull delay 남은 시간 대기
+        pull_remaining = job.y_pull_delay - (time.monotonic() - pull_start)
+        if pull_remaining > 0:
+            if not self._wait_interruptible(pull_remaining):
+                return False
+
+        # Return 거리 없으면 여기서 종료
+        if job.y_return_distance <= 0:
+            return True
+
+        # === Step 3: Return (speed = dist / delay 자동계산) ===
+        if job.y_return_delay > 0:
+            return_speed = int(job.y_return_distance / job.y_return_delay * 60)
+            if return_speed < 1:
+                return_speed = 1
+        else:
+            return_speed = 600
+        return_start = time.monotonic()
+        return_dist = -job.y_return_distance
+        print(f"[PrintWorker] {label}: Return {job.y_return_distance}mm @ {return_speed}mm/min (delay {job.y_return_delay}s)")
+        success, actual_ret = self._motor_y_move(return_dist, return_speed)
+        if not success:
+            self.error_occurred.emit(f"{label}: Resin return failed")
+            self._is_stopped = True
+            return False
+        self._y_position += actual_ret
+        print(f"[PrintWorker] {label}: Return done {actual_ret:.2f}mm (pos: {self._y_position:.1f}mm)")
+
+        # Return delay 남은 시간 대기
+        return_remaining = job.y_return_delay - (time.monotonic() - return_start)
+        if return_remaining > 0:
+            if not self._wait_interruptible(return_remaining):
+                return False
+
+        return True
 
     # ==================== 유틸리티 ====================
 

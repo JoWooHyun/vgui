@@ -20,35 +20,37 @@ class MaterialPreset:
     name: str = "Default"
     blade_speed: int = 5            # Blade 속도 (1-30 mm/s)
     led_power: int = 43             # LED 파워 (9-100%)
-    blade_cycles: int = 1           # 블레이드 반복 횟수 (1~3)
     y_dispense_distance: float = 1.0  # Resin 토출거리 (mm/레이어, 0.1~5.0)
     y_dispense_speed: int = 3       # Resin 토출속도 (mm/s, 1~15)
     y_dispense_delay: float = 5.0   # Resin 토출 대기시간 (초, 0.5~20.0)
-    # 확장 항목
-    leveling_cycles: int = 1        # Resin 평탄화 횟수 (0~5)
-    lift_height: float = 5.0        # 리프트 높이 (mm, 1.0~20.0)
-    drop_speed: int = 150           # Z축 하강 속도 (mm/min, 10~300)
+    y_pull_distance: float = 0.0    # Resin 되돌리기 거리 (mm, 0=비활성)
+    y_pull_delay: float = 2.0       # Pull 구간 시간 (초) → speed = dist/delay*60
+    y_return_distance: float = 0.0  # 다시 밀기 거리 (mm, 0=비활성)
+    y_return_delay: float = 2.0     # Return 구간 시간 (초) → speed = dist/delay*60
 
 
 # 기본 내장 소재 프리셋
 DEFAULT_MATERIALS = [
     MaterialPreset(
         name="Zirconia",
-        blade_speed=5, led_power=43, blade_cycles=1,
+        blade_speed=5, led_power=43,
         y_dispense_distance=1.0, y_dispense_speed=3, y_dispense_delay=5.0,
-        leveling_cycles=1, lift_height=5.0, drop_speed=150
+        y_pull_distance=0.0, y_pull_delay=2.0,
+        y_return_distance=0.0, y_return_delay=2.0,
     ),
     MaterialPreset(
         name="Alumina",
-        blade_speed=5, led_power=50, blade_cycles=1,
+        blade_speed=5, led_power=50,
         y_dispense_distance=1.0, y_dispense_speed=3, y_dispense_delay=5.0,
-        leveling_cycles=1, lift_height=5.0, drop_speed=150
+        y_pull_distance=0.0, y_pull_delay=2.0,
+        y_return_distance=0.0, y_return_delay=2.0,
     ),
     MaterialPreset(
         name="Hydroxyapatite",
-        blade_speed=4, led_power=45, blade_cycles=1,
+        blade_speed=4, led_power=45,
         y_dispense_distance=1.2, y_dispense_speed=3, y_dispense_delay=5.0,
-        leveling_cycles=1, lift_height=5.0, drop_speed=120
+        y_pull_distance=0.0, y_pull_delay=2.0,
+        y_return_distance=0.0, y_return_delay=2.0,
     ),
 ]
 
@@ -140,13 +142,13 @@ class SettingsManager:
                         name=m.get('name', 'Unknown'),
                         blade_speed=m.get('blade_speed', 5),
                         led_power=m.get('led_power', 43),
-                        blade_cycles=m.get('blade_cycles', 1),
                         y_dispense_distance=m.get('y_dispense_distance', 1.0),
                         y_dispense_speed=m.get('y_dispense_speed', 5),
                         y_dispense_delay=m.get('y_dispense_delay', 2.0),
-                        leveling_cycles=m.get('leveling_cycles', 1),
-                        lift_height=m.get('lift_height', 5.0),
-                        drop_speed=m.get('drop_speed', 150),
+                        y_pull_distance=m.get('y_pull_distance', 0.0),
+                        y_pull_delay=m.get('y_pull_delay', 2.0),
+                        y_return_distance=m.get('y_return_distance', 0.0),
+                        y_return_delay=m.get('y_return_delay', 2.0),
                     ))
 
             self._settings.selected_material = data.get('selected_material', '')

@@ -311,6 +311,8 @@ class PrintProgressPage(BasePage):
     stop_requested = Signal()
     go_home = Signal()
     z_home_requested = Signal()  # Z축 홈 요청
+    refill_completed = Signal()      # 주사기 교체 완료
+    manual_feed_selected = Signal()  # 수동배급 선택
 
     # 상태 상수
     STATUS_PRINTING = "printing"
@@ -529,11 +531,51 @@ class PrintProgressPage(BasePage):
         self.btn_z_home.clicked.connect(self._on_z_home_clicked)
         self.btn_z_home.hide()
 
+        # 주사기 리필 버튼 (resin empty 시에만 표시)
+        self.btn_refill = QPushButton("주사기 리필")
+        self.btn_refill.setFixedSize(140, 48)
+        self.btn_refill.setFont(Fonts.body())
+        self.btn_refill.setCursor(Qt.PointingHandCursor)
+        self.btn_refill.setStyleSheet(f"""
+            QPushButton {{
+                background-color: #4CAF50;
+                color: {Colors.WHITE};
+                border: none;
+                border-radius: 10px;
+            }}
+            QPushButton:pressed {{
+                background-color: #388E3C;
+            }}
+        """)
+        self.btn_refill.clicked.connect(self._on_refill_done)
+        self.btn_refill.hide()
+
+        # 수동배급 버튼 (resin empty 시에만 표시)
+        self.btn_manual_feed = QPushButton("수동배급")
+        self.btn_manual_feed.setFixedSize(140, 48)
+        self.btn_manual_feed.setFont(Fonts.body())
+        self.btn_manual_feed.setCursor(Qt.PointingHandCursor)
+        self.btn_manual_feed.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.CYAN};
+                color: {Colors.WHITE};
+                border: none;
+                border-radius: 10px;
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.CYAN_DARK};
+            }}
+        """)
+        self.btn_manual_feed.clicked.connect(self._on_manual_feed)
+        self.btn_manual_feed.hide()
+
         self.btn_layout.addStretch()
         self.btn_layout.addWidget(self.btn_pause)
         self.btn_layout.addWidget(self.btn_stop)
         self.btn_layout.addWidget(self.btn_gui_home)
         self.btn_layout.addWidget(self.btn_z_home)
+        self.btn_layout.addWidget(self.btn_refill)
+        self.btn_layout.addWidget(self.btn_manual_feed)
         self.btn_layout.addStretch()
 
         bottom_layout.addLayout(self.btn_layout)
@@ -870,6 +912,32 @@ class PrintProgressPage(BasePage):
 
         # 종료 버튼 표시
         self._show_finish_buttons()
+
+    def show_resin_empty(self):
+        """레진 부족 — 주사기 교체 안내"""
+        self._update_title("레진 부족")
+        self.btn_pause.hide()
+        self.btn_stop.show()
+        self.btn_refill.show()
+        self.btn_manual_feed.show()
+
+    def _on_refill_done(self):
+        """주사기 리필 완료"""
+        self.btn_refill.hide()
+        self.btn_manual_feed.hide()
+        self._show_printing_buttons()
+        self._set_pause_button_style()
+        self._update_title("Printing...")
+        self.refill_completed.emit()
+
+    def _on_manual_feed(self):
+        """수동배급 선택"""
+        self.btn_refill.hide()
+        self.btn_manual_feed.hide()
+        self._show_printing_buttons()
+        self._set_pause_button_style()
+        self._update_title("Printing (수동배급)...")
+        self.manual_feed_selected.emit()
 
     def get_status(self) -> str:
         """현재 상태 반환"""

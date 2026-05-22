@@ -412,7 +412,7 @@ class FilePreviewPage(BasePage):
             (Icons.EXPOSURE_NORMAL, "normalExposureTime", "info"),
             (Icons.LED_POWER, "led_power", ("preset", "%")),
             (Icons.BLADE_SPEED, "blade_speed", ("preset", "mm/s")),
-            (Icons.CYCLE, "blade_cycles", ("preset", "")),
+            (Icons.CYCLE, "y_pull_distance", ("preset", "mm")),
             (Icons.SYRINGE, "y_dispense_distance", ("preset", "mm")),
             (Icons.DISPENSE_SPEED, "y_dispense_speed", ("preset", "mm/s")),
             (Icons.DELAY, "y_dispense_delay", ("preset", "s")),
@@ -502,7 +502,7 @@ class FilePreviewPage(BasePage):
         values = {
             'blade_speed': preset.blade_speed,
             'led_power': preset.led_power,
-            'blade_cycles': preset.blade_cycles,
+            'y_pull_distance': preset.y_pull_distance,
             'y_dispense_distance': preset.y_dispense_distance,
             'y_dispense_speed': preset.y_dispense_speed,
             'y_dispense_delay': preset.y_dispense_delay,
@@ -624,13 +624,13 @@ class FilePreviewPage(BasePage):
             **self._print_params,
             'bladeSpeed': preset.blade_speed * 60,  # mm/s → mm/min
             'ledPower': preset.led_power,
-            'bladeCycles': preset.blade_cycles,
             'yDispenseDistance': preset.y_dispense_distance,
             'yDispenseSpeed': preset.y_dispense_speed * 60,  # mm/s → mm/min
             'yDispenseDelay': preset.y_dispense_delay,
-            'levelingCycles': preset.leveling_cycles,
-            'liftHeight': preset.lift_height,
-            'dropSpeed': preset.drop_speed,
+            'yPullDistance': preset.y_pull_distance,
+            'yPullDelay': preset.y_pull_delay,
+            'yReturnDistance': preset.y_return_distance,
+            'yReturnDelay': preset.y_return_delay,
             'materialName': preset.name,
         }
         self.start_print.emit(self._file_path, full_params)
@@ -648,8 +648,11 @@ class FilePreviewPage(BasePage):
             **self._print_params,
             'bladeSpeed': preset.blade_speed * 60,
             'ledPower': preset.led_power,
-            'bladeCycles': preset.blade_cycles,
             'yDispenseDistance': preset.y_dispense_distance,
             'yDispenseSpeed': preset.y_dispense_speed * 60,
             'yDispenseDelay': preset.y_dispense_delay,
+            'yPullDistance': preset.y_pull_distance,
+            'yPullDelay': preset.y_pull_delay,
+            'yReturnDistance': preset.y_return_distance,
+            'yReturnDelay': preset.y_return_delay,
         }
