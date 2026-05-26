@@ -311,7 +311,9 @@ class PrintProgressPage(BasePage):
     stop_requested = Signal()
     go_home = Signal()
     z_home_requested = Signal()  # Z축 홈 요청
-    refill_completed = Signal()      # 주사기 교체 완료
+    refill_started = Signal()        # 주사기 리필 시작 (Y리셋 요청)
+    refill_move = Signal(float)      # 프라이밍 이동 요청 (+/- distance)
+    refill_completed = Signal()      # 프라이밍 완료 → 토출 재개
     manual_feed_selected = Signal()  # 수동배급 선택
 
     # 상태 상수
@@ -547,7 +549,7 @@ class PrintProgressPage(BasePage):
                 background-color: #388E3C;
             }}
         """)
-        self.btn_refill.clicked.connect(self._on_refill_done)
+        self.btn_refill.clicked.connect(self._on_refill_click)
         self.btn_refill.hide()
 
         # 수동배급 버튼 (resin empty 시에만 표시)
@@ -569,6 +571,54 @@ class PrintProgressPage(BasePage):
         self.btn_manual_feed.clicked.connect(self._on_manual_feed)
         self.btn_manual_feed.hide()
 
+        # 프라이밍 UI 버튼들 (리필 시에만 표시)
+        prime_btn_style = f"""
+            QPushButton {{
+                background-color: {Colors.BG_SECONDARY};
+                color: {Colors.TEXT_PRIMARY};
+                border: 2px solid {Colors.BORDER};
+                border-radius: 10px;
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.BG_TERTIARY};
+            }}
+        """
+        self.btn_prime_minus = QPushButton("-")
+        self.btn_prime_minus.setFixedSize(56, 48)
+        self.btn_prime_minus.setFont(Fonts.h2())
+        self.btn_prime_minus.setCursor(Qt.PointingHandCursor)
+        self.btn_prime_minus.setStyleSheet(prime_btn_style)
+        self.btn_prime_minus.clicked.connect(lambda: self._on_prime_move(-1))
+        self.btn_prime_minus.hide()
+
+        self.btn_prime_plus = QPushButton("+")
+        self.btn_prime_plus.setFixedSize(56, 48)
+        self.btn_prime_plus.setFont(Fonts.h2())
+        self.btn_prime_plus.setCursor(Qt.PointingHandCursor)
+        self.btn_prime_plus.setStyleSheet(prime_btn_style)
+        self.btn_prime_plus.clicked.connect(lambda: self._on_prime_move(1))
+        self.btn_prime_plus.hide()
+
+        self._prime_distance = 1.0  # 프라이밍 이동 거리 (mm)
+
+        self.btn_prime_done = QPushButton("완료")
+        self.btn_prime_done.setFixedSize(100, 48)
+        self.btn_prime_done.setFont(Fonts.body())
+        self.btn_prime_done.setCursor(Qt.PointingHandCursor)
+        self.btn_prime_done.setStyleSheet(f"""
+            QPushButton {{
+                background-color: #4CAF50;
+                color: {Colors.WHITE};
+                border: none;
+                border-radius: 10px;
+            }}
+            QPushButton:pressed {{
+                background-color: #388E3C;
+            }}
+        """)
+        self.btn_prime_done.clicked.connect(self._on_prime_done)
+        self.btn_prime_done.hide()
+
         self.btn_layout.addStretch()
         self.btn_layout.addWidget(self.btn_pause)
         self.btn_layout.addWidget(self.btn_stop)
@@ -576,6 +626,9 @@ class PrintProgressPage(BasePage):
         self.btn_layout.addWidget(self.btn_z_home)
         self.btn_layout.addWidget(self.btn_refill)
         self.btn_layout.addWidget(self.btn_manual_feed)
+        self.btn_layout.addWidget(self.btn_prime_minus)
+        self.btn_layout.addWidget(self.btn_prime_plus)
+        self.btn_layout.addWidget(self.btn_prime_done)
         self.btn_layout.addStretch()
 
         bottom_layout.addLayout(self.btn_layout)
@@ -921,10 +974,29 @@ class PrintProgressPage(BasePage):
         self.btn_refill.show()
         self.btn_manual_feed.show()
 
-    def _on_refill_done(self):
-        """주사기 리필 완료"""
+    def _on_refill_click(self):
+        """주사기 리필 클릭 → Y리셋 요청 후 프라이밍 UI 표시"""
         self.btn_refill.hide()
         self.btn_manual_feed.hide()
+        self.btn_stop.hide()
+        self._update_title("주사기 교체 후 프라이밍")
+        # 프라이밍 버튼 표시
+        self.btn_prime_minus.show()
+        self.btn_prime_plus.show()
+        self.btn_prime_done.show()
+        # main.py에서 SET_KINEMATIC_POSITION Y=0 실행
+        self.refill_started.emit()
+
+    def _on_prime_move(self, direction: int):
+        """프라이밍 +/- 이동"""
+        distance = self._prime_distance * direction
+        self.refill_move.emit(distance)
+
+    def _on_prime_done(self):
+        """프라이밍 완료 → 토출 재개"""
+        self.btn_prime_minus.hide()
+        self.btn_prime_plus.hide()
+        self.btn_prime_done.hide()
         self._show_printing_buttons()
         self._set_pause_button_style()
         self._update_title("Printing...")

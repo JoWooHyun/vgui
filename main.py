@@ -361,6 +361,8 @@ class MainWindow(QMainWindow):
         self.print_progress_page.resume_requested.connect(self._on_print_resume)
         self.print_progress_page.stop_requested.connect(self._on_print_stop)
         self.print_progress_page.z_home_requested.connect(self._on_z_home_requested)
+        self.print_progress_page.refill_started.connect(self._on_refill_started)
+        self.print_progress_page.refill_move.connect(self._on_refill_move)
         self.print_progress_page.refill_completed.connect(self._on_refill_completed)
         self.print_progress_page.manual_feed_selected.connect(self._on_manual_feed)
 
@@ -674,8 +676,18 @@ class MainWindow(QMainWindow):
         print("[Print] Resin empty — 주사기 교체 대기")
         self.print_progress_page.show_resin_empty()
 
+    def _on_refill_started(self):
+        """주사기 리필 시작 — Y좌표 리셋 (SET_KINEMATIC_POSITION Y=0)"""
+        print("[Print] Refill started — resetting Y position to 0")
+        self.motor.y_reset_position()
+
+    def _on_refill_move(self, distance: float):
+        """리필 프라이밍 중 Y축 이동"""
+        print(f"[Print] Refill priming move: {distance}mm")
+        self._start_motor_operation("y_move", distance=distance)
+
     def _on_refill_completed(self):
-        """주사기 리필 완료 — Klipper에서 새 Y 위치 읽어서 worker에 전달"""
+        """리필 프라이밍 완료 — Klipper에서 새 Y 위치 읽어서 worker에 전달"""
         self.motor.get_position()
         new_y = self.motor._y_position
         print(f"[Print] Refill completed, new Y position: {new_y}mm")
