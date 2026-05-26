@@ -302,15 +302,11 @@ class PrintWorker(QThread):
                 # 이전 일시정지 상태 초기화
                 self.motor.klipper_clear_pause()
 
-        # X축 홈 → 대기 위치 (X 먼저)
+        # X축 홈 (X 먼저)
         if self._check_stopped():
             return
         if not self._motor_x_home():
             self.error_occurred.emit("X축 홈 이동 실패")
-            self._is_stopped = True
-            return
-        if not self._motor_x_move(10, job.blade_speed):
-            self.error_occurred.emit("X축 대기 위치(10mm) 이동 실패")
             self._is_stopped = True
             return
 
@@ -384,10 +380,10 @@ class PrintWorker(QThread):
         Flow:
         1. Z축 레이어 높이로 이동
         2. Resin 토출 + 대기
-        3. X축 10→140 (평탄화)
+        3. X축 0→140 (평탄화)
         4. 이미지 투영 → LED ON → 노광 → LED OFF
         5. Z축 리프트 (+5mm)
-        6. X축 140→10 (대기 위치 복귀)
+        6. X축 140→0 (홈 복귀)
 
         Returns:
             bool: 성공 시 True, 실패 시 False (이미지 로드 실패 등)
@@ -465,10 +461,9 @@ class PrintWorker(QThread):
             self._is_stopped = True
             return False
 
-        # 8. X축 대기 위치 복귀
-        # 수동 공급 모드: 0mm (공간 확보), 일반 모드: 10mm (토출 준비)
+        # 8. X축 홈 복귀
         # 복귀는 평탄화가 아니므로 빠른 고정 속도 사용 (50mm/s = 3000mm/min)
-        x_return_position = 0 if self._y_dispensing_disabled else 10
+        x_return_position = 0
         if not self._motor_x_move(x_return_position, 3000):
             self.error_occurred.emit(f"레이어 {layer_idx}: X축 홈 복귀 실패")
             self._is_stopped = True
