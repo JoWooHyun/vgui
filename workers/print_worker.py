@@ -411,34 +411,15 @@ class PrintWorker(QThread):
             return False
 
         # 2. Resin 토출 (3단계: Push → Pull → Return)
+        # 소진 감지는 _dispense_3step() 내부에서 Push 직후 처리
         if job.y_dispense_distance > 0:
             if self._y_dispensing_disabled:
                 # 수동 공급 모드: Y축 스킵, delay만 유지
                 print(f"[PrintWorker] Layer {layer_idx}: Manual feed mode — Y skip, waiting {job.y_dispense_delay}s")
                 if not self._wait_interruptible(job.y_dispense_delay):
                     return False
-            elif self._y_position <= 0:
-                # Resin empty → 알림 + 유저 응답 대기
-                print(f"[PrintWorker] Resin empty at {self._y_position}mm")
-                self._y_resin_waiting = True
-                self.resin_empty.emit()
-                self._resin_mutex.lock()
-                while self._y_resin_waiting and not self._is_stopped:
-                    self._resin_condition.wait(self._resin_mutex, 1000)
-                self._resin_mutex.unlock()
-                if self._check_stopped():
-                    return True
-                # refill 또는 manual feed 선택 후 재진입
-                if self._y_dispensing_disabled:
-                    print(f"[PrintWorker] Layer {layer_idx}: Manual feed mode — Y skip, waiting {job.y_dispense_delay}s")
-                    if not self._wait_interruptible(job.y_dispense_delay):
-                        return False
-                else:
-                    # refill 완료 → 정상 토출
-                    if not self._dispense_3step(layer_idx, job):
-                        return False
             else:
-                # 정상 토출
+                # 정상 토출 (소진 시 _dispense_3step 내부에서 resin_empty 처리)
                 if not self._dispense_3step(layer_idx, job):
                     return False
 
@@ -648,12 +629,27 @@ class PrintWorker(QThread):
         self._y_position += actual
         print(f"[PrintWorker] {label}: Push {actual:.2f}mm (pos: {self._y_position:.1f}mm)")
 
-        # Push 후 소진 체크 — Pull/Return 스킵, Resin Delay만 대기
+        # Push 후 소진 체크 — 즉시 사용자 선택 대기 (불완전 레이어 방지)
         if self._y_position <= 0:
-            print(f"[PrintWorker] {label}: Resin exhausted (pos: {self._y_position:.1f}mm), skipping pull/return")
-            if not self._wait_interruptible(job.y_dispense_delay):
+            print(f"[PrintWorker] {label}: Resin exhausted after push (pos: {self._y_position:.1f}mm)")
+            self._y_resin_waiting = True
+            self.resin_empty.emit()
+            self._resin_mutex.lock()
+            while self._y_resin_waiting and not self._is_stopped:
+                self._resin_condition.wait(self._resin_mutex, 1000)
+            self._resin_mutex.unlock()
+            if self._check_stopped():
                 return False
-            return True
+            if self._y_dispensing_disabled:
+                # 수동배급 선택 → delay만 대기 후 계속
+                if not self._wait_interruptible(job.y_dispense_delay):
+                    return False
+                return True
+            else:
+                # 리필 완료 → delay 대기 후 Pull/Return 진행
+                if not self._wait_interruptible(job.y_dispense_delay):
+                    return False
+                # Pull/Return은 아래 로직에서 계속 진행
 
         # === Resin Delay: Push 후 대기 ===
         if job.y_dispense_delay > 0:
