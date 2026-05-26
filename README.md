@@ -122,8 +122,11 @@ python main.py --sim
 4. **레벨링**: X축 블레이드 0→140→0 왕복 (leveling_cycles만큼)
 5. **레이어 루프**:
    - Z축 → 레이어 높이 이동
-   - Y축 → 레진 토출 (dispense_distance만큼, -방향)
-   - 레진 대기 (dispense_delay초)
+   - Y축 → 3단계 레진 토출 (Push-Pull):
+     - Push: -방향 토출 (position ≤ 0이면 즉시 레진 부족 감지)
+     - Delay: dispense_delay초 대기
+     - Pull: +방향 되돌리기 (distance > 0이면)
+     - Return: -방향 다시 밀기 (distance > 0이면)
    - X축 → 블레이드 스윕 (10→140mm, oneway)
    - LED ON → 노광 대기 → LED OFF
    - Z축 → 리프트 (+5mm)
@@ -132,8 +135,11 @@ python main.py --sim
 
 ### 레진 소진 감지 (현재 구현)
 
-- Y축 누적 위치가 0mm 이하 도달 시 `resin_empty` 시그널
-- 사용자 선택: **Yes** (Y축 비활성화, 수동 공급 모드로 계속) / **No** (출력 종료)
+- Push 직후 Y축 누적 위치가 0mm 이하 도달 시 즉시 `resin_empty` 시그널
+- 프린트 진행 페이지 내에서 사용자 선택:
+  - **주사기 리필**: 주사기 교체 후 Klipper Y위치 읽어 토출 재개
+  - **수동배급**: Y축 비활성화, 대기시간만 유지하며 계속
+  - **STOP**: 출력 중지
 - **알려진 제한**: 소프트웨어 카운터 기반 감지 (홈센서 물리 감지 미구현)
 
 ### Y축 프라이밍 시스템
@@ -191,12 +197,14 @@ print_file.zip
 | [FEATURE_SPEC.md](FEATURE_SPEC.md) | 페이지별 기능 상세 정리 |
 | [WIREFRAME.md](WIREFRAME.md) | 페이지별 와이어프레임 (ASCII) |
 | [DEVELOPMENT_DIARY.md](DEVELOPMENT_DIARY.md) | 개발 다이어리 (버전별 변경 이력) |
-| [VERICOM_GUI_Design_Guide_v7.md](VERICOM_GUI_Design_Guide_v7.md) | 디자인 가이드 (최신) |
+| [USER_MANUAL.md](USER_MANUAL.md) | 사용자 매뉴얼 |
+| [VERICOM_GUI_Design_Guide_v7.md](VERICOM_GUI_Design_Guide_v7.md) | 디자인 가이드 (v7.6) |
 
 ## 버전 이력
 
 | 버전 | 날짜 | 주요 변경 |
 |------|------|----------|
+| **v5.0** | 2025-05-26 | Push-Pull 3단계 레진 토출, 레진 부족 시 페이지 내 버튼 UI (주사기 리필/수동배급), 즉시 소진 감지, MaterialPreset 필드 개편 |
 | **v4.2** | 2025-04-30 | 프린트 안전성 강화 (LED 즉시 OFF, 초기 레진 토출), 입력 범위 확대, X축 속도 컨트롤, NumericKeypad 전환 |
 | **v4.1** | 2025-04 | Y축 프라이밍 개편: SET_KINEMATIC_POSITION 기반, dir_pin 반전, 테스트 도구 |
 | **v4.0** | 2025-04-06 | 소재 프리셋 시스템, Material 페이지, 프린트 플로우 변경 |

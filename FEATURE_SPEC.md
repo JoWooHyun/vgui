@@ -1,6 +1,6 @@
 # MAZIC CERA GUI - 페이지별 기능 정리
 
-> 최종 업데이트: 2025-04-30
+> 최종 업데이트: 2025-05-26
 
 ## 페이지 네비게이션 구조
 
@@ -133,8 +133,9 @@ Main Page (MAZIC CERA)
   - Total Layers, Estimated Print Time, Layer Height
   - Bottom/Normal Exposure Time
 - 소재 프리셋 값 (읽기 전용):
-  - Blade Speed, LED Power, Blade Cycles
+  - Blade Speed, LED Power
   - Y Dispense Distance/Speed/Delay
+  - Y Pull Distance/Delay, Y Return Distance/Delay
 - 버튼: Delete (빨간색), Start (Cyan)
 
 ### 기능
@@ -166,6 +167,7 @@ Main Page (MAZIC CERA)
 |------|------|
 | 프린팅 중 | PAUSE (Amber) + STOP (빨간) |
 | 일시정지 | RESUME (Cyan) + STOP |
+| 레진 부족 | 주사기 리필 (초록) + 수동배급 (시안) + STOP (빨강) |
 | 완료/에러/정지 | GUI HOME (Cyan) + Z AXIS HOME |
 
 ### 기능
@@ -176,7 +178,17 @@ Main Page (MAZIC CERA)
 - STOP: 확인 다이얼로그 후 정지 (노출 중이면 즉시 LED OFF)
 - 완료 시: CompletedDialog 팝업
 - 에러 시: ErrorDialog 팝업
-- 레진 부족 시: 사용자 선택 (Y축 비활성화 계속 / 출력 종료)
+- 레진 부족 시: Push 직후 즉시 감지 → 페이지 내 버튼 표시
+  - "주사기 리필": 주사기 교체 후 Klipper Y위치 읽어 토출 재개
+  - "수동배급": Y축 비활성화, 대기시간만 유지하며 계속
+  - "STOP": 출력 중지
+
+### 레진 토출 시퀀스 (3단계 Push-Pull)
+- **Push**: Y축 -방향으로 토출 (dispense_distance)
+  - Push 직후 position ≤ 0이면 즉시 레진 부족 UI 표시
+- **Delay**: dispense_delay초 대기
+- **Pull**: Y축 +방향으로 되돌리기 (pull_distance, 0이면 스킵)
+- **Return**: Y축 -방향으로 다시 밀기 (return_distance, 0이면 스킵)
 
 ### 예상 시간 계산
 - 레이어별: Z 이동 + 레진 토출 + 레진 대기 + X 블레이드 왕복(130mm×2) + LED 노출 + Z 리프트(5mm)
@@ -287,13 +299,13 @@ Main Page (MAZIC CERA)
 |----------|------|------|
 | Blade Speed | 1-100 | mm/s |
 | LED Power | 9-100 | % |
-| Blade Cycles | 1-3 | 회 |
-| Y Dispense | 0.1-5.0 | mm |
-| Y Speed | 1-15 | mm/s |
-| Y Delay | 0.5-300 | s |
-| Leveling Cycles | 0-5 | 회 |
-| Lift Height | 1.0-20.0 | mm |
-| Drop Speed | 10-300 | mm/min |
+| Resin Dist. | 0.1-5.0 | mm |
+| Resin Speed | 1-15 | mm/s |
+| Resin Delay | 0.5-300 | s |
+| Pull Dist. | 0.0-5.0 | mm |
+| Pull Delay | 0.1-20.0 | s |
+| Return Dist. | 0.0-5.0 | mm |
+| Return Delay | 0.1-20.0 | s |
 
 ### 기능
 - 프리셋 추가: MaterialNameDialog로 이름 입력

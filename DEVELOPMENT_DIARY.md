@@ -221,6 +221,43 @@
 
 ---
 
+## v5.0 - Push-Pull 3단계 토출 및 레진 소모 UI 개선 (2025-05-26)
+
+### Push-Pull 3단계 레진 토출 시퀀스
+- **`_dispense_3step()` 메서드 추가**: test_vgui에서 검증된 Mode 3 토출 시퀀스 이식
+  - Step 1: Push (Y축 -방향 토출) → 즉시 레진 소진 감지
+  - Step 2: Pull (Y축 +방향 되돌리기, distance=0이면 스킵)
+  - Step 3: Return (Y축 -방향 다시 밀기, distance=0이면 스킵)
+- **Pull/Return 속도 자동 계산**: `distance / delay × 60` (mm/min)
+- **기존 호환성 유지**: Pull/Return=0이면 기존과 동일하게 Push만 동작
+
+### MaterialPreset 필드 개편
+- **제거**: blade_cycles, leveling_cycles, lift_height, drop_speed
+- **추가**: y_pull_distance, y_pull_delay, y_return_distance, y_return_delay
+- Material 페이지 UI 업데이트 (Pull/Return 파라미터 행 추가)
+- settings_manager.py 로드/저장 로직 업데이트
+
+### 레진 소모 팝업 UI 개선
+- **기존**: ConfirmDialog 팝업 ("Continue printing?") → OK/NO
+- **변경**: PrintProgressPage 내 버튼 직접 표시
+  - "주사기 리필" (초록): 주사기 교체 후 Klipper Y위치 읽어 토출 재개
+  - "수동배급" (시안): Y축 비활성화, 대기시간만 유지하며 계속
+  - "STOP" (빨강): 출력 중지
+- `refill_completed`, `manual_feed_selected` 시그널 추가
+
+### 즉시 레진 소진 감지
+- **기존**: 다음 레이어 시작 시 감지 → 불완전 토출로 인한 블레이드/노출 계속 진행
+- **변경**: Push 직후 position ≤ 0이면 즉시 감지 → 블레이드/노출 전에 사용자 선택
+
+### 기타
+- `_motor_y_move()` 반환값: `bool` → `tuple(bool, float)` (성공여부, 실제이동거리)
+- `_wait_interruptible()` 헬퍼 추가 (대기 중 stop 감지)
+- `refill_resin(new_y_position)` 메서드 추가
+- Y축 max position 125→130mm 증가
+- DLP 수평 미러링(flip) 기동 시 비활성화
+
+---
+
 ## 개발 통계
 
 | 항목 | 수치 |
@@ -276,3 +313,11 @@
 ### 10. 레진 없이 평탄화 (해결)
 - **문제**: 초기화 단계에서 레진 토출 없이 블레이드 평탄화 수행
 - **해결**: 레벨링 전 초기 레진 토출 1회 추가
+
+### 11. 불완전 토출로 인한 출력 실패 (해결)
+- **문제**: 레진 소진 시 Push 완료 후 블레이드/노출까지 진행하여 불완전 레이어 생성
+- **해결**: Push 직후 position ≤ 0이면 즉시 resin_empty 감지, 블레이드/노출 전에 사용자 선택
+
+### 12. 레진 소모 시 팝업 사용성 (해결)
+- **문제**: ConfirmDialog 팝업으로 레진 소모 알림 → 선택지가 불명확
+- **해결**: PrintProgressPage 내에 "주사기 리필" / "수동배급" / "STOP" 버튼 직접 표시

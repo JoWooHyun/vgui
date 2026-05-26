@@ -1,7 +1,7 @@
 # MAZIC CERA GUI - 와이어프레임 (1024x600px)
 
 > 대상: 7인치 HDMI Touch LCD (1024x600px)
-> 최종 업데이트: 2025-04-30
+> 최종 업데이트: 2025-05-26
 
 ---
 
@@ -136,10 +136,10 @@
 │   filename.zip    ──────────────────────────         │
 │                   Blade Speed         5 mm/s        │
 │                   LED Power           43%           │
-│                   Blade Cycles        1             │
 │                   Y Dispense          1.0 mm        │
-│                   Y Speed             5 mm/s        │
-│                   Y Delay             2.0 s         │
+│                   Y Speed             3 mm/s        │
+│                   Y Delay             5.0 s         │
+│                   Pull Dist.          0.0 mm        │
 │                                                     │
 │                   [  Delete  ]   [  Start  ]        │
 │                      (Red)         (Cyan)           │
@@ -174,6 +174,13 @@
 │            [  PAUSE  ]    [  STOP  ]                │
 │             (Amber)        (Red)                    │
 └─────────────────────────────────────────────────────┘
+```
+
+### 레진 부족 시:
+
+```
+│            [주사기 리필]  [수동배급]   [  STOP  ]     │
+│              (Green)      (Cyan)      (Red)          │
 ```
 
 ### 완료/에러/정지 시:
@@ -273,13 +280,13 @@
 │  │            │  │                              │   │
 │  │ ┌────────┐ │  │  Blade Speed     [ 5 ] mm/s  │   │
 │  │ │Zirconia│ │  │  LED Power       [ 43 ] %    │   │
-│  │ └────────┘ │  │  Blade Cycles    [ 1 ] 회    │   │
-│  │ ┌────────┐ │  │  Y Dispense      [1.0] mm    │   │
-│  │ │Alumina │ │  │  Y Speed         [ 5 ] mm/s  │   │
-│  │ └────────┘ │  │  Y Delay         [2.0] s     │   │
-│  │ ┌────────┐ │  │  Leveling Cycles [ 1 ] 회    │   │
-│  │ │Hydroxy-│ │  │  Lift Height     [5.0] mm    │   │
-│  │ │apatite │ │  │  Drop Speed      [150] mm/min│   │
+│  │ └────────┘ │  │  Resin Dist.     [1.0] mm    │   │
+│  │ ┌────────┐ │  │  Resin Speed     [ 3 ] mm/s  │   │
+│  │ │Alumina │ │  │  Resin Delay     [5.0] s     │   │
+│  │ └────────┘ │  │  Pull Dist.      [0.0] mm    │   │
+│  │ ┌────────┐ │  │  Pull Delay      [2.0] s     │   │
+│  │ │Hydroxy-│ │  │  Return Dist.    [0.0] mm    │   │
+│  │ │apatite │ │  │  Return Delay    [2.0] s     │   │
 │  │ └────────┘ │  │                              │   │
 │  │            │  │       각 행 클릭 -> 키패드 팝업 │   │
 │  │ [+ Add  ] │  └──────────────────────────────┘   │
@@ -393,8 +400,9 @@
 │                                            │
 │  Z move (layer height)                     │
 │         |                                  │
-│  Y resin dispense (-direction)             │
-│  Resin delay (wait)                        │
+│  Y resin 3-step dispense:                  │
+│    Push(-dist) → Delay → Pull → Return     │
+│    (Push 직후 position≤0 → resin_empty)    │
 │         |                                  │
 │  X blade sweep (10 -> 140mm)               │
 │         |                                  │

@@ -1,7 +1,7 @@
 # VERICOM DLP 3D Printer GUI 디자인 가이드
 
-> **Version:** 7.5
-> **Last Updated:** 2025-12-30
+> **Version:** 7.6
+> **Last Updated:** 2025-05-26
 > **Target Device:** 7인치 터치 LCD (1024×600)
 > **Framework:** PySide6
 > **Reference:** UniFormation 프린터 UI 분석 기반
@@ -500,15 +500,16 @@ Main (L0)
 | 2 | ManualPage | 수동 제어 |
 | 3 | PrintPage | 파일 선택 |
 | 4 | ExposurePage | 노출 테스트 |
-| 5 | CleanPage | 트레이 청소 |
-| 6 | SystemPage | 시스템 메뉴 |
-| 7 | DeviceInfoPage | 장치 정보 |
-| 8 | LanguagePage | 언어 설정 |
-| 9 | ServicePage | 서비스 정보 |
-| 10 | FilePreviewPage | 파일 미리보기 |
-| 11 | PrintProgressPage | 인쇄 진행 |
-| 12 | SettingPage | LED/Blade 설정 ✅ |
-| 13 | ThemePage | 테마 설정 ✅ NEW |
+| 5 | SystemPage | 시스템 메뉴 |
+| 6 | DeviceInfoPage | 장치 정보 |
+| 7 | LanguagePage | 언어 설정 |
+| 8 | ServicePage | 서비스 정보 |
+| 9 | FilePreviewPage | 파일 미리보기 |
+| 10 | PrintProgressPage | 인쇄 진행 |
+| 11 | SettingPage | LED/Blade/Y축 설정 |
+| 12 | ThemePage | 테마 설정 |
+| 13 | LevelingPage | 3단계 레벨링 가이드 |
+| 14 | MaterialPage | 소재 프리셋 관리 |
 
 ---
 
@@ -810,6 +811,7 @@ self.header.title_label.setText()   # ⚠️ 직접 접근 (비권장)
 | 7.2 | 2025-12-24 | **테마 시스템 완성** (Light/Dark), ThemeManager 싱글톤, Colors 메타클래스 동적 테마, 동적 스타일 함수 (get_*_style()), 다이얼로그 테마 지원, QStackedWidget 배경 수정 |
 | 7.3 | 2025-12-24 | **FilePreviewPage 개선**: 아이콘 기반 정보 표시 (EXPOSURE_NORMAL/BOTTOM 커스텀 아이콘), Blade Speed mm/s 단위 (×50 변환), **다크모드 버튼 수정**: get_button_nav_style() 추가, Manual/Print 페이지 버튼 테마 지원 |
 | 7.4 | 2025-12-30 | **다크모드 완전 지원**: 모든 페이지/다이얼로그 테마 대응. 정적 스타일 상수를 동적 함수로 전환 (get_axis_panel_style, get_icon_button_style 등 7개 추가). manual_page, setting_page, icon_button, number_dial, numeric_keypad 수정. 모든 다이얼로그 배경 WHITE→BG_PRIMARY. README/TODO 문서 업데이트 |
+| 7.6 | 2025-05-26 | **Push-Pull 3단계 토출**: _dispense_3step() 추가, MaterialPreset 필드 개편 (blade_cycles/leveling_cycles/lift_height/drop_speed 제거, y_pull/y_return 추가), 레진 소모 시 페이지 내 버튼 UI (주사기 리필/수동배급), 즉시 소진 감지, LevelingPage/MaterialPage 추가 |
 | 7.5 | 2025-12-30 | **키오스크 모드 & 모터 비동기**: KioskManager 추가 (Alt+F4/Alt+Tab/Esc 차단), 관리자 모드 (로고 5회 클릭 또는 Ctrl+Shift+F12), MotorWorker QThread로 모터 비동기 실행, ManualPage UI 잠금 기능 (set_busy) |
 
 ---
@@ -818,7 +820,7 @@ self.header.title_label.setText()   # ⚠️ 직접 접근 (비권장)
 
 | 카테고리 | 완료 | 전체 | 진행률 |
 |----------|------|------|--------|
-| **UI 페이지** | 14 | 14 | **100%** ✅ |
+| **UI 페이지** | 15 | 15 | **100%** ✅ |
 | 컴포넌트 | 13 | 15 | 87% |
 | 하드웨어 연동 | 4 | 5 | **80%** ✅ |
 | 고급 기능 | 2 | 5 | 40% |
