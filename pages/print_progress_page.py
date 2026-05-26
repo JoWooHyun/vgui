@@ -12,6 +12,7 @@ from PySide6.QtCore import Signal, Qt, QTimer
 from PySide6.QtGui import QPixmap
 
 from pages.base_page import BasePage
+from components.numeric_keypad import NumericKeypad
 from styles.colors import Colors
 from styles.fonts import Fonts
 from styles.icons import Icons
@@ -591,6 +592,27 @@ class PrintProgressPage(BasePage):
         self.btn_prime_minus.clicked.connect(lambda: self._on_prime_move(-1))
         self.btn_prime_minus.hide()
 
+        # 이동거리 버튼 (클릭 시 NumericKeypad)
+        self._prime_distance = 1.0
+        self.btn_prime_dist = QPushButton("1 mm")
+        self.btn_prime_dist.setFixedSize(80, 48)
+        self.btn_prime_dist.setFont(Fonts.body())
+        self.btn_prime_dist.setCursor(Qt.PointingHandCursor)
+        self.btn_prime_dist.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.BG_SECONDARY};
+                color: {Colors.NAVY};
+                border: 2px solid {Colors.CYAN};
+                border-radius: 10px;
+                font-weight: 600;
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.BG_TERTIARY};
+            }}
+        """)
+        self.btn_prime_dist.clicked.connect(self._on_prime_dist_click)
+        self.btn_prime_dist.hide()
+
         self.btn_prime_plus = QPushButton("+")
         self.btn_prime_plus.setFixedSize(56, 48)
         self.btn_prime_plus.setFont(Fonts.h2())
@@ -599,10 +621,8 @@ class PrintProgressPage(BasePage):
         self.btn_prime_plus.clicked.connect(lambda: self._on_prime_move(1))
         self.btn_prime_plus.hide()
 
-        self._prime_distance = 1.0  # 프라이밍 이동 거리 (mm)
-
         self.btn_prime_done = QPushButton("완료")
-        self.btn_prime_done.setFixedSize(100, 48)
+        self.btn_prime_done.setFixedSize(80, 48)
         self.btn_prime_done.setFont(Fonts.body())
         self.btn_prime_done.setCursor(Qt.PointingHandCursor)
         self.btn_prime_done.setStyleSheet(f"""
@@ -627,6 +647,7 @@ class PrintProgressPage(BasePage):
         self.btn_layout.addWidget(self.btn_refill)
         self.btn_layout.addWidget(self.btn_manual_feed)
         self.btn_layout.addWidget(self.btn_prime_minus)
+        self.btn_layout.addWidget(self.btn_prime_dist)
         self.btn_layout.addWidget(self.btn_prime_plus)
         self.btn_layout.addWidget(self.btn_prime_done)
         self.btn_layout.addStretch()
@@ -975,17 +996,36 @@ class PrintProgressPage(BasePage):
         self.btn_manual_feed.show()
 
     def _on_refill_click(self):
-        """주사기 리필 클릭 → Y리셋 요청 후 프라이밍 UI 표시"""
+        """주사기 리필 클릭 → Y=130 리셋 후 프라이밍 UI 표시"""
         self.btn_refill.hide()
         self.btn_manual_feed.hide()
         self.btn_stop.hide()
         self._update_title("주사기 교체 후 프라이밍")
         # 프라이밍 버튼 표시
         self.btn_prime_minus.show()
+        self.btn_prime_dist.show()
         self.btn_prime_plus.show()
         self.btn_prime_done.show()
-        # main.py에서 SET_KINEMATIC_POSITION Y=0 실행
+        # main.py에서 SET_KINEMATIC_POSITION Y=130 실행
         self.refill_started.emit()
+
+    def _on_prime_dist_click(self):
+        """이동거리 버튼 클릭 → NumericKeypad"""
+        keypad = NumericKeypad(
+            title="이동거리",
+            value=self._prime_distance,
+            unit="mm",
+            min_val=0.1,
+            max_val=10.0,
+            allow_decimal=True,
+            parent=self.window()
+        )
+        keypad.value_confirmed.connect(self._on_prime_dist_confirmed)
+        keypad.exec()
+
+    def _on_prime_dist_confirmed(self, value: float):
+        self._prime_distance = value
+        self.btn_prime_dist.setText(f"{value:g} mm")
 
     def _on_prime_move(self, direction: int):
         """프라이밍 +/- 이동"""
@@ -995,6 +1035,7 @@ class PrintProgressPage(BasePage):
     def _on_prime_done(self):
         """프라이밍 완료 → 토출 재개"""
         self.btn_prime_minus.hide()
+        self.btn_prime_dist.hide()
         self.btn_prime_plus.hide()
         self.btn_prime_done.hide()
         self._show_printing_buttons()

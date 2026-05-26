@@ -59,7 +59,8 @@ class MotorWorker(QObject):
             elif self.operation == "y_home":
                 self.motor.y_home()
             elif self.operation == "y_reset_position":
-                self.motor.y_reset_position()
+                position = self.kwargs.get("position", 0.0)
+                self.motor.y_reset_position(position)
         except Exception as e:
             self.error.emit(str(e))
         finally:
@@ -687,9 +688,9 @@ class MainWindow(QMainWindow):
         self.print_progress_page.show_resin_empty()
 
     def _on_refill_started(self):
-        """주사기 리필 시작 — Y좌표 리셋 (SET_KINEMATIC_POSITION Y=0)"""
-        print("[Print] Refill started — resetting Y position to 0")
-        self.motor.y_reset_position()
+        """주사기 리필 시작 — Y좌표를 130mm(최대)로 리셋"""
+        print("[Print] Refill started — resetting Y position to 130mm")
+        self.motor.y_reset_position(130.0)
 
     def _on_refill_move(self, distance: float):
         """리필 프라이밍 중 Y축 이동"""

@@ -385,13 +385,13 @@ class MotorController:
 
     # ==================== Resin Pump 제어 ====================
 
-    def y_reset_position(self) -> bool:
-        """Resin pump 위치를 0으로 리셋"""
-        print("[Motor] Resin pump position reset (SET_KINEMATIC_POSITION Y=0)")
-        success = self.send_gcode("SET_KINEMATIC_POSITION Y=0", timeout=10)
+    def y_reset_position(self, position: float = 0.0) -> bool:
+        """Resin pump 위치를 지정 값으로 리셋"""
+        print(f"[Motor] Resin pump position reset (SET_KINEMATIC_POSITION Y={position})")
+        success = self.send_gcode(f"SET_KINEMATIC_POSITION Y={position}", timeout=10)
         if success:
-            self._y_position = 0.0
-            print("[Motor] Resin pump position reset complete")
+            self._y_position = position
+            print(f"[Motor] Resin pump position reset to {position}mm")
         return success
 
     def y_home(self) -> bool:
