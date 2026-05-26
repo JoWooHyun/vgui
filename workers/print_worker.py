@@ -46,6 +46,8 @@ class PrintJob:
     file_path: str
     params: PrintParameters
     blade_speed: int = 300   # mm/min (리드스크류)
+    blade_start: float = 0.0  # 블레이드 시작 위치 (mm)
+    blade_end: float = 140.0  # 블레이드 끝 위치 (mm)
     led_power: int = 440
     leveling_cycles: int = 1
     blade_cycles: int = 1  # 매 레이어 블레이드 왕복 횟수
@@ -132,7 +134,8 @@ class PrintWorker(QThread):
     # ==================== 제어 메서드 ====================
 
     def start_print(self, file_path: str, params: Dict[str, Any],
-                   blade_speed: int = 300, led_power: int = 440,
+                   blade_speed: int = 300, blade_start: float = 0.0,
+                   blade_end: float = 140.0, led_power: int = 440,
                    leveling_cycles: int = 1, blade_cycles: int = 1,
                    y_dispense_distance: float = 1.0,
                    y_dispense_speed: int = 300,
@@ -149,6 +152,8 @@ class PrintWorker(QThread):
             file_path: ZIP 파일 경로
             params: 프린트 파라미터 딕셔너리
             blade_speed: 블레이드 속도 (mm/min)
+            blade_start: 블레이드 시작 위치 (mm, 0~10)
+            blade_end: 블레이드 끝 위치 (mm, 130~140)
             led_power: LED 밝기 (91~1023)
             leveling_cycles: 레진 평탄화 횟수
             blade_cycles: 매 레이어 블레이드 왕복 횟수 (1~3)
@@ -176,6 +181,8 @@ class PrintWorker(QThread):
             file_path=file_path,
             params=print_params,
             blade_speed=blade_speed,
+            blade_start=blade_start,
+            blade_end=blade_end,
             led_power=led_power,
             leveling_cycles=leveling_cycles,
             blade_cycles=blade_cycles,
@@ -289,6 +296,7 @@ class PrintWorker(QThread):
         print(f"[PrintWorker] 프린트 시작: {job.file_path}")
         print(f"  - 총 레이어: {params.totalLayer}")
         print(f"  - 블레이드 속도: {job.blade_speed} mm/min")
+        print(f"  - 블레이드 범위: {job.blade_start}~{job.blade_end} mm")
         print(f"  - LED 파워: {job.led_power}")
 
         # 컨트롤러 설정 (시뮬레이션 모드가 아닐 때)
@@ -302,13 +310,18 @@ class PrintWorker(QThread):
                 # 이전 일시정지 상태 초기화
                 self.motor.klipper_clear_pause()
 
-        # X축 홈 (X 먼저)
+        # X축 홈 → 시작 위치
         if self._check_stopped():
             return
         if not self._motor_x_home():
             self.error_occurred.emit("X축 홈 이동 실패")
             self._is_stopped = True
             return
+        if job.blade_start > 0:
+            if not self._motor_x_move(job.blade_start, job.blade_speed):
+                self.error_occurred.emit(f"X축 시작위치({job.blade_start}mm) 이동 실패")
+                self._is_stopped = True
+                return
 
         # Z축 홈 → 0.1mm 이동
         if self._check_stopped():
@@ -380,10 +393,10 @@ class PrintWorker(QThread):
         Flow:
         1. Z축 레이어 높이로 이동
         2. Resin 토출 + 대기
-        3. X축 0→140 (평탄화)
+        3. X축 시작→끝 (평탄화)
         4. 이미지 투영 → LED ON → 노광 → LED OFF
         5. Z축 리프트 (+5mm)
-        6. X축 140→0 (홈 복귀)
+        6. X축 끝→시작 (복귀)
 
         Returns:
             bool: 성공 시 True, 실패 시 False (이미지 로드 실패 등)
@@ -419,8 +432,8 @@ class PrintWorker(QThread):
                 if not self._dispense_3step(layer_idx, job):
                     return False
 
-        # 3. X축 평탄화 (0→140)
-        if not self._motor_x_move(140, job.blade_speed):
+        # 3. X축 평탄화 (시작→끝)
+        if not self._motor_x_move(job.blade_end, job.blade_speed):
             self.error_occurred.emit(f"레이어 {layer_idx}: X축 평탄화 실패")
             self._is_stopped = True
             return False
@@ -439,7 +452,7 @@ class PrintWorker(QThread):
             self._mutex.unlock()
             return False
 
-        # 5. LED ON + 노광 (블레이드 140mm = 빛 안 가림)
+        # 5. LED ON + 노광 (블레이드 끝 위치 = 빛 안 가림)
         self._dlp_led_on(job.led_power)
         self._wait_exposure(exposure_time)
 
@@ -461,9 +474,9 @@ class PrintWorker(QThread):
             self._is_stopped = True
             return False
 
-        # 8. X축 홈 복귀
+        # 8. X축 시작 위치 복귀
         # 복귀는 평탄화가 아니므로 빠른 고정 속도 사용 (50mm/s = 3000mm/min)
-        x_return_position = 0
+        x_return_position = job.blade_start
         if not self._motor_x_move(x_return_position, 3000):
             self.error_occurred.emit(f"레이어 {layer_idx}: X축 홈 복귀 실패")
             self._is_stopped = True

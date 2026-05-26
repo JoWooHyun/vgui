@@ -196,6 +196,8 @@ class BladePanel(QFrame):
     """Blade 설정 패널"""
 
     speed_changed = Signal(int)    # 속도 변경
+    start_changed = Signal(float)  # 시작 위치 변경
+    end_changed = Signal(float)    # 끝 위치 변경
     blade_move = Signal()          # MOVE 버튼 클릭
     home_axis = Signal()           # 홈 이동
 
@@ -205,6 +207,8 @@ class BladePanel(QFrame):
         self._speed_value = 5   # 기본값 5 mm/s (리드스크류)
         self._min_speed = 1     # 최소 1 mm/s
         self._max_speed = 100   # 최대 100 mm/s
+        self._start_value = 0.0   # 시작 위치 (0~10mm)
+        self._end_value = 140.0   # 끝 위치 (130~140mm)
 
         self._setup_ui()
 
@@ -259,7 +263,69 @@ class BladePanel(QFrame):
         speed_container.addStretch()
         layout.addLayout(speed_container)
 
-        layout.addStretch(3)
+        layout.addStretch(1)
+
+        # 시작/끝 위치 (1줄에 2개)
+        range_layout = QHBoxLayout()
+        range_layout.setSpacing(8)
+
+        range_label_style = f"""
+            QLabel {{
+                color: {Colors.TEXT_SECONDARY};
+                font-size: 11px;
+                background-color: transparent;
+                border: none;
+            }}
+        """
+        range_btn_style = f"""
+            QPushButton {{
+                background-color: {Colors.BG_SECONDARY};
+                border: 2px solid {Colors.BORDER};
+                border-radius: 8px;
+                color: {Colors.NAVY};
+                font-size: 16px;
+                font-weight: 600;
+            }}
+            QPushButton:pressed {{
+                background-color: {Colors.BG_TERTIARY};
+            }}
+        """
+
+        # 시작 위치
+        start_col = QVBoxLayout()
+        start_col.setSpacing(2)
+        start_label = QLabel("시작위치")
+        start_label.setAlignment(Qt.AlignCenter)
+        start_label.setStyleSheet(range_label_style)
+        self.start_btn = QPushButton(f"{self._start_value:g} mm")
+        self.start_btn.setFixedSize(90, 40)
+        self.start_btn.setCursor(Qt.PointingHandCursor)
+        self.start_btn.setStyleSheet(range_btn_style)
+        self.start_btn.clicked.connect(self._on_start_click)
+        start_col.addWidget(start_label)
+        start_col.addWidget(self.start_btn, alignment=Qt.AlignCenter)
+
+        # 끝 위치
+        end_col = QVBoxLayout()
+        end_col.setSpacing(2)
+        end_label = QLabel("끝위치")
+        end_label.setAlignment(Qt.AlignCenter)
+        end_label.setStyleSheet(range_label_style)
+        self.end_btn = QPushButton(f"{self._end_value:g} mm")
+        self.end_btn.setFixedSize(90, 40)
+        self.end_btn.setCursor(Qt.PointingHandCursor)
+        self.end_btn.setStyleSheet(range_btn_style)
+        self.end_btn.clicked.connect(self._on_end_click)
+        end_col.addWidget(end_label)
+        end_col.addWidget(self.end_btn, alignment=Qt.AlignCenter)
+
+        range_layout.addStretch()
+        range_layout.addLayout(start_col)
+        range_layout.addLayout(end_col)
+        range_layout.addStretch()
+        layout.addLayout(range_layout)
+
+        layout.addStretch(1)
 
         # 제어 버튼들 (HOME, MOVE)
         control_layout = QHBoxLayout()
@@ -335,6 +401,44 @@ class BladePanel(QFrame):
         self.speed_btn.setText(f"{self._speed_value} mm/s")
         self.speed_changed.emit(self._speed_value)
 
+    def _on_start_click(self):
+        """시작 위치 클릭 - 키패드"""
+        keypad = NumericKeypad(
+            title="시작위치",
+            value=self._start_value,
+            unit="mm",
+            min_val=0.0,
+            max_val=10.0,
+            allow_decimal=True,
+            parent=self.window()
+        )
+        keypad.value_confirmed.connect(self._on_start_confirmed)
+        keypad.exec()
+
+    def _on_start_confirmed(self, value: float):
+        self._start_value = value
+        self.start_btn.setText(f"{self._start_value:g} mm")
+        self.start_changed.emit(self._start_value)
+
+    def _on_end_click(self):
+        """끝 위치 클릭 - 키패드"""
+        keypad = NumericKeypad(
+            title="끝위치",
+            value=self._end_value,
+            unit="mm",
+            min_val=130.0,
+            max_val=140.0,
+            allow_decimal=True,
+            parent=self.window()
+        )
+        keypad.value_confirmed.connect(self._on_end_confirmed)
+        keypad.exec()
+
+    def _on_end_confirmed(self, value: float):
+        self._end_value = value
+        self.end_btn.setText(f"{self._end_value:g} mm")
+        self.end_changed.emit(self._end_value)
+
     def get_speed(self) -> int:
         """현재 속도 값 반환"""
         return self._speed_value
@@ -343,6 +447,20 @@ class BladePanel(QFrame):
         """속도 값 설정"""
         self._speed_value = max(self._min_speed, min(self._max_speed, value))
         self.speed_btn.setText(f"{self._speed_value} mm/s")
+
+    def get_start(self) -> float:
+        return self._start_value
+
+    def set_start(self, value: float):
+        self._start_value = max(0.0, min(10.0, value))
+        self.start_btn.setText(f"{self._start_value:g} mm")
+
+    def get_end(self) -> float:
+        return self._end_value
+
+    def set_end(self, value: float):
+        self._end_value = max(130.0, min(140.0, value))
+        self.end_btn.setText(f"{self._end_value:g} mm")
 
 
 class YAxisPanel(QFrame):
@@ -557,6 +675,8 @@ class SettingPage(BasePage):
 
     # Blade 시그널
     blade_speed_changed = Signal(int)
+    blade_start_changed = Signal(float)
+    blade_end_changed = Signal(float)
     blade_move = Signal()  # MOVE 버튼 클릭
     blade_home = Signal()
 
@@ -585,6 +705,8 @@ class SettingPage(BasePage):
         # Blade 패널
         self.blade_panel = BladePanel()
         self.blade_panel.speed_changed.connect(self.blade_speed_changed.emit)
+        self.blade_panel.start_changed.connect(self.blade_start_changed.emit)
+        self.blade_panel.end_changed.connect(self.blade_end_changed.emit)
         self.blade_panel.blade_move.connect(self.blade_move.emit)
         self.blade_panel.home_axis.connect(self.blade_home.emit)
 
@@ -617,4 +739,16 @@ class SettingPage(BasePage):
     def set_blade_speed(self, value: int):
         """Blade 속도 값 설정"""
         self.blade_panel.set_speed(value)
+
+    def get_blade_start(self) -> float:
+        return self.blade_panel.get_start()
+
+    def set_blade_start(self, value: float):
+        self.blade_panel.set_start(value)
+
+    def get_blade_end(self) -> float:
+        return self.blade_panel.get_end()
+
+    def set_blade_end(self, value: float):
+        self.blade_panel.set_end(value)
 

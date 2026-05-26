@@ -261,9 +261,13 @@ class MainWindow(QMainWindow):
         # Setting 페이지에 적용
         saved_led_power = self.settings.get_led_power()
         saved_blade_speed = self.settings.get_blade_speed()
+        saved_blade_start = self.settings.get_blade_start()
+        saved_blade_end = self.settings.get_blade_end()
 
         self.setting_page.set_led_power(saved_led_power)
         self.setting_page.set_blade_speed(saved_blade_speed)
+        self.setting_page.set_blade_start(saved_blade_start)
+        self.setting_page.set_blade_end(saved_blade_end)
 
         # 선택된 소재 프리셋을 FilePreview에 적용
         preset = self.settings.get_selected_material_preset()
@@ -302,6 +306,8 @@ class MainWindow(QMainWindow):
         self.setting_page.blade_move.connect(self._setting_blade_move)
         self.setting_page.led_power_changed.connect(self._on_led_power_changed)
         self.setting_page.blade_speed_changed.connect(self._on_blade_speed_changed)
+        self.setting_page.blade_start_changed.connect(self._on_blade_start_changed)
+        self.setting_page.blade_end_changed.connect(self._on_blade_end_changed)
         self.setting_page.y_move.connect(self._setting_y_move)
         self.setting_page.y_home.connect(self._setting_y_home)
         self.setting_page.y_prime_start.connect(self._setting_y_prime_start)
@@ -535,6 +541,8 @@ class MainWindow(QMainWindow):
         # 파라미터 추출
         total_layers = params.get('totalLayer', 100)
         blade_speed = params.get('bladeSpeed', 300)
+        blade_start = self.settings.get_blade_start()
+        blade_end = self.settings.get_blade_end()
         led_power_percent = params.get('ledPower', 43)
         led_power = int(1023 * led_power_percent / 100)
         leveling_cycles = params.get('levelingCycles', 1)
@@ -620,6 +628,8 @@ class MainWindow(QMainWindow):
             file_path=file_path,
             params=params,
             blade_speed=blade_speed,
+            blade_start=blade_start,
+            blade_end=blade_end,
             led_power=led_power,
             leveling_cycles=leveling_cycles,
             blade_cycles=blade_cycles,
@@ -876,6 +886,16 @@ class MainWindow(QMainWindow):
         """Blade Speed 변경 시 저장"""
         print(f"[Setting] Blade Speed 변경: {speed}mm/s")
         self.settings.set_blade_speed(speed)
+
+    def _on_blade_start_changed(self, value: float):
+        """블레이드 시작 위치 변경 시 저장"""
+        print(f"[Setting] Blade Start 변경: {value}mm")
+        self.settings.set_blade_start(value)
+
+    def _on_blade_end_changed(self, value: float):
+        """블레이드 끝 위치 변경 시 저장"""
+        print(f"[Setting] Blade End 변경: {value}mm")
+        self.settings.set_blade_end(value)
 
     # ==================== 시스템 메뉴 ====================
 

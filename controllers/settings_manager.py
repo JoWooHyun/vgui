@@ -60,6 +60,8 @@ class PrintSettings:
     """프린트 관련 설정"""
     led_power: int = 43         # LED 파워 (9-100%, 1023=100%, 440=43%)
     blade_speed: int = 5        # Blade 속도 (1-30 mm/s)
+    blade_start: float = 0.0   # 블레이드 시작 위치 (0~10mm)
+    blade_end: float = 140.0   # 블레이드 끝 위치 (130~140mm)
     y_dispense_distance: float = 1.0   # Resin 토출거리 (mm/레이어)
     y_dispense_speed: int = 3          # Resin 토출속도 (mm/s)
     y_dispense_delay: float = 5.0      # Resin 토출 대기시간 (초)
@@ -123,6 +125,8 @@ class SettingsManager:
             self._settings.print_settings = PrintSettings(
                 led_power=print_data.get('led_power', 100),
                 blade_speed=print_data.get('blade_speed', 5),
+                blade_start=print_data.get('blade_start', 0.0),
+                blade_end=print_data.get('blade_end', 140.0),
                 y_dispense_distance=print_data.get('y_dispense_distance', 1.0),
                 y_dispense_speed=print_data.get('y_dispense_speed', 5),
                 y_dispense_delay=print_data.get('y_dispense_delay', 2.0),
@@ -281,6 +285,24 @@ class SettingsManager:
         self._settings.print_settings.blade_speed = value
         self.save()
 
+    # ==================== Blade Start/End Position ====================
+
+    def get_blade_start(self) -> float:
+        return self._settings.print_settings.blade_start
+
+    def set_blade_start(self, value: float):
+        value = max(0.0, min(10.0, value))
+        self._settings.print_settings.blade_start = value
+        self.save()
+
+    def get_blade_end(self) -> float:
+        return self._settings.print_settings.blade_end
+
+    def set_blade_end(self, value: float):
+        value = max(130.0, min(140.0, value))
+        self._settings.print_settings.blade_end = value
+        self.save()
+
     # ==================== Y Dispense Distance ====================
 
     def get_y_dispense_distance(self) -> float:
@@ -356,6 +378,10 @@ class SettingsManager:
             return self._settings.print_settings.led_power
         elif key == "blade_speed":
             return self._settings.print_settings.blade_speed
+        elif key == "blade_start":
+            return self._settings.print_settings.blade_start
+        elif key == "blade_end":
+            return self._settings.print_settings.blade_end
         elif key == "y_dispense_distance":
             return self._settings.print_settings.y_dispense_distance
         elif key == "y_dispense_speed":
@@ -376,6 +402,10 @@ class SettingsManager:
             self._settings.print_settings.led_power = value
         elif key == "blade_speed":
             self._settings.print_settings.blade_speed = value
+        elif key == "blade_start":
+            self._settings.print_settings.blade_start = value
+        elif key == "blade_end":
+            self._settings.print_settings.blade_end = value
         elif key == "y_dispense_distance":
             self._settings.print_settings.y_dispense_distance = value
         elif key == "y_dispense_speed":
