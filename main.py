@@ -86,7 +86,6 @@ from pages.theme_page import ThemePage
 from pages.material_page import MaterialPage
 from pages.test_material_page import TestMaterialPage
 from pages.print_test_page import PrintTestPage
-from pages.test_progress_page import TestProgressPage
 
 # 하드웨어 컨트롤러
 from controllers.motor_controller import MotorController
@@ -138,7 +137,6 @@ class MainWindow(QMainWindow):
     PAGE_MATERIAL = 14
     PAGE_TEST_MATERIAL = 15
     PAGE_PRINT_TEST = 16
-    PAGE_TEST_PROGRESS = 17
 
     def __init__(self, kiosk_mode: bool = False, simulation: bool = True):
         super().__init__()
@@ -247,7 +245,6 @@ class MainWindow(QMainWindow):
         self.material_page = MaterialPage()
         self.test_material_page = TestMaterialPage()
         self.print_test_page = PrintTestPage()
-        self.test_progress_page = TestProgressPage()
 
         # 스택에 추가
         self.stack.addWidget(self.main_page)         # 0
@@ -267,7 +264,6 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.material_page)    # 14
         self.stack.addWidget(self.test_material_page)  # 15
         self.stack.addWidget(self.print_test_page)     # 16
-        self.stack.addWidget(self.test_progress_page)  # 17
 
         self.setCentralWidget(self.stack)
 
@@ -316,12 +312,12 @@ class MainWindow(QMainWindow):
         self.test_material_page.go_print_test.connect(lambda: self._go_to_page(self.PAGE_PRINT_TEST))
         self.print_test_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TEST_MATERIAL))
         self.print_test_page.start_test.connect(self._on_start_test)
-        self.test_progress_page.go_home.connect(lambda: self._go_to_page(self.PAGE_MAIN))
-        self.test_progress_page.pause_requested.connect(self._on_test_pause)
-        self.test_progress_page.resume_requested.connect(self._on_test_resume)
-        self.test_progress_page.stop_requested.connect(self._on_test_stop)
-        self.test_progress_page.refill_completed.connect(self._on_test_refill_completed)
-        self.test_progress_page.manual_feed_selected.connect(self._on_test_manual_feed)
+        self.print_test_page.go_home.connect(lambda: self._go_to_page(self.PAGE_MAIN))
+        self.print_test_page.pause_requested.connect(self._on_test_pause)
+        self.print_test_page.resume_requested.connect(self._on_test_resume)
+        self.print_test_page.stop_requested.connect(self._on_test_stop)
+        self.print_test_page.refill_completed.connect(self._on_test_refill_completed)
+        self.print_test_page.manual_feed_selected.connect(self._on_test_manual_feed)
 
         # 소재 페이지
         self.material_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TOOL))
@@ -784,10 +780,9 @@ class MainWindow(QMainWindow):
 
         print(f"[TestPrint] Resin 시작 위치: {priming_pos}mm")
 
-        # TestProgressPage로 전환
+        # 진행 모드 전환 (같은 페이지 내에서)
         total_layers = params.get('totalLayer', 10)
-        self.test_progress_page.start_progress(total_layers)
-        self._go_to_page(self.PAGE_TEST_PROGRESS)
+        self.print_test_page.start_progress(total_layers)
 
         # TestPrintWorker 생성 및 시작
         self.test_print_worker = TestPrintWorker(
@@ -797,7 +792,7 @@ class MainWindow(QMainWindow):
         self.test_print_worker.simulation = self.simulation
 
         # 워커 시그널 연결
-        self.test_print_worker.progress_updated.connect(self.test_progress_page.update_progress)
+        self.test_print_worker.progress_updated.connect(self.print_test_page.update_progress)
         self.test_print_worker.print_completed.connect(self._on_test_completed)
         self.test_print_worker.print_stopped.connect(self._on_test_stopped)
         self.test_print_worker.error_occurred.connect(self._on_test_error)
@@ -824,20 +819,20 @@ class MainWindow(QMainWindow):
     def _on_test_completed(self):
         print("[TestPrint] 테스트 완료!")
         self._save_current_y_position()
-        self.test_progress_page.show_completed()
+        self.print_test_page.show_completed()
 
     def _on_test_stopped(self):
         print("[TestPrint] 테스트 정지됨")
         self._save_current_y_position()
-        self.test_progress_page.show_stopped()
+        self.print_test_page.show_stopped()
 
     def _on_test_error(self, message: str):
         print(f"[TestPrint] 오류: {message}")
-        self.test_progress_page.show_error(message)
+        self.print_test_page.show_error(message)
 
     def _on_test_resin_empty(self):
         print("[TestPrint] Resin empty — 주사기 교체 대기")
-        self.test_progress_page.show_resin_empty()
+        self.print_test_page.show_resin_empty()
 
     def _on_test_refill_completed(self):
         self.motor.get_position()
@@ -867,7 +862,7 @@ class MainWindow(QMainWindow):
         if self.test_print_worker and self.test_print_worker.isRunning():
             self.test_print_worker.stop()
         else:
-            self.test_progress_page.show_stopped()
+            self.print_test_page.show_stopped()
 
     def _on_file_deleted(self, file_path: str):
         """파일 삭제됨"""

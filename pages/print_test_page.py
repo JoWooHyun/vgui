@@ -1,13 +1,16 @@
 """
 VERICOM DLP 3D Printer GUI - Print Test Page
-테스트 모드 설정 요약 + 레이어 수 입력 + Start 버튼
+테스트 모드 설정 요약 + 레이어 설정/시작 + 진행 상태 (통합 페이지)
+좌측: 설정 요약 (항상 표시), 우측: 대기 모드 ↔ 진행 모드 전환
 """
+
+import time as _time
 
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QGridLayout,
     QWidget, QLabel, QPushButton
 )
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Signal, Qt, QTimer
 
 from pages.base_page import BasePage
 from components.numeric_keypad import NumericKeypad
@@ -18,9 +21,18 @@ from controllers.settings_manager import get_settings
 
 
 class PrintTestPage(BasePage):
-    """테스트 프린트 설정 및 시작 페이지"""
+    """테스트 프린트 통합 페이지 (설정 + 진행)"""
 
+    # 대기 모드 시그널
     start_test = Signal(dict)
+
+    # 진행 모드 시그널
+    go_home = Signal()
+    pause_requested = Signal()
+    resume_requested = Signal()
+    stop_requested = Signal()
+    refill_completed = Signal()
+    manual_feed_selected = Signal()
 
     def __init__(self, parent=None):
         super().__init__("Print Test", show_back=True, parent=parent)
@@ -28,7 +40,15 @@ class PrintTestPage(BasePage):
         self._total_layers = 10
         self._layer_height = 0.05
         self._bottom_layers = 3
+        self._is_paused = False
+        self._start_time = 0
+        self._is_running = False
         self._setup_content()
+
+        # 경과 시간 타이머
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._update_elapsed)
+        self._timer.setInterval(1000)
 
     def _setup_content(self):
         self.content_layout.setContentsMargins(20, 10, 20, 10)
@@ -36,7 +56,7 @@ class PrintTestPage(BasePage):
         main_row = QHBoxLayout()
         main_row.setSpacing(20)
 
-        # === 좌측: 현재 설정 요약 ===
+        # === 좌측: 설정 요약 (항상 표시) ===
         left_panel = QWidget()
         left_panel.setStyleSheet(f"""
             QWidget {{
@@ -94,7 +114,7 @@ class PrintTestPage(BasePage):
         left_layout.addStretch()
         main_row.addWidget(left_panel, 3)
 
-        # === 우측: 레이어 설정 + Start ===
+        # === 우측 패널 ===
         right_panel = QWidget()
         right_panel.setStyleSheet(f"""
             QWidget {{
@@ -102,9 +122,12 @@ class PrintTestPage(BasePage):
                 border-radius: {Radius.LG}px;
             }}
         """)
-        right_layout = QVBoxLayout(right_panel)
-        right_layout.setContentsMargins(20, 15, 20, 15)
-        right_layout.setSpacing(12)
+        self._right_layout = QVBoxLayout(right_panel)
+        self._right_layout.setContentsMargins(20, 15, 20, 15)
+        self._right_layout.setSpacing(12)
+
+        # --- 대기 모드 위젯들 ---
+        self._setup_widgets = []
 
         # 레이어 수
         row_layers = QHBoxLayout()
@@ -112,6 +135,7 @@ class PrintTestPage(BasePage):
         lbl_layers.setFont(Fonts.h3())
         lbl_layers.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; background: transparent;")
         row_layers.addWidget(lbl_layers)
+        self._setup_widgets.append(lbl_layers)
 
         self.lbl_layer_count = QLabel(str(self._total_layers))
         self.lbl_layer_count.setFont(Fonts.h2())
@@ -119,7 +143,8 @@ class PrintTestPage(BasePage):
         self.lbl_layer_count.setStyleSheet(f"color: {Colors.AMBER}; background: transparent; font-weight: bold;")
         self.lbl_layer_count.mousePressEvent = lambda e: self._edit_value("layers")
         row_layers.addWidget(self.lbl_layer_count)
-        right_layout.addLayout(row_layers)
+        self._setup_widgets.append(self.lbl_layer_count)
+        self._right_layout.addLayout(row_layers)
 
         # 레이어 높이
         row_height = QHBoxLayout()
@@ -127,6 +152,7 @@ class PrintTestPage(BasePage):
         lbl_h.setFont(Fonts.h3())
         lbl_h.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; background: transparent;")
         row_height.addWidget(lbl_h)
+        self._setup_widgets.append(lbl_h)
 
         self.lbl_layer_height = QLabel(f"{self._layer_height} mm")
         self.lbl_layer_height.setFont(Fonts.h2())
@@ -134,7 +160,8 @@ class PrintTestPage(BasePage):
         self.lbl_layer_height.setStyleSheet(f"color: {Colors.AMBER}; background: transparent; font-weight: bold;")
         self.lbl_layer_height.mousePressEvent = lambda e: self._edit_value("height")
         row_height.addWidget(self.lbl_layer_height)
-        right_layout.addLayout(row_height)
+        self._setup_widgets.append(self.lbl_layer_height)
+        self._right_layout.addLayout(row_height)
 
         # 바닥 레이어
         row_bottom = QHBoxLayout()
@@ -142,6 +169,7 @@ class PrintTestPage(BasePage):
         lbl_b.setFont(Fonts.h3())
         lbl_b.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; background: transparent;")
         row_bottom.addWidget(lbl_b)
+        self._setup_widgets.append(lbl_b)
 
         self.lbl_bottom_layers = QLabel(str(self._bottom_layers))
         self.lbl_bottom_layers.setFont(Fonts.h2())
@@ -149,11 +177,10 @@ class PrintTestPage(BasePage):
         self.lbl_bottom_layers.setStyleSheet(f"color: {Colors.AMBER}; background: transparent; font-weight: bold;")
         self.lbl_bottom_layers.mousePressEvent = lambda e: self._edit_value("bottom")
         row_bottom.addWidget(self.lbl_bottom_layers)
-        right_layout.addLayout(row_bottom)
+        self._setup_widgets.append(self.lbl_bottom_layers)
+        self._right_layout.addLayout(row_bottom)
 
-        right_layout.addStretch()
-
-        # Start 버튼
+        # START 버튼
         self.btn_start = QPushButton("START")
         self.btn_start.setFixedHeight(60)
         self.btn_start.setFont(Fonts.h2())
@@ -169,14 +196,218 @@ class PrintTestPage(BasePage):
             QPushButton:pressed {{ background-color: {Colors.NAVY_LIGHT}; }}
         """)
         self.btn_start.clicked.connect(self._on_start)
-        right_layout.addWidget(self.btn_start)
+        self._setup_widgets.append(self.btn_start)
+
+        # stretch + START
+        self._setup_stretch = self._right_layout.addStretch()
+        self._right_layout.addWidget(self.btn_start)
+
+        # --- 진행 모드 위젯들 (처음에 숨김) ---
+        self._progress_widgets = []
+
+        # 상태 라벨
+        self.lbl_status = QLabel("Initializing...")
+        self.lbl_status.setFont(Fonts.h2())
+        self.lbl_status.setAlignment(Qt.AlignCenter)
+        self.lbl_status.setStyleSheet(f"color: {Colors.AMBER}; font-weight: bold;")
+        self._right_layout.addWidget(self.lbl_status)
+        self._progress_widgets.append(self.lbl_status)
+
+        # 레이어 진행
+        self.lbl_progress = QLabel("Layer: 0 / 0")
+        self.lbl_progress.setFont(Fonts.h1())
+        self.lbl_progress.setAlignment(Qt.AlignCenter)
+        self.lbl_progress.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; font-weight: bold;")
+        self._right_layout.addWidget(self.lbl_progress)
+        self._progress_widgets.append(self.lbl_progress)
+
+        # 시간 정보
+        time_row = QHBoxLayout()
+        time_row.setSpacing(30)
+
+        elapsed_col = QVBoxLayout()
+        self._lbl_elapsed_title = QLabel("Elapsed")
+        self._lbl_elapsed_title.setFont(Fonts.caption())
+        self._lbl_elapsed_title.setAlignment(Qt.AlignCenter)
+        self._lbl_elapsed_title.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; background: transparent;")
+        elapsed_col.addWidget(self._lbl_elapsed_title)
+        self._progress_widgets.append(self._lbl_elapsed_title)
+
+        self.lbl_elapsed = QLabel("00:00:00")
+        self.lbl_elapsed.setFont(Fonts.h3())
+        self.lbl_elapsed.setAlignment(Qt.AlignCenter)
+        self.lbl_elapsed.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; background: transparent;")
+        elapsed_col.addWidget(self.lbl_elapsed)
+        self._progress_widgets.append(self.lbl_elapsed)
+        time_row.addLayout(elapsed_col)
+
+        remain_col = QVBoxLayout()
+        self._lbl_remain_title = QLabel("Remaining")
+        self._lbl_remain_title.setFont(Fonts.caption())
+        self._lbl_remain_title.setAlignment(Qt.AlignCenter)
+        self._lbl_remain_title.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; background: transparent;")
+        remain_col.addWidget(self._lbl_remain_title)
+        self._progress_widgets.append(self._lbl_remain_title)
+
+        self.lbl_remaining = QLabel("--:--:--")
+        self.lbl_remaining.setFont(Fonts.h3())
+        self.lbl_remaining.setAlignment(Qt.AlignCenter)
+        self.lbl_remaining.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; background: transparent;")
+        remain_col.addWidget(self.lbl_remaining)
+        self._progress_widgets.append(self.lbl_remaining)
+        time_row.addLayout(remain_col)
+
+        self._time_widget = QWidget()
+        self._time_widget.setLayout(time_row)
+        self._time_widget.setStyleSheet("background: transparent; border: none;")
+        self._right_layout.addWidget(self._time_widget)
+        self._progress_widgets.append(self._time_widget)
+
+        self._progress_stretch = self._right_layout.addStretch()
+
+        # 진행 모드 버튼들
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(12)
+
+        self.btn_pause = QPushButton("PAUSE")
+        self.btn_pause.setFixedSize(160, 50)
+        self.btn_pause.setFont(Fonts.h3())
+        self.btn_pause.setCursor(Qt.PointingHandCursor)
+        self.btn_pause.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.AMBER};
+                border: none; border-radius: {Radius.LG}px;
+                color: {Colors.WHITE}; font-weight: bold;
+            }}
+            QPushButton:pressed {{ opacity: 0.8; }}
+        """)
+        self.btn_pause.clicked.connect(self._on_pause_resume)
+        btn_row.addWidget(self.btn_pause)
+        self._progress_widgets.append(self.btn_pause)
+
+        self.btn_stop = QPushButton("STOP")
+        self.btn_stop.setFixedSize(160, 50)
+        self.btn_stop.setFont(Fonts.h3())
+        self.btn_stop.setCursor(Qt.PointingHandCursor)
+        self.btn_stop.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.RED};
+                border: none; border-radius: {Radius.LG}px;
+                color: {Colors.WHITE}; font-weight: bold;
+            }}
+            QPushButton:pressed {{ opacity: 0.8; }}
+        """)
+        self.btn_stop.clicked.connect(self.stop_requested.emit)
+        btn_row.addWidget(self.btn_stop)
+        self._progress_widgets.append(self.btn_stop)
+
+        self.btn_home = QPushButton("HOME")
+        self.btn_home.setFixedSize(160, 50)
+        self.btn_home.setFont(Fonts.h3())
+        self.btn_home.setCursor(Qt.PointingHandCursor)
+        self.btn_home.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.NAVY};
+                border: none; border-radius: {Radius.LG}px;
+                color: {Colors.WHITE}; font-weight: bold;
+            }}
+            QPushButton:pressed {{ background-color: {Colors.NAVY_LIGHT}; }}
+        """)
+        self.btn_home.clicked.connect(self._on_home)
+        btn_row.addWidget(self.btn_home)
+        self._progress_widgets.append(self.btn_home)
+
+        self._btn_row_widget = QWidget()
+        self._btn_row_widget.setLayout(btn_row)
+        self._btn_row_widget.setStyleSheet("background: transparent; border: none;")
+        self._right_layout.addWidget(self._btn_row_widget)
+        self._progress_widgets.append(self._btn_row_widget)
+
+        # Resin empty 버튼 행
+        resin_row = QHBoxLayout()
+        resin_row.setSpacing(12)
+
+        self.btn_refill = QPushButton("REFILL DONE")
+        self.btn_refill.setFixedSize(160, 50)
+        self.btn_refill.setFont(Fonts.h3())
+        self.btn_refill.setCursor(Qt.PointingHandCursor)
+        self.btn_refill.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.GREEN};
+                border: none; border-radius: {Radius.LG}px;
+                color: {Colors.WHITE}; font-weight: bold;
+            }}
+            QPushButton:pressed {{ opacity: 0.8; }}
+        """)
+        self.btn_refill.clicked.connect(self._on_refill_done)
+        resin_row.addWidget(self.btn_refill)
+
+        self.btn_manual_feed = QPushButton("MANUAL FEED")
+        self.btn_manual_feed.setFixedSize(160, 50)
+        self.btn_manual_feed.setFont(Fonts.h3())
+        self.btn_manual_feed.setCursor(Qt.PointingHandCursor)
+        self.btn_manual_feed.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.CYAN};
+                border: none; border-radius: {Radius.LG}px;
+                color: {Colors.WHITE}; font-weight: bold;
+            }}
+            QPushButton:pressed {{ opacity: 0.8; }}
+        """)
+        self.btn_manual_feed.clicked.connect(self._on_manual_feed)
+        resin_row.addWidget(self.btn_manual_feed)
+
+        self._resin_row_widget = QWidget()
+        self._resin_row_widget.setLayout(resin_row)
+        self._resin_row_widget.setStyleSheet("background: transparent; border: none;")
+        self._right_layout.addWidget(self._resin_row_widget)
+        self._progress_widgets.append(self._resin_row_widget)
 
         main_row.addWidget(right_panel, 2)
         self.content_layout.addLayout(main_row)
 
+        # 초기 상태: 대기 모드
+        self._show_setup_mode()
+
+    # ==================== 모드 전환 ====================
+
+    def _show_setup_mode(self):
+        """대기 모드 (설정 입력 + START)"""
+        self._is_running = False
+        # Back 버튼 활성화
+        if hasattr(self, 'btn_back'):
+            self.btn_back.show()
+
+        for w in self._setup_widgets:
+            w.show()
+        for w in self._progress_widgets:
+            w.hide()
+
+    def _show_progress_mode(self):
+        """진행 모드 (상태 + 버튼)"""
+        self._is_running = True
+        # 진행 중 Back 비활성화
+        if hasattr(self, 'btn_back'):
+            self.btn_back.hide()
+
+        for w in self._setup_widgets:
+            w.hide()
+        for w in self._progress_widgets:
+            w.show()
+
+        # 초기 버튼 상태
+        self.btn_pause.show()
+        self.btn_pause.setText("PAUSE")
+        self.btn_stop.show()
+        self.btn_home.hide()
+        self._resin_row_widget.hide()
+
+    # ==================== 대기 모드 (기존 기능) ====================
+
     def showEvent(self, event):
         super().showEvent(event)
-        self._refresh_settings()
+        if not self._is_running:
+            self._refresh_settings()
 
     def _refresh_settings(self):
         preset = self.settings.get_selected_test_material_preset()
@@ -196,6 +427,8 @@ class PrintTestPage(BasePage):
         self._labels["priming_pos"].setText(f"{priming:.1f}")
 
     def _edit_value(self, which: str):
+        if self._is_running:
+            return
         if which == "layers":
             keypad = NumericKeypad(
                 title="Total Layers",
@@ -252,3 +485,115 @@ class PrintTestPage(BasePage):
         }
 
         self.start_test.emit(params)
+
+    # ==================== 진행 모드 (TestProgressPage에서 이식) ====================
+
+    def start_progress(self, total_layers: int):
+        """테스트 시작 — 진행 모드 전환"""
+        self._show_progress_mode()
+        self._total_layers_progress = total_layers
+        self._current_layer = 0
+        self._start_time = _time.monotonic()
+        self._is_paused = False
+
+        self.lbl_status.setText("Testing...")
+        self.lbl_status.setStyleSheet(f"color: {Colors.AMBER}; font-weight: bold;")
+        self.lbl_progress.setText(f"Layer: 0 / {total_layers}")
+        self.lbl_elapsed.setText("00:00:00")
+        self.lbl_remaining.setText("--:--:--")
+
+        self._timer.start()
+
+    def update_progress(self, current: int, total: int):
+        self._current_layer = current
+        self._total_layers_progress = total
+        self.lbl_progress.setText(f"Layer: {current} / {total}")
+
+        if current > 0:
+            elapsed = _time.monotonic() - self._start_time
+            per_layer = elapsed / current
+            remaining = per_layer * (total - current)
+            self.lbl_remaining.setText(self._format_time(remaining))
+
+    def show_completed(self):
+        self._timer.stop()
+        self.lbl_status.setText("TEST COMPLETED")
+        self.lbl_status.setStyleSheet(f"color: {Colors.GREEN}; font-weight: bold;")
+        self.btn_pause.hide()
+        self.btn_stop.hide()
+        self.btn_home.show()
+        self._resin_row_widget.hide()
+
+    def show_stopped(self):
+        self._timer.stop()
+        self.lbl_status.setText("TEST STOPPED")
+        self.lbl_status.setStyleSheet(f"color: {Colors.RED}; font-weight: bold;")
+        self.btn_pause.hide()
+        self.btn_stop.hide()
+        self.btn_home.show()
+        self._resin_row_widget.hide()
+
+    def show_error(self, message: str):
+        self._timer.stop()
+        self.lbl_status.setText(f"ERROR: {message}")
+        self.lbl_status.setStyleSheet(f"color: {Colors.RED}; font-weight: bold;")
+        self.btn_pause.hide()
+        self.btn_stop.hide()
+        self.btn_home.show()
+        self._resin_row_widget.hide()
+
+    def show_resin_empty(self):
+        self.lbl_status.setText("RESIN EMPTY")
+        self.lbl_status.setStyleSheet(f"color: {Colors.AMBER}; font-weight: bold;")
+        self.btn_pause.hide()
+        self.btn_stop.show()
+        self._resin_row_widget.show()
+
+    def _on_refill_done(self):
+        self._resin_row_widget.hide()
+        self.btn_pause.show()
+        self.btn_pause.setText("PAUSE")
+        self._is_paused = False
+        self.lbl_status.setText("Testing...")
+        self.lbl_status.setStyleSheet(f"color: {Colors.AMBER}; font-weight: bold;")
+        self.refill_completed.emit()
+
+    def _on_manual_feed(self):
+        self._resin_row_widget.hide()
+        self.btn_pause.show()
+        self.btn_pause.setText("PAUSE")
+        self._is_paused = False
+        self.lbl_status.setText("Testing (Manual)...")
+        self.lbl_status.setStyleSheet(f"color: {Colors.AMBER}; font-weight: bold;")
+        self.manual_feed_selected.emit()
+
+    def _on_pause_resume(self):
+        if self._is_paused:
+            self._is_paused = False
+            self.btn_pause.setText("PAUSE")
+            self.lbl_status.setText("Testing...")
+            self.lbl_status.setStyleSheet(f"color: {Colors.AMBER}; font-weight: bold;")
+            self.resume_requested.emit()
+        else:
+            self._is_paused = True
+            self.btn_pause.setText("RESUME")
+            self.lbl_status.setText("PAUSED")
+            self.lbl_status.setStyleSheet(f"color: {Colors.AMBER}; font-weight: bold;")
+            self.pause_requested.emit()
+
+    def _on_home(self):
+        """HOME 클릭 — 대기 모드로 복원 후 메인으로"""
+        self._timer.stop()
+        self._show_setup_mode()
+        self.go_home.emit()
+
+    def _update_elapsed(self):
+        elapsed = _time.monotonic() - self._start_time
+        self.lbl_elapsed.setText(self._format_time(elapsed))
+
+    @staticmethod
+    def _format_time(seconds: float) -> str:
+        h = int(seconds // 3600)
+        m = int((seconds % 3600) // 60)
+        s = int(seconds % 60)
+        return f"{h:02d}:{m:02d}:{s:02d}"
