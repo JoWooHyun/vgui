@@ -39,7 +39,8 @@ class PrintTestPage(BasePage):
         self.settings = get_settings()
         self._total_layers = 10
         self._layer_height = 0.05
-        self._bottom_layers = 3
+        self._z_offset = 0.0
+        self._settle_time = 0.0
         self._is_paused = False
         self._start_time = 0
         self._is_running = False
@@ -89,6 +90,8 @@ class PrintTestPage(BasePage):
             ("Return Dist", "y_return_dist", "mm"),
             ("Return Delay", "y_return_delay", "s"),
             ("Priming Pos", "priming_pos", "mm"),
+            ("Z Offset", "z_offset", "mm"),
+            ("Settle Time", "settle_time", "s"),
         ]
 
         for i, (label, key, unit) in enumerate(items):
@@ -163,22 +166,39 @@ class PrintTestPage(BasePage):
         self._setup_widgets.append(self.lbl_layer_height)
         self._right_layout.addLayout(row_height)
 
-        # 바닥 레이어
-        row_bottom = QHBoxLayout()
-        lbl_b = QLabel("Bottom Layers:")
-        lbl_b.setFont(Fonts.h3())
-        lbl_b.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; background: transparent;")
-        row_bottom.addWidget(lbl_b)
-        self._setup_widgets.append(lbl_b)
+        # Z 오프셋
+        row_zoffset = QHBoxLayout()
+        lbl_zo = QLabel("Z Offset:")
+        lbl_zo.setFont(Fonts.h3())
+        lbl_zo.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; background: transparent;")
+        row_zoffset.addWidget(lbl_zo)
+        self._setup_widgets.append(lbl_zo)
 
-        self.lbl_bottom_layers = QLabel(str(self._bottom_layers))
-        self.lbl_bottom_layers.setFont(Fonts.h2())
-        self.lbl_bottom_layers.setAlignment(Qt.AlignCenter)
-        self.lbl_bottom_layers.setStyleSheet(f"color: {Colors.AMBER}; background: transparent; font-weight: bold;")
-        self.lbl_bottom_layers.mousePressEvent = lambda e: self._edit_value("bottom")
-        row_bottom.addWidget(self.lbl_bottom_layers)
-        self._setup_widgets.append(self.lbl_bottom_layers)
-        self._right_layout.addLayout(row_bottom)
+        self.lbl_z_offset = QLabel(f"{self._z_offset:.2f} mm")
+        self.lbl_z_offset.setFont(Fonts.h2())
+        self.lbl_z_offset.setAlignment(Qt.AlignCenter)
+        self.lbl_z_offset.setStyleSheet(f"color: {Colors.AMBER}; background: transparent; font-weight: bold;")
+        self.lbl_z_offset.mousePressEvent = lambda e: self._edit_value("z_offset")
+        row_zoffset.addWidget(self.lbl_z_offset)
+        self._setup_widgets.append(self.lbl_z_offset)
+        self._right_layout.addLayout(row_zoffset)
+
+        # Settle Time
+        row_settle = QHBoxLayout()
+        lbl_st = QLabel("Settle Time:")
+        lbl_st.setFont(Fonts.h3())
+        lbl_st.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; background: transparent;")
+        row_settle.addWidget(lbl_st)
+        self._setup_widgets.append(lbl_st)
+
+        self.lbl_settle_time = QLabel(f"{self._settle_time:.1f} s")
+        self.lbl_settle_time.setFont(Fonts.h2())
+        self.lbl_settle_time.setAlignment(Qt.AlignCenter)
+        self.lbl_settle_time.setStyleSheet(f"color: {Colors.AMBER}; background: transparent; font-weight: bold;")
+        self.lbl_settle_time.mousePressEvent = lambda e: self._edit_value("settle_time")
+        row_settle.addWidget(self.lbl_settle_time)
+        self._setup_widgets.append(self.lbl_settle_time)
+        self._right_layout.addLayout(row_settle)
 
         # START 버튼
         self.btn_start = QPushButton("START")
@@ -426,6 +446,9 @@ class PrintTestPage(BasePage):
         priming = self.settings.get_y_priming_position()
         self._labels["priming_pos"].setText(f"{priming:.1f}")
 
+        self._labels["z_offset"].setText(f"{self._z_offset:.2f}")
+        self._labels["settle_time"].setText(f"{self._settle_time:.1f}")
+
     def _edit_value(self, which: str):
         if self._is_running:
             return
@@ -451,17 +474,28 @@ class PrintTestPage(BasePage):
             if keypad.exec():
                 self._layer_height = keypad.get_value()
                 self.lbl_layer_height.setText(f"{self._layer_height} mm")
-        elif which == "bottom":
+        elif which == "z_offset":
             keypad = NumericKeypad(
-                title="Bottom Layers",
-                value=self._bottom_layers,
-                min_val=0, max_val=20,
-                allow_decimal=False,
+                title="Z Offset (mm)",
+                value=self._z_offset,
+                min_val=0.0, max_val=1.0,
+                allow_decimal=True,
                 parent=self
             )
             if keypad.exec():
-                self._bottom_layers = int(keypad.get_value())
-                self.lbl_bottom_layers.setText(str(self._bottom_layers))
+                self._z_offset = keypad.get_value()
+                self.lbl_z_offset.setText(f"{self._z_offset:.2f} mm")
+        elif which == "settle_time":
+            keypad = NumericKeypad(
+                title="Settle Time (s)",
+                value=self._settle_time,
+                min_val=0.0, max_val=30.0,
+                allow_decimal=True,
+                parent=self
+            )
+            if keypad.exec():
+                self._settle_time = keypad.get_value()
+                self.lbl_settle_time.setText(f"{self._settle_time:.1f} s")
 
     def _on_start(self):
         preset = self.settings.get_selected_test_material_preset()
@@ -469,7 +503,8 @@ class PrintTestPage(BasePage):
         params = {
             'totalLayer': self._total_layers,
             'layerHeight': self._layer_height,
-            'bottomLayerCount': self._bottom_layers,
+            'zOffset': self._z_offset,
+            'settleTime': self._settle_time,
             'bladeSpeed': preset.blade_speed * 60 if preset else 300,
             'bladeSpeed2': preset.blade_speed2 * 60 if preset else 1200,
             'bladeBoundary': preset.blade_boundary if preset else 60.0,

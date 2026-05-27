@@ -33,12 +33,13 @@ class PrintStatus(Enum):
 class PrintJob:
     total_layers: int = 100
     layer_height: float = 0.05
-    bottom_layer_count: int = 3
+    z_offset: float = 0.0
     blade_speed: int = 300       # mm/min (구간1: 0→boundary)
     blade_speed2: int = 1200     # mm/min (구간2: boundary→130)
     blade_boundary: float = 60.0 # 구간 경계 위치 (mm)
     blade_cycles: int = 1
     leveling_cycles: int = 1
+    settle_time: float = 0.0         # 초기+첫레이어 토출 후 대기(초)
     y_dispense_distance: float = 1.0
     y_dispense_speed: int = 300
     y_dispense_delay: float = 2.0
@@ -112,12 +113,13 @@ class TestPrintWorker(QThread):
         self._job = PrintJob(
             total_layers=params.get('totalLayer', 100),
             layer_height=params.get('layerHeight', 0.05),
-            bottom_layer_count=params.get('bottomLayerCount', 3),
+            z_offset=params.get('zOffset', 0.0),
             blade_speed=blade_speed,
             blade_speed2=blade_speed2,
             blade_boundary=blade_boundary,
             blade_cycles=blade_cycles,
             leveling_cycles=leveling_cycles,
+            settle_time=params.get('settleTime', 0.0),
             y_dispense_distance=y_dispense_distance,
             y_dispense_speed=y_dispense_speed,
             y_dispense_delay=y_dispense_delay,
@@ -225,15 +227,16 @@ class TestPrintWorker(QThread):
             self._is_stopped = True
             return
 
-        # Z축 홈 → 0.1mm 이동
+        # Z축 홈 → 평탄화용 높이 (z_offset or 0.1mm)
         if self._check_stopped():
             return
         if not self._motor_z_home():
             self.error_occurred.emit("Z축 홈 이동 실패")
             self._is_stopped = True
             return
-        if not self._motor_z_move(0.1):
-            self.error_occurred.emit("Z축 0.1mm 이동 실패")
+        leveling_z = job.z_offset if job.z_offset > 0 else 0.1
+        if not self._motor_z_move(leveling_z):
+            self.error_occurred.emit(f"Z축 {leveling_z}mm 이동 실패")
             self._is_stopped = True
             return
 
@@ -249,12 +252,34 @@ class TestPrintWorker(QThread):
             if not self._dispense_3step(-1, job, push_speed_override=INITIAL_DISPENSE_SPEED):
                 return
 
-        # 3. 레진 평탄화
-        if job.leveling_cycles > 0:
-            self._set_status(PrintStatus.LEVELING)
-            if self._check_stopped():
+        # Settle time 대기 (초기 토출)
+        if job.settle_time > 0:
+            print(f"[TestPrintWorker] 초기 토출 settle time: {job.settle_time}초")
+            if not self._wait_interruptible(job.settle_time):
                 return
-            self._run_leveling(job.leveling_cycles, job.blade_speed)
+
+        # 3. 레진 평탄화 (편도: 0→130)
+        self._set_status(PrintStatus.LEVELING)
+        if self._check_stopped():
+            return
+        if not self._motor_x_move(130, job.blade_speed):
+            self.error_occurred.emit("초기 평탄화 실패")
+            self._is_stopped = True
+            return
+        # Z 올림 + X 복귀
+        if not self._motor_z_move(leveling_z + 3.0):
+            self.error_occurred.emit("초기 평탄화 Z 리프트 실패")
+            self._is_stopped = True
+            return
+        if not self._motor_x_move(0, 1800):
+            self.error_occurred.emit("초기 평탄화 X 복귀 실패")
+            self._is_stopped = True
+            return
+        # Z 홈 복귀
+        if not self._motor_z_home():
+            self.error_occurred.emit("초기 평탄화 Z 홈 복귀 실패")
+            self._is_stopped = True
+            return
 
         # 4. 메인 프린팅 루프
         self._set_status(PrintStatus.PRINTING)
@@ -283,7 +308,7 @@ class TestPrintWorker(QThread):
 
     def _process_layer(self, layer_idx: int, job: PrintJob) -> bool:
         """레이어 처리 (DLP 없음, LED → 5초 대기)"""
-        z_position = (layer_idx + 1) * job.layer_height
+        z_position = job.z_offset + (layer_idx + 1) * job.layer_height
 
         # 1. Z축 이동
         if not self._motor_z_move(z_position):
@@ -317,6 +342,12 @@ class TestPrintWorker(QThread):
             else:
                 if not self._dispense_3step(layer_idx, job):
                     return False
+
+        # Settle time 대기 (첫 레이어만)
+        if layer_idx == 0 and job.settle_time > 0:
+            print(f"[TestPrintWorker] Layer 0 settle time: {job.settle_time}초")
+            if not self._wait_interruptible(job.settle_time):
+                return True
 
         # 3. X축 평탄화 (2구간)
         if not self._motor_x_move(job.blade_boundary, job.blade_speed):
