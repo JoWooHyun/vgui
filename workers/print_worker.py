@@ -47,7 +47,7 @@ class PrintJob:
     params: PrintParameters
     blade_speed: int = 300   # mm/min (리드스크류)
     blade_start: float = 0.0  # 블레이드 시작 위치 (mm)
-    blade_end: float = 140.0  # 블레이드 끝 위치 (mm)
+    blade_end: float = 130.0  # 블레이드 끝 위치 (mm)
     led_power: int = 440
     leveling_cycles: int = 1
     blade_cycles: int = 1  # 매 레이어 블레이드 왕복 횟수
@@ -135,7 +135,7 @@ class PrintWorker(QThread):
 
     def start_print(self, file_path: str, params: Dict[str, Any],
                    blade_speed: int = 300, blade_start: float = 0.0,
-                   blade_end: float = 140.0, led_power: int = 440,
+                   blade_end: float = 130.0, led_power: int = 440,
                    leveling_cycles: int = 1, blade_cycles: int = 1,
                    y_dispense_distance: float = 1.0,
                    y_dispense_speed: int = 300,
@@ -153,7 +153,7 @@ class PrintWorker(QThread):
             params: 프린트 파라미터 딕셔너리
             blade_speed: 블레이드 속도 (mm/min)
             blade_start: 블레이드 시작 위치 (mm, 0~10)
-            blade_end: 블레이드 끝 위치 (mm, 130~140)
+            blade_end: 블레이드 끝 위치 (mm, 120~130)
             led_power: LED 밝기 (91~1023)
             leveling_cycles: 레진 평탄화 횟수
             blade_cycles: 매 레이어 블레이드 왕복 횟수 (1~3)

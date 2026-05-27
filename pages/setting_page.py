@@ -208,7 +208,7 @@ class BladePanel(QFrame):
         self._min_speed = 1     # 최소 1 mm/s
         self._max_speed = 100   # 최대 100 mm/s
         self._start_value = 0.0   # 시작 위치 (0~10mm)
-        self._end_value = 140.0   # 끝 위치 (130~140mm)
+        self._end_value = 130.0   # 끝 위치 (120~130mm)
 
         self._setup_ui()
 
@@ -459,7 +459,7 @@ class BladePanel(QFrame):
         return self._end_value
 
     def set_end(self, value: float):
-        self._end_value = max(130.0, min(140.0, value))
+        self._end_value = max(120.0, min(130.0, value))
         self.end_btn.setText(f"{self._end_value:g} mm")
 
 

@@ -34,8 +34,8 @@ class TestMaterialPreset:
     """테스트 모드 전용 소재 프리셋 (프로덕션 설정과 완전 분리)"""
     name: str = "Default"
     blade_speed: int = 5            # Blade 구간1 속도 (1-100 mm/s, 0→boundary)
-    blade_speed2: int = 20          # Blade 구간2 속도 (1-100 mm/s, boundary→140)
-    blade_boundary: float = 60.0    # Blade 구간 경계 위치 (mm, 0~140)
+    blade_speed2: int = 20          # Blade 구간2 속도 (1-100 mm/s, boundary→130)
+    blade_boundary: float = 60.0    # Blade 구간 경계 위치 (mm, 0~130)
     led_power: int = 43             # LED 파워 (테스트에서는 사용 안함, 참고용)
     y_dispense_distance: float = 1.0
     y_dispense_speed: int = 3
@@ -96,7 +96,7 @@ class PrintSettings:
     led_power: int = 43         # LED 파워 (9-100%, 1023=100%, 440=43%)
     blade_speed: int = 5        # Blade 속도 (1-30 mm/s)
     blade_start: float = 0.0   # 블레이드 시작 위치 (0~10mm)
-    blade_end: float = 140.0   # 블레이드 끝 위치 (130~140mm)
+    blade_end: float = 130.0   # 블레이드 끝 위치 (120~130mm)
     y_dispense_distance: float = 1.0   # Resin 토출거리 (mm/레이어)
     y_dispense_speed: int = 3          # Resin 토출속도 (mm/s)
     y_dispense_delay: float = 5.0      # Resin 토출 대기시간 (초)
@@ -166,7 +166,7 @@ class SettingsManager:
                 led_power=print_data.get('led_power', 100),
                 blade_speed=print_data.get('blade_speed', 5),
                 blade_start=print_data.get('blade_start', 0.0),
-                blade_end=print_data.get('blade_end', 140.0),
+                blade_end=print_data.get('blade_end', 130.0),
                 y_dispense_distance=print_data.get('y_dispense_distance', 1.0),
                 y_dispense_speed=print_data.get('y_dispense_speed', 5),
                 y_dispense_delay=print_data.get('y_dispense_delay', 2.0),
@@ -365,7 +365,7 @@ class SettingsManager:
         return self._settings.print_settings.blade_end
 
     def set_blade_end(self, value: float):
-        value = max(130.0, min(140.0, value))
+        value = max(120.0, min(130.0, value))
         self._settings.print_settings.blade_end = value
         self.save()
 

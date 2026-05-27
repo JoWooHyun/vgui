@@ -18,7 +18,7 @@ class MotorConfig:
     x_speed: int = 300          # X축 이동 속도 (mm/min) - 리드스크류
     y_speed: int = 300          # Resin pump 이동 속도 (mm/min)
     x_min: float = 0.0          # X축 최소 위치 (mm)
-    x_max: float = 140.0        # X축 최대 위치 (mm) - printer.cfg position_max
+    x_max: float = 130.0        # X축 최대 위치 (mm) - printer.cfg position_max
     z_min: float = 0.0          # Z축 최소 위치 (mm)
     z_max: float = 80.0         # Z축 최대 위치 (mm) - 실제 스펙
     y_min: float = 0.0          # Resin pump 최소 위치 (mm) - 홈 = resin empty
@@ -542,14 +542,14 @@ class MotorController:
         for cycle in range(cycles):
             print(f"\n[Motor] --- 평탄화 {cycle + 1}/{cycles}회 ---")
 
-            print("[Motor] X축 0mm → 140mm 이동")
-            if not self.x_move_absolute(140, speed):
-                print("[Motor] X축 140mm 이동 실패 - 평탄화 중단")
+            print("[Motor] X축 0mm → 130mm 이동")
+            if not self.x_move_absolute(130, speed):
+                print("[Motor] X축 130mm 이동 실패 - 평탄화 중단")
                 return False
 
             time.sleep(0.2)
 
-            print("[Motor] X축 140mm → 0mm 이동")
+            print("[Motor] X축 130mm → 0mm 이동")
             if not self.x_move_absolute(0, speed):
                 print("[Motor] X축 0mm 이동 실패 - 평탄화 중단")
                 return False

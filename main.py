@@ -971,12 +971,12 @@ class MainWindow(QMainWindow):
 
         print(f"[Setting] Blade Move (현재: {x_pos:.1f}mm, 속도: {blade_speed_mms}mm/s)")
 
-        if x_pos > 70:  # 140에 가까우면 0으로
-            print("[Setting] Blade 140 → 0mm 이동")
+        if x_pos > 65:  # 130에 가까우면 0으로
+            print("[Setting] Blade 130 → 0mm 이동")
             self.motor.x_move_absolute(0, blade_speed)
-        else:  # 0에 가까우면 140으로
-            print("[Setting] Blade 0 → 140mm 이동")
-            self.motor.x_move_absolute(140, blade_speed)
+        else:  # 0에 가까우면 130으로
+            print("[Setting] Blade 0 → 130mm 이동")
+            self.motor.x_move_absolute(130, blade_speed)
 
     def _setting_y_move(self, distance: float):
         """Setting 페이지에서 Resin pump 이동"""
