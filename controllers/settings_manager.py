@@ -29,6 +29,23 @@ class MaterialPreset:
     y_return_delay: float = 2.0     # Return 구간 시간 (초) → speed = dist/delay*60
 
 
+@dataclass
+class TestMaterialPreset:
+    """테스트 모드 전용 소재 프리셋 (프로덕션 설정과 완전 분리)"""
+    name: str = "Default"
+    blade_speed: int = 5            # Blade 구간1 속도 (1-100 mm/s, 0→boundary)
+    blade_speed2: int = 20          # Blade 구간2 속도 (1-100 mm/s, boundary→140)
+    blade_boundary: float = 60.0    # Blade 구간 경계 위치 (mm, 0~140)
+    led_power: int = 43             # LED 파워 (테스트에서는 사용 안함, 참고용)
+    y_dispense_distance: float = 1.0
+    y_dispense_speed: int = 3
+    y_dispense_delay: float = 5.0
+    y_pull_distance: float = 0.0
+    y_pull_delay: float = 2.0
+    y_return_distance: float = 0.0
+    y_return_delay: float = 2.0
+
+
 # 기본 내장 소재 프리셋
 DEFAULT_MATERIALS = [
     MaterialPreset(
@@ -49,6 +66,24 @@ DEFAULT_MATERIALS = [
         name="Hydroxyapatite",
         blade_speed=4, led_power=45,
         y_dispense_distance=1.2, y_dispense_speed=3, y_dispense_delay=5.0,
+        y_pull_distance=0.0, y_pull_delay=2.0,
+        y_return_distance=0.0, y_return_delay=2.0,
+    ),
+]
+
+# 테스트 모드 기본 프리셋
+DEFAULT_TEST_MATERIALS = [
+    TestMaterialPreset(
+        name="Test-Zirconia",
+        blade_speed=5, blade_speed2=20, blade_boundary=60.0, led_power=43,
+        y_dispense_distance=1.0, y_dispense_speed=3, y_dispense_delay=5.0,
+        y_pull_distance=0.0, y_pull_delay=2.0,
+        y_return_distance=0.0, y_return_delay=2.0,
+    ),
+    TestMaterialPreset(
+        name="Test-Alumina",
+        blade_speed=5, blade_speed2=20, blade_boundary=60.0, led_power=50,
+        y_dispense_distance=1.0, y_dispense_speed=3, y_dispense_delay=5.0,
         y_pull_distance=0.0, y_pull_delay=2.0,
         y_return_distance=0.0, y_return_delay=2.0,
     ),
@@ -76,6 +111,8 @@ class AppSettings:
     theme: str = "Light"        # 테마 설정
     materials: List[MaterialPreset] = field(default_factory=list)
     selected_material: str = ""  # 선택된 소재 이름
+    test_materials: List[TestMaterialPreset] = field(default_factory=list)
+    selected_test_material: str = ""  # 테스트 모드 선택 소재
 
     def __post_init__(self):
         if self.print_settings is None:
@@ -83,6 +120,9 @@ class AppSettings:
         if not self.materials:
             self.materials = [MaterialPreset(**asdict(m)) for m in DEFAULT_MATERIALS]
             self.selected_material = self.materials[0].name
+        if not self.test_materials:
+            self.test_materials = [TestMaterialPreset(**asdict(m)) for m in DEFAULT_TEST_MATERIALS]
+            self.selected_test_material = self.test_materials[0].name
 
 
 class SettingsManager:
@@ -160,6 +200,30 @@ class SettingsManager:
             if self._settings.materials and self._settings.selected_material not in [m.name for m in self._settings.materials]:
                 self._settings.selected_material = self._settings.materials[0].name
 
+            # 테스트 모드 소재 프리셋 로드
+            test_materials_data = data.get('test_materials', [])
+            if test_materials_data:
+                self._settings.test_materials = []
+                for m in test_materials_data:
+                    self._settings.test_materials.append(TestMaterialPreset(
+                        name=m.get('name', 'Unknown'),
+                        blade_speed=m.get('blade_speed', 5),
+                        blade_speed2=m.get('blade_speed2', 20),
+                        blade_boundary=m.get('blade_boundary', 60.0),
+                        led_power=m.get('led_power', 43),
+                        y_dispense_distance=m.get('y_dispense_distance', 1.0),
+                        y_dispense_speed=m.get('y_dispense_speed', 3),
+                        y_dispense_delay=m.get('y_dispense_delay', 5.0),
+                        y_pull_distance=m.get('y_pull_distance', 0.0),
+                        y_pull_delay=m.get('y_pull_delay', 2.0),
+                        y_return_distance=m.get('y_return_distance', 0.0),
+                        y_return_delay=m.get('y_return_delay', 2.0),
+                    ))
+
+            self._settings.selected_test_material = data.get('selected_test_material', '')
+            if self._settings.test_materials and self._settings.selected_test_material not in [m.name for m in self._settings.test_materials]:
+                self._settings.selected_test_material = self._settings.test_materials[0].name
+
             print(f"[Settings] 설정 로드 완료: {SETTINGS_FILE}")
             print(f"  - LED Power: {self._settings.print_settings.led_power}%")
             print(f"  - Blade Speed: {self._settings.print_settings.blade_speed}mm/s")
@@ -178,7 +242,9 @@ class SettingsManager:
                 'language': self._settings.language,
                 'theme': self._settings.theme,
                 'materials': [asdict(m) for m in self._settings.materials],
-                'selected_material': self._settings.selected_material
+                'selected_material': self._settings.selected_material,
+                'test_materials': [asdict(m) for m in self._settings.test_materials],
+                'selected_test_material': self._settings.selected_test_material,
             }
 
             with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
@@ -343,6 +409,61 @@ class SettingsManager:
         self._settings.print_settings.y_priming_position = value
         self.save()
         print(f"[Settings] Resin priming position saved: {value}mm")
+
+    # ==================== 테스트 모드 소재 프리셋 관리 ====================
+
+    def get_test_materials(self) -> List[TestMaterialPreset]:
+        return self._settings.test_materials
+
+    def get_test_material_by_name(self, name: str) -> Optional[TestMaterialPreset]:
+        for m in self._settings.test_materials:
+            if m.name == name:
+                return m
+        return None
+
+    def add_test_material(self, preset: TestMaterialPreset):
+        existing_names = [m.name for m in self._settings.test_materials]
+        if preset.name in existing_names:
+            base_name = preset.name
+            i = 2
+            while f"{base_name} ({i})" in existing_names:
+                i += 1
+            preset.name = f"{base_name} ({i})"
+        self._settings.test_materials.append(preset)
+        self.save()
+
+    def update_test_material(self, original_name: str, preset: TestMaterialPreset):
+        for i, m in enumerate(self._settings.test_materials):
+            if m.name == original_name:
+                self._settings.test_materials[i] = preset
+                if self._settings.selected_test_material == original_name:
+                    self._settings.selected_test_material = preset.name
+                self.save()
+                return True
+        return False
+
+    def delete_test_material(self, name: str) -> bool:
+        if len(self._settings.test_materials) <= 1:
+            return False
+        for i, m in enumerate(self._settings.test_materials):
+            if m.name == name:
+                self._settings.test_materials.pop(i)
+                if self._settings.selected_test_material == name:
+                    self._settings.selected_test_material = self._settings.test_materials[0].name
+                self.save()
+                return True
+        return False
+
+    def get_selected_test_material(self) -> str:
+        return self._settings.selected_test_material
+
+    def set_selected_test_material(self, name: str):
+        if any(m.name == name for m in self._settings.test_materials):
+            self._settings.selected_test_material = name
+            self.save()
+
+    def get_selected_test_material_preset(self) -> Optional[TestMaterialPreset]:
+        return self.get_test_material_by_name(self._settings.selected_test_material)
 
     # ==================== Language ====================
 

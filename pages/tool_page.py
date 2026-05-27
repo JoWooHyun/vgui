@@ -80,6 +80,7 @@ class ToolPage(BasePage):
     go_leveling = Signal()
     go_setting = Signal()
     go_material = Signal()
+    go_test = Signal()
 
     def __init__(self, parent=None):
         super().__init__("Tool", show_back=True, parent=parent)
@@ -130,4 +131,27 @@ class ToolPage(BasePage):
         row.addStretch()
         self.content_layout.addLayout(row)
         self.content_layout.addStretch(2)
+
+        # 좌측 하단 TEST 버튼 (작은 크기, Amber)
+        test_row = QHBoxLayout()
+        self.btn_test = QPushButton("TEST")
+        self.btn_test.setFixedSize(80, 40)
+        self.btn_test.setCursor(Qt.PointingHandCursor)
+        self.btn_test.setFont(Fonts.body_small())
+        self.btn_test.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {Colors.AMBER};
+                border: none;
+                border-radius: 8px;
+                color: {Colors.WHITE};
+                font-weight: bold;
+            }}
+            QPushButton:pressed {{
+                opacity: 0.8;
+            }}
+        """)
+        self.btn_test.clicked.connect(self.go_test.emit)
+        test_row.addWidget(self.btn_test)
+        test_row.addStretch()
+        self.content_layout.addLayout(test_row)
 

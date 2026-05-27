@@ -84,6 +84,9 @@ from pages.print_progress_page import PrintProgressPage, ErrorDialog
 from pages.setting_page import SettingPage
 from pages.theme_page import ThemePage
 from pages.material_page import MaterialPage
+from pages.test_material_page import TestMaterialPage
+from pages.print_test_page import PrintTestPage
+from pages.test_progress_page import TestProgressPage
 
 # 하드웨어 컨트롤러
 from controllers.motor_controller import MotorController
@@ -94,6 +97,7 @@ from controllers.settings_manager import get_settings
 
 # 워커
 from workers.print_worker import PrintWorker, PrintStatus
+from workers.test_print_worker import TestPrintWorker
 
 # 프로젝터 윈도우
 from windows.projector_window import ProjectorWindow
@@ -132,6 +136,9 @@ class MainWindow(QMainWindow):
     PAGE_THEME = 12
     PAGE_LEVELING = 13
     PAGE_MATERIAL = 14
+    PAGE_TEST_MATERIAL = 15
+    PAGE_PRINT_TEST = 16
+    PAGE_TEST_PROGRESS = 17
 
     def __init__(self, kiosk_mode: bool = False, simulation: bool = True):
         super().__init__()
@@ -168,6 +175,7 @@ class MainWindow(QMainWindow):
 
         # 프린트 워커
         self.print_worker = None
+        self.test_print_worker = None
 
         # 모터 워커 (비동기 모터 제어용)
         self._motor_threads = []
@@ -237,6 +245,9 @@ class MainWindow(QMainWindow):
         self.theme_page = ThemePage()
         self.leveling_page = LevelingPage()
         self.material_page = MaterialPage()
+        self.test_material_page = TestMaterialPage()
+        self.print_test_page = PrintTestPage()
+        self.test_progress_page = TestProgressPage()
 
         # 스택에 추가
         self.stack.addWidget(self.main_page)         # 0
@@ -254,6 +265,9 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.theme_page)        # 12
         self.stack.addWidget(self.leveling_page)    # 13
         self.stack.addWidget(self.material_page)    # 14
+        self.stack.addWidget(self.test_material_page)  # 15
+        self.stack.addWidget(self.print_test_page)     # 16
+        self.stack.addWidget(self.test_progress_page)  # 17
 
         self.setCentralWidget(self.stack)
 
@@ -295,6 +309,19 @@ class MainWindow(QMainWindow):
         self.tool_page.go_leveling.connect(self._go_to_leveling)
         self.tool_page.go_setting.connect(lambda: self._go_to_page(self.PAGE_SETTING))
         self.tool_page.go_material.connect(lambda: self._go_to_page(self.PAGE_MATERIAL))
+        self.tool_page.go_test.connect(lambda: self._go_to_page(self.PAGE_TEST_MATERIAL))
+
+        # 테스트 모드 페이지
+        self.test_material_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TOOL))
+        self.test_material_page.go_print_test.connect(lambda: self._go_to_page(self.PAGE_PRINT_TEST))
+        self.print_test_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TEST_MATERIAL))
+        self.print_test_page.start_test.connect(self._on_start_test)
+        self.test_progress_page.go_home.connect(lambda: self._go_to_page(self.PAGE_MAIN))
+        self.test_progress_page.pause_requested.connect(self._on_test_pause)
+        self.test_progress_page.resume_requested.connect(self._on_test_resume)
+        self.test_progress_page.stop_requested.connect(self._on_test_stop)
+        self.test_progress_page.refill_completed.connect(self._on_test_refill_completed)
+        self.test_progress_page.manual_feed_selected.connect(self._on_test_manual_feed)
 
         # 소재 페이지
         self.material_page.go_back.connect(lambda: self._go_to_page(self.PAGE_TOOL))
@@ -737,6 +764,111 @@ class MainWindow(QMainWindow):
         print("[Motor] Z축 홈으로 이동 (사용자 요청)")
         self.motor.z_home()
 
+    # ==================== 테스트 프린트 제어 ====================
+
+    def _on_start_test(self, params: dict):
+        """테스트 프린트 시작"""
+        print(f"[TestPrint] 테스트 프린트 시작 요청")
+
+        # Klipper에서 실제 Y 위치 조회
+        self.motor.get_position()
+        klipper_y = self.motor._y_position
+        saved_pos = self.settings.get_y_priming_position()
+        priming_pos = klipper_y if klipper_y > 0 else saved_pos
+
+        if priming_pos <= 0:
+            print("[TestPrint] 프라이밍 기록 없음 → 테스트 차단")
+            alert = SimpleAlert("셋팅페이지에서 프라이밍을 설정하세요.", self)
+            alert.exec()
+            return
+
+        print(f"[TestPrint] Resin 시작 위치: {priming_pos}mm")
+
+        # TestProgressPage로 전환
+        total_layers = params.get('totalLayer', 10)
+        self.test_progress_page.start_progress(total_layers)
+        self._go_to_page(self.PAGE_TEST_PROGRESS)
+
+        # TestPrintWorker 생성 및 시작
+        self.test_print_worker = TestPrintWorker(
+            motor=self.motor,
+            parent=self
+        )
+        self.test_print_worker.simulation = self.simulation
+
+        # 워커 시그널 연결
+        self.test_print_worker.progress_updated.connect(self.test_progress_page.update_progress)
+        self.test_print_worker.print_completed.connect(self._on_test_completed)
+        self.test_print_worker.print_stopped.connect(self._on_test_stopped)
+        self.test_print_worker.error_occurred.connect(self._on_test_error)
+        self.test_print_worker.resin_empty.connect(self._on_test_resin_empty)
+
+        # 프린트 시작
+        self.test_print_worker.start_print(
+            params=params,
+            blade_speed=params.get('bladeSpeed', 300),
+            blade_speed2=params.get('bladeSpeed2', 1200),
+            blade_boundary=params.get('bladeBoundary', 60.0),
+            leveling_cycles=params.get('levelingCycles', 1),
+            blade_cycles=params.get('bladeCycles', 1),
+            y_dispense_distance=params.get('yDispenseDistance', 1.0),
+            y_dispense_speed=params.get('yDispenseSpeed', 180),
+            y_dispense_delay=params.get('yDispenseDelay', 2.0),
+            y_priming_position=priming_pos,
+            y_pull_distance=params.get('yPullDistance', 0.0),
+            y_pull_delay=params.get('yPullDelay', 2.0),
+            y_return_distance=params.get('yReturnDistance', 0.0),
+            y_return_delay=params.get('yReturnDelay', 2.0),
+        )
+
+    def _on_test_completed(self):
+        print("[TestPrint] 테스트 완료!")
+        self._save_current_y_position()
+        self.test_progress_page.show_completed()
+
+    def _on_test_stopped(self):
+        print("[TestPrint] 테스트 정지됨")
+        self._save_current_y_position()
+        self.test_progress_page.show_stopped()
+
+    def _on_test_error(self, message: str):
+        print(f"[TestPrint] 오류: {message}")
+        self.test_progress_page.show_error(message)
+
+    def _on_test_resin_empty(self):
+        print("[TestPrint] Resin empty — 주사기 교체 대기")
+        self.test_progress_page.show_resin_empty()
+
+    def _on_test_refill_completed(self):
+        self.motor.get_position()
+        new_y = self.motor._y_position
+        print(f"[TestPrint] Refill completed, new Y position: {new_y}mm")
+        if self.test_print_worker and self.test_print_worker.isRunning():
+            self.test_print_worker.refill_resin(new_y)
+        self.settings.set_y_priming_position(new_y)
+
+    def _on_test_manual_feed(self):
+        print("[TestPrint] Manual feed selected")
+        if self.test_print_worker and self.test_print_worker.isRunning():
+            self.test_print_worker.disable_y_dispensing()
+
+    def _on_test_pause(self):
+        print("[TestPrint] 일시정지 요청")
+        if self.test_print_worker and self.test_print_worker.isRunning():
+            self.test_print_worker.pause()
+
+    def _on_test_resume(self):
+        print("[TestPrint] 재개 요청")
+        if self.test_print_worker and self.test_print_worker.isRunning():
+            self.test_print_worker.resume()
+
+    def _on_test_stop(self):
+        print("[TestPrint] 정지 요청")
+        if self.test_print_worker and self.test_print_worker.isRunning():
+            self.test_print_worker.stop()
+        else:
+            self.test_progress_page.show_stopped()
+
     def _on_file_deleted(self, file_path: str):
         """파일 삭제됨"""
         print(f"[Print] 파일 삭제됨: {file_path}")
@@ -970,7 +1102,12 @@ class MainWindow(QMainWindow):
         # 프린트 워커 정지
         if self.print_worker and self.print_worker.isRunning():
             self.print_worker.stop()
-            self.print_worker.wait(3000)  # 최대 3초 대기
+            self.print_worker.wait(3000)
+
+        # 테스트 프린트 워커 정지
+        if self.test_print_worker and self.test_print_worker.isRunning():
+            self.test_print_worker.stop()
+            self.test_print_worker.wait(3000)
 
         # 프로젝터 윈도우 닫기
         if self.projector_window:
