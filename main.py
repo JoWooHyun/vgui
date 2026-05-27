@@ -565,8 +565,12 @@ class MainWindow(QMainWindow):
         # 파라미터 추출
         total_layers = params.get('totalLayer', 100)
         blade_speed = params.get('bladeSpeed', 300)
+        blade_speed2 = params.get('bladeSpeed2', 1200)
+        blade_boundary = params.get('bladeBoundary', 60.0)
         blade_start = self.settings.get_blade_start()
         blade_end = self.settings.get_blade_end()
+        z_offset = params.get('zOffset', 0.0)
+        settle_time = params.get('settleTime', 0.0)
         led_power_percent = params.get('ledPower', 43)
         led_power = int(1023 * led_power_percent / 100)
         leveling_cycles = params.get('levelingCycles', 1)
@@ -652,9 +656,13 @@ class MainWindow(QMainWindow):
             file_path=file_path,
             params=params,
             blade_speed=blade_speed,
+            blade_speed2=blade_speed2,
+            blade_boundary=blade_boundary,
             blade_start=blade_start,
             blade_end=blade_end,
             led_power=led_power,
+            z_offset=z_offset,
+            settle_time=settle_time,
             leveling_cycles=leveling_cycles,
             blade_cycles=blade_cycles,
             y_dispense_distance=y_dispense_distance,

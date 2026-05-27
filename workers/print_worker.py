@@ -45,10 +45,14 @@ class PrintJob:
     """프린트 작업 정보"""
     file_path: str
     params: PrintParameters
-    blade_speed: int = 300   # mm/min (리드스크류)
+    blade_speed: int = 300   # mm/min (구간1: start→boundary)
+    blade_speed2: int = 1200 # mm/min (구간2: boundary→end)
+    blade_boundary: float = 60.0  # 구간 경계 위치 (mm)
     blade_start: float = 0.0  # 블레이드 시작 위치 (mm)
     blade_end: float = 130.0  # 블레이드 끝 위치 (mm)
     led_power: int = 440
+    z_offset: float = 0.0    # Z 오프셋 (mm)
+    settle_time: float = 0.0 # 초기+첫레이어 토출 후 대기 (초)
     leveling_cycles: int = 1
     blade_cycles: int = 1  # 매 레이어 블레이드 왕복 횟수
     y_dispense_distance: float = 1.0   # Resin 토출 거리 (mm/레이어)
@@ -134,8 +138,11 @@ class PrintWorker(QThread):
     # ==================== 제어 메서드 ====================
 
     def start_print(self, file_path: str, params: Dict[str, Any],
-                   blade_speed: int = 300, blade_start: float = 0.0,
+                   blade_speed: int = 300, blade_speed2: int = 1200,
+                   blade_boundary: float = 60.0,
+                   blade_start: float = 0.0,
                    blade_end: float = 130.0, led_power: int = 440,
+                   z_offset: float = 0.0, settle_time: float = 0.0,
                    leveling_cycles: int = 1, blade_cycles: int = 1,
                    y_dispense_distance: float = 1.0,
                    y_dispense_speed: int = 300,
@@ -181,9 +188,13 @@ class PrintWorker(QThread):
             file_path=file_path,
             params=print_params,
             blade_speed=blade_speed,
+            blade_speed2=blade_speed2,
+            blade_boundary=blade_boundary,
             blade_start=blade_start,
             blade_end=blade_end,
             led_power=led_power,
+            z_offset=z_offset,
+            settle_time=settle_time,
             leveling_cycles=leveling_cycles,
             blade_cycles=blade_cycles,
             y_dispense_distance=y_dispense_distance,
@@ -323,15 +334,16 @@ class PrintWorker(QThread):
                 self._is_stopped = True
                 return
 
-        # Z축 홈 → 0.1mm 이동
+        # Z축 홈 → 평탄화용 높이 (z_offset or 0.1mm)
         if self._check_stopped():
             return
         if not self._motor_z_home():
             self.error_occurred.emit("Z축 홈 이동 실패")
             self._is_stopped = True
             return
-        if not self._motor_z_move(0.1):
-            self.error_occurred.emit("Z축 0.1mm 이동 실패")
+        leveling_z = job.z_offset if job.z_offset > 0 else 0.1
+        if not self._motor_z_move(leveling_z):
+            self.error_occurred.emit(f"Z축 {leveling_z}mm 이동 실패")
             self._is_stopped = True
             return
 
@@ -347,12 +359,34 @@ class PrintWorker(QThread):
             if not self._dispense_3step(-1, job, push_speed_override=INITIAL_DISPENSE_SPEED):
                 return
 
-        # 3. 레진 평탄화 (X축 왕복 + Z축 홈 복귀)
-        if job.leveling_cycles > 0:
-            self._set_status(PrintStatus.LEVELING)
-            if self._check_stopped():
+        # Settle time 대기 (초기 토출)
+        if job.settle_time > 0:
+            print(f"[PrintWorker] 초기 토출 settle time: {job.settle_time}초")
+            if not self._wait_interruptible(job.settle_time):
                 return
-            self._run_leveling(job.leveling_cycles, job.blade_speed)
+
+        # 3. 레진 평탄화 (편도: start→end)
+        self._set_status(PrintStatus.LEVELING)
+        if self._check_stopped():
+            return
+        if not self._motor_x_move(job.blade_end, job.blade_speed):
+            self.error_occurred.emit("초기 평탄화 실패")
+            self._is_stopped = True
+            return
+        # Z 올림 + X 복귀
+        if not self._motor_z_move(leveling_z + 3.0):
+            self.error_occurred.emit("초기 평탄화 Z 리프트 실패")
+            self._is_stopped = True
+            return
+        if not self._motor_x_move(job.blade_start, 3000):
+            self.error_occurred.emit("초기 평탄화 X 복귀 실패")
+            self._is_stopped = True
+            return
+        # Z 홈 복귀
+        if not self._motor_z_home():
+            self.error_occurred.emit("초기 평탄화 Z 홈 복귀 실패")
+            self._is_stopped = True
+            return
 
         # 3. 프로젝터는 앱 시작 시 이미 ON 상태 (별도 동작 불필요)
 
@@ -411,7 +445,7 @@ class PrintWorker(QThread):
             exposure_time = params.normalExposureTime
 
         # Z축 위치 계산
-        z_position = (layer_idx + 1) * params.layerHeight
+        z_position = job.z_offset + (layer_idx + 1) * params.layerHeight
 
         # 1. Z축 레이어 높이로 이동
         if not self._motor_z_move(z_position):
@@ -432,9 +466,19 @@ class PrintWorker(QThread):
                 if not self._dispense_3step(layer_idx, job):
                     return False
 
-        # 3. X축 평탄화 (시작→끝)
-        if not self._motor_x_move(job.blade_end, job.blade_speed):
-            self.error_occurred.emit(f"레이어 {layer_idx}: X축 평탄화 실패")
+        # Settle time 대기 (첫 레이어만)
+        if layer_idx == 0 and job.settle_time > 0:
+            print(f"[PrintWorker] Layer 0 settle time: {job.settle_time}초")
+            if not self._wait_interruptible(job.settle_time):
+                return True
+
+        # 3. X축 평탄화 (2구간: start→boundary→end)
+        if not self._motor_x_move(job.blade_boundary, job.blade_speed):
+            self.error_occurred.emit(f"레이어 {layer_idx}: X축 평탄화(구간1) 실패")
+            self._is_stopped = True
+            return False
+        if not self._motor_x_move(job.blade_end, job.blade_speed2):
+            self.error_occurred.emit(f"레이어 {layer_idx}: X축 평탄화(구간2) 실패")
             self._is_stopped = True
             return False
 

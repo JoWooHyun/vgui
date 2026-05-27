@@ -18,8 +18,12 @@ SETTINGS_FILE = os.path.join(SETTINGS_DIR, "settings.json")
 class MaterialPreset:
     """소재별 프린트 프리셋"""
     name: str = "Default"
-    blade_speed: int = 5            # Blade 속도 (1-30 mm/s)
+    blade_speed: int = 5            # Blade 구간1 속도 (1-100 mm/s)
+    blade_speed2: int = 20          # Blade 구간2 속도 (1-100 mm/s)
+    blade_boundary: float = 60.0    # Blade 구간 경계 위치 (mm, 0~130)
     led_power: int = 43             # LED 파워 (9-100%)
+    z_offset: float = 0.0           # Z 오프셋 (mm, 0~1.0)
+    settle_time: float = 0.0        # 초기+첫레이어 토출 후 대기 (초)
     y_dispense_distance: float = 1.0  # Resin 토출거리 (mm/레이어, 0.1~5.0)
     y_dispense_speed: int = 3       # Resin 토출속도 (mm/s, 1~15)
     y_dispense_delay: float = 5.0   # Resin 토출 대기시간 (초, 0.5~20.0)
@@ -185,7 +189,11 @@ class SettingsManager:
                     self._settings.materials.append(MaterialPreset(
                         name=m.get('name', 'Unknown'),
                         blade_speed=m.get('blade_speed', 5),
+                        blade_speed2=m.get('blade_speed2', 20),
+                        blade_boundary=m.get('blade_boundary', 60.0),
                         led_power=m.get('led_power', 43),
+                        z_offset=m.get('z_offset', 0.0),
+                        settle_time=m.get('settle_time', 0.0),
                         y_dispense_distance=m.get('y_dispense_distance', 1.0),
                         y_dispense_speed=m.get('y_dispense_speed', 5),
                         y_dispense_delay=m.get('y_dispense_delay', 2.0),

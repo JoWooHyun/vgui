@@ -623,7 +623,11 @@ class FilePreviewPage(BasePage):
         full_params = {
             **self._print_params,
             'bladeSpeed': preset.blade_speed * 60,  # mm/s → mm/min
+            'bladeSpeed2': preset.blade_speed2 * 60,  # mm/s → mm/min
+            'bladeBoundary': preset.blade_boundary,
             'ledPower': preset.led_power,
+            'zOffset': preset.z_offset,
+            'settleTime': preset.settle_time,
             'yDispenseDistance': preset.y_dispense_distance,
             'yDispenseSpeed': preset.y_dispense_speed * 60,  # mm/s → mm/min
             'yDispenseDelay': preset.y_dispense_delay,
@@ -647,7 +651,11 @@ class FilePreviewPage(BasePage):
         return {
             **self._print_params,
             'bladeSpeed': preset.blade_speed * 60,
+            'bladeSpeed2': preset.blade_speed2 * 60,
+            'bladeBoundary': preset.blade_boundary,
             'ledPower': preset.led_power,
+            'zOffset': preset.z_offset,
+            'settleTime': preset.settle_time,
             'yDispenseDistance': preset.y_dispense_distance,
             'yDispenseSpeed': preset.y_dispense_speed * 60,
             'yDispenseDelay': preset.y_dispense_delay,

@@ -314,7 +314,11 @@ class MaterialPage(BasePage):
 
         # 편집 행들
         self.row_blade_speed = MaterialEditRow("Blade Speed", 5, "mm/s", 1, 100)
+        self.row_blade_speed2 = MaterialEditRow("Blade Speed 2", 20, "mm/s", 1, 100)
+        self.row_blade_boundary = MaterialEditRow("Boundary", 60.0, "mm", 0.0, 130.0, allow_decimal=True)
         self.row_led_power = MaterialEditRow("LED Power", 43, "%", 9, 100)
+        self.row_z_offset = MaterialEditRow("Z Offset", 0.0, "mm", 0.0, 1.0, allow_decimal=True)
+        self.row_settle_time = MaterialEditRow("Settle Time", 0.0, "s", 0.0, 30.0, allow_decimal=True)
         self.row_y_dispense = MaterialEditRow("Resin Dist.", 1.0, "mm", 0.1, 5.0, allow_decimal=True)
         self.row_y_speed = MaterialEditRow("Resin Speed", 3, "mm/s", 1, 15)
         self.row_y_delay = MaterialEditRow("Resin Delay", 5.0, "s", 0.5, 300.0, allow_decimal=True)
@@ -324,7 +328,9 @@ class MaterialPage(BasePage):
         self.row_y_return_delay = MaterialEditRow("Return Delay", 2.0, "s", 0.1, 20.0, allow_decimal=True)
 
         self._edit_rows = [
-            self.row_blade_speed, self.row_led_power,
+            self.row_blade_speed, self.row_blade_speed2, self.row_blade_boundary,
+            self.row_led_power,
+            self.row_z_offset, self.row_settle_time,
             self.row_y_dispense, self.row_y_speed, self.row_y_delay,
             self.row_y_pull_dist, self.row_y_pull_delay,
             self.row_y_return_dist, self.row_y_return_delay,
@@ -411,7 +417,11 @@ class MaterialPage(BasePage):
         # UI 갱신
         self.lbl_material_name.setText(name)
         self.row_blade_speed.set_value(preset.blade_speed)
+        self.row_blade_speed2.set_value(preset.blade_speed2)
+        self.row_blade_boundary.set_value(preset.blade_boundary)
         self.row_led_power.set_value(preset.led_power)
+        self.row_z_offset.set_value(preset.z_offset)
+        self.row_settle_time.set_value(preset.settle_time)
         self.row_y_dispense.set_value(preset.y_dispense_distance)
         self.row_y_speed.set_value(preset.y_dispense_speed)
         self.row_y_delay.set_value(preset.y_dispense_delay)
@@ -430,7 +440,11 @@ class MaterialPage(BasePage):
         preset = MaterialPreset(
             name=self._current_material_name,
             blade_speed=int(self.row_blade_speed.get_value()),
+            blade_speed2=int(self.row_blade_speed2.get_value()),
+            blade_boundary=self.row_blade_boundary.get_value(),
             led_power=int(self.row_led_power.get_value()),
+            z_offset=self.row_z_offset.get_value(),
+            settle_time=self.row_settle_time.get_value(),
             y_dispense_distance=self.row_y_dispense.get_value(),
             y_dispense_speed=int(self.row_y_speed.get_value()),
             y_dispense_delay=self.row_y_delay.get_value(),
