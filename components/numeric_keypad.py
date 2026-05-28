@@ -35,6 +35,7 @@ class NumericKeypad(QDialog):
             self._input_str = str(value) if value != int(value) else str(int(value))
         else:
             self._input_str = str(int(value))
+        self._is_first_input = True  # 첫 입력 시 기존 값 자동 클리어
         
         self.setWindowTitle(title)
         self.setFixedSize(350, 470)
@@ -226,21 +227,32 @@ class NumericKeypad(QDialog):
     
     def _append_digit(self, digit: str):
         """숫자 추가"""
+        # 첫 입력 시 기존 값 자동 클리어
+        if self._is_first_input:
+            self._is_first_input = False
+            if digit == ".":
+                self._input_str = "0."
+            else:
+                self._input_str = digit
+            self._update_display()
+            return
+
         # 소수점 중복 방지
         if digit == "." and "." in self._input_str:
             return
-        
+
         # 앞에 0만 있는 경우 처리
         if self._input_str == "0" and digit != ".":
             self._input_str = digit
         else:
             self._input_str += digit
-        
+
         self._update_display()
     
     def _clear(self):
         """전체 삭제"""
         self._input_str = ""
+        self._is_first_input = False
         self._update_display()
     
     def _confirm(self):
