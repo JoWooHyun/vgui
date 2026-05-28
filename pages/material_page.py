@@ -186,6 +186,29 @@ class MaterialEditRow(QFrame):
         self._update_display()
 
 
+class MaterialEditPairRow(QFrame):
+    """한 행에 2개의 설정값을 나란히 배치"""
+
+    value_changed = Signal()
+
+    def __init__(self, left: MaterialEditRow, right: MaterialEditRow = None, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(36)
+        self.setStyleSheet("background: transparent; border: none;")
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+
+        layout.addWidget(left, 1)
+        if right:
+            layout.addWidget(right, 1)
+
+        left.value_changed.connect(self.value_changed.emit)
+        if right:
+            right.value_changed.connect(self.value_changed.emit)
+
+
 class MaterialPage(BasePage):
     """소재 프리셋 관리 페이지"""
 
@@ -327,18 +350,19 @@ class MaterialPage(BasePage):
         self.row_y_return_dist = MaterialEditRow("Return Dist.", 0.0, "mm", 0.0, 5.0, allow_decimal=True)
         self.row_y_return_delay = MaterialEditRow("Return Delay", 2.0, "s", 0.1, 20.0, allow_decimal=True)
 
-        self._edit_rows = [
-            self.row_blade_speed, self.row_blade_speed2, self.row_blade_boundary,
-            self.row_led_power,
-            self.row_z_offset, self.row_settle_time,
-            self.row_y_dispense, self.row_y_speed, self.row_y_delay,
-            self.row_y_pull_dist, self.row_y_pull_delay,
-            self.row_y_return_dist, self.row_y_return_delay,
+        self._pair_rows = [
+            MaterialEditPairRow(self.row_blade_speed, self.row_blade_speed2),
+            MaterialEditPairRow(self.row_blade_boundary, self.row_led_power),
+            MaterialEditPairRow(self.row_z_offset, self.row_settle_time),
+            MaterialEditPairRow(self.row_y_dispense, self.row_y_speed),
+            MaterialEditPairRow(self.row_y_delay),
+            MaterialEditPairRow(self.row_y_pull_dist, self.row_y_pull_delay),
+            MaterialEditPairRow(self.row_y_return_dist, self.row_y_return_delay),
         ]
 
-        for row in self._edit_rows:
-            row.value_changed.connect(self._on_value_changed)
-            right_layout.addWidget(row)
+        for pair in self._pair_rows:
+            pair.value_changed.connect(self._on_value_changed)
+            right_layout.addWidget(pair)
 
         right_layout.addStretch()
 

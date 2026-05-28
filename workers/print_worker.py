@@ -334,18 +334,19 @@ class PrintWorker(QThread):
                 self._is_stopped = True
                 return
 
-        # Z축 홈 → 평탄화용 높이 (z_offset or 0.1mm)
+        # Z축 홈 → 평탄화용 높이 (z_offset)
         if self._check_stopped():
             return
         if not self._motor_z_home():
             self.error_occurred.emit("Z축 홈 이동 실패")
             self._is_stopped = True
             return
-        leveling_z = job.z_offset if job.z_offset > 0 else 0.1
-        if not self._motor_z_move(leveling_z):
-            self.error_occurred.emit(f"Z축 {leveling_z}mm 이동 실패")
-            self._is_stopped = True
-            return
+        leveling_z = job.z_offset
+        if leveling_z > 0:
+            if not self._motor_z_move(leveling_z):
+                self.error_occurred.emit(f"Z축 {leveling_z}mm 이동 실패")
+                self._is_stopped = True
+                return
 
         # Resin: 프라이밍 위치에서 시작
         print(f"[PrintWorker] Resin start position: {job.y_priming_position}mm")
