@@ -517,6 +517,7 @@ class PrintTestPage(BasePage):
             'yPullDelay': preset.y_pull_delay if preset else 2.0,
             'yReturnDistance': preset.y_return_distance if preset else 0.0,
             'yReturnDelay': preset.y_return_delay if preset else 2.0,
+            'initialLeveling': preset.initial_leveling if preset else True,
         }
 
         self.start_test.emit(params)

@@ -40,6 +40,7 @@ class PrintJob:
     blade_cycles: int = 1
     leveling_cycles: int = 1
     settle_time: float = 0.0         # 초기+첫레이어 토출 후 대기(초)
+    initial_leveling: bool = True    # 초기 평탄화 ON/OFF
     y_dispense_distance: float = 1.0
     y_dispense_speed: int = 300
     y_dispense_delay: float = 2.0
@@ -105,7 +106,8 @@ class TestPrintWorker(QThread):
                     y_pull_distance: float = 0.0,
                     y_pull_delay: float = 2.0,
                     y_return_distance: float = 0.0,
-                    y_return_delay: float = 2.0):
+                    y_return_delay: float = 2.0,
+                    initial_leveling: bool = True):
         if self.isRunning():
             print("[TestPrintWorker] 이미 실행 중")
             return
@@ -120,6 +122,7 @@ class TestPrintWorker(QThread):
             blade_cycles=blade_cycles,
             leveling_cycles=leveling_cycles,
             settle_time=params.get('settleTime', 0.0),
+            initial_leveling=initial_leveling,
             y_dispense_distance=y_dispense_distance,
             y_dispense_speed=y_dispense_speed,
             y_dispense_delay=y_dispense_delay,
@@ -227,60 +230,65 @@ class TestPrintWorker(QThread):
             self._is_stopped = True
             return
 
-        # Z축 홈 → 평탄화용 높이 (z_offset)
-        if self._check_stopped():
-            return
-        if not self._motor_z_home():
-            self.error_occurred.emit("Z축 홈 이동 실패")
-            self._is_stopped = True
-            return
-        leveling_z = job.z_offset
-        if leveling_z > 0:
-            if not self._motor_z_move(leveling_z):
-                self.error_occurred.emit(f"Z축 {leveling_z}mm 이동 실패")
-                self._is_stopped = True
-                return
-
-        # Resin 위치
-        print(f"[TestPrintWorker] Resin start position: {job.y_priming_position}mm")
-        self._y_position = job.y_priming_position
-
-        # 2. 첫 레진 토출
-        INITIAL_DISPENSE_SPEED = 180  # mm/min (3mm/s)
-        if not self._y_dispensing_disabled and self._y_position > 0:
+        # 초기 평탄화 (ON일 때만 실행)
+        if job.initial_leveling:
+            # Z축 홈 → 평탄화용 높이 (z_offset)
             if self._check_stopped():
                 return
-            if not self._dispense_3step(-1, job, push_speed_override=INITIAL_DISPENSE_SPEED):
+            if not self._motor_z_home():
+                self.error_occurred.emit("Z축 홈 이동 실패")
+                self._is_stopped = True
                 return
+            leveling_z = job.z_offset
+            if leveling_z > 0:
+                if not self._motor_z_move(leveling_z):
+                    self.error_occurred.emit(f"Z축 {leveling_z}mm 이동 실패")
+                    self._is_stopped = True
+                    return
 
-        # Settle time 대기 (초기 토출)
-        if job.settle_time > 0:
-            print(f"[TestPrintWorker] 초기 토출 settle time: {job.settle_time}초")
-            if not self._wait_interruptible(job.settle_time):
+            # Resin 위치
+            print(f"[TestPrintWorker] Resin start position: {job.y_priming_position}mm")
+            self._y_position = job.y_priming_position
+
+            # 2. 첫 레진 토출
+            INITIAL_DISPENSE_SPEED = 180  # mm/min (3mm/s)
+            if not self._y_dispensing_disabled and self._y_position > 0:
+                if self._check_stopped():
+                    return
+                if not self._dispense_3step(-1, job, push_speed_override=INITIAL_DISPENSE_SPEED):
+                    return
+
+            # Settle time 대기 (초기 토출)
+            if job.settle_time > 0:
+                print(f"[TestPrintWorker] 초기 토출 settle time: {job.settle_time}초")
+                if not self._wait_interruptible(job.settle_time):
+                    return
+
+            # 3. 레진 평탄화 (편도: 0→130)
+            self._set_status(PrintStatus.LEVELING)
+            if self._check_stopped():
                 return
-
-        # 3. 레진 평탄화 (편도: 0→130)
-        self._set_status(PrintStatus.LEVELING)
-        if self._check_stopped():
-            return
-        if not self._motor_x_move(130, job.blade_speed):
-            self.error_occurred.emit("초기 평탄화 실패")
-            self._is_stopped = True
-            return
-        # Z 올림 + X 복귀
-        if not self._motor_z_move(leveling_z + 3.0):
-            self.error_occurred.emit("초기 평탄화 Z 리프트 실패")
-            self._is_stopped = True
-            return
-        if not self._motor_x_move(0, 1800):
-            self.error_occurred.emit("초기 평탄화 X 복귀 실패")
-            self._is_stopped = True
-            return
-        # Z 홈 복귀
-        if not self._motor_z_home():
-            self.error_occurred.emit("초기 평탄화 Z 홈 복귀 실패")
-            self._is_stopped = True
-            return
+            if not self._motor_x_move(130, job.blade_speed):
+                self.error_occurred.emit("초기 평탄화 실패")
+                self._is_stopped = True
+                return
+            # Z 올림 + X 복귀
+            if not self._motor_z_move(leveling_z + 3.0):
+                self.error_occurred.emit("초기 평탄화 Z 리프트 실패")
+                self._is_stopped = True
+                return
+            if not self._motor_x_move(0, 1800):
+                self.error_occurred.emit("초기 평탄화 X 복귀 실패")
+                self._is_stopped = True
+                return
+            # Z 홈 복귀
+            if not self._motor_z_home():
+                self.error_occurred.emit("초기 평탄화 Z 홈 복귀 실패")
+                self._is_stopped = True
+                return
+        else:
+            print("[TestPrintWorker] 초기 평탄화 OFF — 스킵")
+            self._y_position = job.y_priming_position
 
         # 4. 메인 프린팅 루프
         self._set_status(PrintStatus.PRINTING)

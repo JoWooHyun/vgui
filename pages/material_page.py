@@ -350,12 +350,30 @@ class MaterialPage(BasePage):
         self.row_y_return_dist = MaterialEditRow("Return Dist.", 0.0, "mm", 0.0, 5.0, allow_decimal=True)
         self.row_y_return_delay = MaterialEditRow("Return Delay", 2.0, "s", 0.1, 20.0, allow_decimal=True)
 
+        # Leveling ON/OFF 토글 버튼
+        self._leveling_on = True
+        self.btn_leveling = QPushButton("Leveling ON")
+        self.btn_leveling.setFixedHeight(36)
+        self.btn_leveling.setFont(Fonts.body_small())
+        self.btn_leveling.setCursor(Qt.PointingHandCursor)
+        self.btn_leveling.clicked.connect(self._on_leveling_toggle)
+        self._update_leveling_style()
+
+        # Resin Delay + Leveling 토글 행
+        self._leveling_row = QFrame()
+        self._leveling_row.setFixedHeight(36)
+        self._leveling_row.setStyleSheet("background: transparent; border: none;")
+        lev_layout = QHBoxLayout(self._leveling_row)
+        lev_layout.setContentsMargins(0, 0, 0, 0)
+        lev_layout.setSpacing(6)
+        lev_layout.addWidget(self.row_y_delay, 1)
+        lev_layout.addWidget(self.btn_leveling, 1)
+
         self._pair_rows = [
             MaterialEditPairRow(self.row_blade_speed, self.row_blade_speed2),
             MaterialEditPairRow(self.row_blade_boundary, self.row_led_power),
             MaterialEditPairRow(self.row_z_offset, self.row_settle_time),
             MaterialEditPairRow(self.row_y_dispense, self.row_y_speed),
-            MaterialEditPairRow(self.row_y_delay),
             MaterialEditPairRow(self.row_y_pull_dist, self.row_y_pull_delay),
             MaterialEditPairRow(self.row_y_return_dist, self.row_y_return_delay),
         ]
@@ -363,6 +381,9 @@ class MaterialPage(BasePage):
         for pair in self._pair_rows:
             pair.value_changed.connect(self._on_value_changed)
             right_layout.addWidget(pair)
+            if pair is self._pair_rows[3]:  # Resin Dist/Speed 다음에 Resin Delay + Leveling 행 삽입
+                self.row_y_delay.value_changed.connect(self._on_value_changed)
+                right_layout.addWidget(self._leveling_row)
 
         right_layout.addStretch()
 
@@ -453,6 +474,8 @@ class MaterialPage(BasePage):
         self.row_y_pull_delay.set_value(preset.y_pull_delay)
         self.row_y_return_dist.set_value(preset.y_return_distance)
         self.row_y_return_delay.set_value(preset.y_return_delay)
+        self._leveling_on = preset.initial_leveling
+        self._update_leveling_style()
 
         self._update_list_styles()
 
@@ -476,8 +499,41 @@ class MaterialPage(BasePage):
             y_pull_delay=self.row_y_pull_delay.get_value(),
             y_return_distance=self.row_y_return_dist.get_value(),
             y_return_delay=self.row_y_return_delay.get_value(),
+            initial_leveling=self._leveling_on,
         )
         get_settings().update_material(self._current_material_name, preset)
+
+    def _on_leveling_toggle(self):
+        """초기 평탄화 ON/OFF 토글"""
+        self._leveling_on = not self._leveling_on
+        self._update_leveling_style()
+        self._on_value_changed()
+
+    def _update_leveling_style(self):
+        """토글 버튼 스타일 갱신"""
+        if self._leveling_on:
+            self.btn_leveling.setText("Leveling ON")
+            self.btn_leveling.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {Colors.CYAN};
+                    color: {Colors.WHITE};
+                    border: none;
+                    border-radius: 6px;
+                    font-weight: 600;
+                }}
+                QPushButton:pressed {{ background-color: {Colors.CYAN_DARK}; }}
+            """)
+        else:
+            self.btn_leveling.setText("Leveling OFF")
+            self.btn_leveling.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {Colors.BG_PRIMARY};
+                    color: {Colors.TEXT_SECONDARY};
+                    border: 1px solid {Colors.BORDER};
+                    border-radius: 6px;
+                }}
+                QPushButton:pressed {{ background-color: {Colors.BG_TERTIARY}; }}
+            """)
 
     def _on_add(self):
         """소재 추가"""

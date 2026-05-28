@@ -628,6 +628,7 @@ class FilePreviewPage(BasePage):
             'ledPower': preset.led_power,
             'zOffset': preset.z_offset,
             'settleTime': preset.settle_time,
+            'initialLeveling': preset.initial_leveling,
             'yDispenseDistance': preset.y_dispense_distance,
             'yDispenseSpeed': preset.y_dispense_speed * 60,  # mm/s → mm/min
             'yDispenseDelay': preset.y_dispense_delay,
@@ -656,6 +657,7 @@ class FilePreviewPage(BasePage):
             'ledPower': preset.led_power,
             'zOffset': preset.z_offset,
             'settleTime': preset.settle_time,
+            'initialLeveling': preset.initial_leveling,
             'yDispenseDistance': preset.y_dispense_distance,
             'yDispenseSpeed': preset.y_dispense_speed * 60,
             'yDispenseDelay': preset.y_dispense_delay,

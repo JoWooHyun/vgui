@@ -24,6 +24,7 @@ class MaterialPreset:
     led_power: int = 43             # LED 파워 (9-100%)
     z_offset: float = 0.0           # Z 오프셋 (mm, 0~1.0)
     settle_time: float = 0.0        # 초기+첫레이어 토출 후 대기 (초)
+    initial_leveling: bool = True    # 초기 평탄화 ON/OFF
     y_dispense_distance: float = 1.0  # Resin 토출거리 (mm/레이어, 0.1~5.0)
     y_dispense_speed: int = 3       # Resin 토출속도 (mm/s, 1~15)
     y_dispense_delay: float = 5.0   # Resin 토출 대기시간 (초, 0.5~20.0)
@@ -41,6 +42,7 @@ class TestMaterialPreset:
     blade_speed2: int = 20          # Blade 구간2 속도 (1-100 mm/s, boundary→130)
     blade_boundary: float = 60.0    # Blade 구간 경계 위치 (mm, 0~130)
     led_power: int = 43             # LED 파워 (테스트에서는 사용 안함, 참고용)
+    initial_leveling: bool = True    # 초기 평탄화 ON/OFF
     y_dispense_distance: float = 1.0
     y_dispense_speed: int = 3
     y_dispense_delay: float = 5.0
@@ -194,6 +196,7 @@ class SettingsManager:
                         led_power=m.get('led_power', 43),
                         z_offset=m.get('z_offset', 0.0),
                         settle_time=m.get('settle_time', 0.0),
+                        initial_leveling=m.get('initial_leveling', True),
                         y_dispense_distance=m.get('y_dispense_distance', 1.0),
                         y_dispense_speed=m.get('y_dispense_speed', 5),
                         y_dispense_delay=m.get('y_dispense_delay', 2.0),
@@ -219,6 +222,7 @@ class SettingsManager:
                         blade_speed2=m.get('blade_speed2', 20),
                         blade_boundary=m.get('blade_boundary', 60.0),
                         led_power=m.get('led_power', 43),
+                        initial_leveling=m.get('initial_leveling', True),
                         y_dispense_distance=m.get('y_dispense_distance', 1.0),
                         y_dispense_speed=m.get('y_dispense_speed', 3),
                         y_dispense_delay=m.get('y_dispense_delay', 5.0),

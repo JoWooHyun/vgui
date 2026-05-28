@@ -571,6 +571,7 @@ class MainWindow(QMainWindow):
         blade_end = self.settings.get_blade_end()
         z_offset = params.get('zOffset', 0.0)
         settle_time = params.get('settleTime', 0.0)
+        initial_leveling = params.get('initialLeveling', True)
         led_power_percent = params.get('ledPower', 43)
         led_power = int(1023 * led_power_percent / 100)
         leveling_cycles = params.get('levelingCycles', 1)
@@ -663,6 +664,7 @@ class MainWindow(QMainWindow):
             led_power=led_power,
             z_offset=z_offset,
             settle_time=settle_time,
+            initial_leveling=initial_leveling,
             leveling_cycles=leveling_cycles,
             blade_cycles=blade_cycles,
             y_dispense_distance=y_dispense_distance,
@@ -822,6 +824,7 @@ class MainWindow(QMainWindow):
             y_pull_delay=params.get('yPullDelay', 2.0),
             y_return_distance=params.get('yReturnDistance', 0.0),
             y_return_delay=params.get('yReturnDelay', 2.0),
+            initial_leveling=params.get('initialLeveling', True),
         )
 
     def _on_test_completed(self):
