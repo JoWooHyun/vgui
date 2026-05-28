@@ -404,18 +404,27 @@ class FilePreviewPage(BasePage):
 
         # 모든 항목: (아이콘, 키, 타입) - 타입: "info" or ("preset", unit)
         all_items = [
-            # 왼쪽 열 (row 0~5)             오른쪽 열 (row 0~5)
+            # 파일 정보 (5개)
             (Icons.STACK, "totalLayer", "info"),
             (Icons.RULER, "layerHeight", "info"),
             (Icons.TIMER, "estimatedPrintTime", "info"),
             (Icons.EXPOSURE_BOTTOM, "bottomLayerExposureTime", "info"),
             (Icons.EXPOSURE_NORMAL, "normalExposureTime", "info"),
-            (Icons.LED_POWER, "led_power", ("preset", "%")),
+            # 소재 프리셋 (14개)
             (Icons.BLADE_SPEED, "blade_speed", ("preset", "mm/s")),
-            (Icons.CYCLE, "y_pull_distance", ("preset", "mm")),
+            (Icons.BLADE_SPEED, "blade_speed2", ("preset", "mm/s")),
+            (Icons.RULER, "blade_boundary", ("preset", "mm")),
+            (Icons.LED_POWER, "led_power", ("preset", "%")),
+            (Icons.HOME_Z, "z_offset", ("preset", "mm")),
+            (Icons.DELAY, "settle_time", ("preset", "s")),
             (Icons.SYRINGE, "y_dispense_distance", ("preset", "mm")),
             (Icons.DISPENSE_SPEED, "y_dispense_speed", ("preset", "mm/s")),
             (Icons.DELAY, "y_dispense_delay", ("preset", "s")),
+            (Icons.LEVEL, "initial_leveling", ("preset", "")),
+            (Icons.CYCLE, "y_pull_distance", ("preset", "mm")),
+            (Icons.DELAY, "y_pull_delay", ("preset", "s")),
+            (Icons.CYCLE, "y_return_distance", ("preset", "mm")),
+            (Icons.DELAY, "y_return_delay", ("preset", "s")),
         ]
 
         for idx, (icon_svg, key, item_type) in enumerate(all_items):
@@ -501,15 +510,25 @@ class FilePreviewPage(BasePage):
         # 프리셋 값 표시
         values = {
             'blade_speed': preset.blade_speed,
+            'blade_speed2': preset.blade_speed2,
+            'blade_boundary': preset.blade_boundary,
             'led_power': preset.led_power,
-            'y_pull_distance': preset.y_pull_distance,
+            'z_offset': preset.z_offset,
+            'settle_time': preset.settle_time,
             'y_dispense_distance': preset.y_dispense_distance,
             'y_dispense_speed': preset.y_dispense_speed,
             'y_dispense_delay': preset.y_dispense_delay,
+            'initial_leveling': preset.initial_leveling,
+            'y_pull_distance': preset.y_pull_distance,
+            'y_pull_delay': preset.y_pull_delay,
+            'y_return_distance': preset.y_return_distance,
+            'y_return_delay': preset.y_return_delay,
         }
         for key, (row, unit) in self.preset_rows.items():
             val = values.get(key, 0)
-            if val == int(val):
+            if isinstance(val, bool):
+                row.set_value("ON" if val else "OFF")
+            elif val == int(val):
                 row.set_value(f"{int(val)} {unit}")
             else:
                 row.set_value(f"{val:.1f} {unit}")
