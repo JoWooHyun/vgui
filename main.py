@@ -617,6 +617,13 @@ class MainWindow(QMainWindow):
             y_dispense_delay=y_dispense_delay,
             y_priming_position=y_priming_position,
             leveling_cycles=leveling_cycles,
+            blade_speed2=blade_speed2,
+            blade_boundary=blade_boundary,
+            z_offset=z_offset,
+            settle_time=settle_time,
+            initial_leveling=initial_leveling,
+            y_pull_delay=y_pull_delay,
+            y_return_delay=y_return_delay,
         )
         self._go_to_page(self.PAGE_PRINT_PROGRESS)
 

@@ -399,19 +399,35 @@ class PrintProgressPage(BasePage):
         self.row_bottom_exposure = ProgressInfoRow(Icons.EXPOSURE_BOTTOM)  # 바닥 노출
         self.row_normal_exposure = ProgressInfoRow(Icons.EXPOSURE_NORMAL)  # 일반 노출
         self.row_led_power = ProgressInfoRow(Icons.LED_POWER)         # LED 파워
-        self.row_blade_speed = ProgressInfoRow(Icons.BLADE_SPEED)     # 블레이드 속도
+        self.row_blade_speed1 = ProgressInfoRow(Icons.BLADE_SPEED)    # 블레이드 속도 1
+        self.row_blade_speed2 = ProgressInfoRow(Icons.BLADE_SPEED)    # 블레이드 속도 2
+        self.row_blade_boundary = ProgressInfoRow(Icons.RULER)        # 바운더리
+        self.row_bottom_layers = ProgressInfoRow(Icons.BOTTOM_LAYERS) # 바닥 레이어 수
         self.row_resin_dist = ProgressInfoRow(Icons.SYRINGE)          # Resin 토출거리
         self.row_resin_speed = ProgressInfoRow(Icons.DISPENSE_SPEED)  # Resin 토출속도
         self.row_resin_delay = ProgressInfoRow(Icons.DELAY)           # Resin 대기시간
+        self.row_z_offset = ProgressInfoRow(Icons.HOME_Z)             # Z 오프셋
+        self.row_settle_time = ProgressInfoRow(Icons.TIMER)           # Settle Time
+        self.row_leveling = ProgressInfoRow(Icons.LEVEL)              # Leveling ON/OFF
+        self.row_pull_delay = ProgressInfoRow(Icons.DELAY)            # Pull Delay
+        self.row_ret_delay = ProgressInfoRow(Icons.DELAY)             # Return Delay
 
         info_grid.addWidget(self.row_layer_height, 0, 0)
         info_grid.addWidget(self.row_bottom_exposure, 0, 1)
         info_grid.addWidget(self.row_normal_exposure, 1, 0)
         info_grid.addWidget(self.row_led_power, 1, 1)
-        info_grid.addWidget(self.row_blade_speed, 2, 0)
-        info_grid.addWidget(self.row_resin_dist, 2, 1)
-        info_grid.addWidget(self.row_resin_speed, 3, 0)
-        info_grid.addWidget(self.row_resin_delay, 3, 1)
+        info_grid.addWidget(self.row_blade_speed1, 2, 0)
+        info_grid.addWidget(self.row_blade_speed2, 2, 1)
+        info_grid.addWidget(self.row_blade_boundary, 3, 0)
+        info_grid.addWidget(self.row_bottom_layers, 3, 1)
+        info_grid.addWidget(self.row_resin_dist, 4, 0)
+        info_grid.addWidget(self.row_resin_speed, 4, 1)
+        info_grid.addWidget(self.row_resin_delay, 5, 0)
+        info_grid.addWidget(self.row_z_offset, 5, 1)
+        info_grid.addWidget(self.row_settle_time, 6, 0)
+        info_grid.addWidget(self.row_leveling, 6, 1)
+        info_grid.addWidget(self.row_pull_delay, 7, 0)
+        info_grid.addWidget(self.row_ret_delay, 7, 1)
 
         info_layout.addLayout(info_grid)
         info_layout.addStretch()
@@ -852,7 +868,14 @@ class PrintProgressPage(BasePage):
                        y_dispense_speed: int = 0,
                        y_dispense_delay: float = 0.0,
                        y_priming_position: float = 0.0,
-                       leveling_cycles: int = 0):
+                       leveling_cycles: int = 0,
+                       blade_speed2: int = 1200,
+                       blade_boundary: float = 60.0,
+                       z_offset: float = 0.0,
+                       settle_time: float = 0.0,
+                       initial_leveling: bool = True,
+                       y_pull_delay: float = 2.0,
+                       y_return_delay: float = 2.0):
         """프린트 정보 설정 (시작 시 호출)"""
         self._file_path = file_path
         self._total_layers = total_layers
@@ -899,11 +922,19 @@ class PrintProgressPage(BasePage):
         self.row_layer_height.set_value(f"{layer_height:.3f} mm" if layer_height > 0 else "-")
         self.row_bottom_exposure.set_value(f"{bottom_exposure:.1f} s" if bottom_exposure > 0 else "-")
         self.row_normal_exposure.set_value(f"{normal_exposure:.1f} s" if normal_exposure > 0 else "-")
-        self.row_blade_speed.set_value(f"{blade_speed / 60:.0f} mm/s")
         self.row_led_power.set_value(f"{led_power} %")
+        self.row_blade_speed1.set_value(f"{blade_speed / 60:.0f} mm/s")
+        self.row_blade_speed2.set_value(f"{blade_speed2 / 60:.0f} mm/s")
+        self.row_blade_boundary.set_value(f"{blade_boundary:.0f} mm")
+        self.row_bottom_layers.set_value(f"{bottom_layer_count}")
         self.row_resin_dist.set_value(f"{y_dispense_distance:.1f} mm" if y_dispense_distance > 0 else "-")
         self.row_resin_speed.set_value(f"{y_dispense_speed / 60:.0f} mm/s" if y_dispense_speed > 0 else "-")
         self.row_resin_delay.set_value(f"{y_dispense_delay:.1f} s" if y_dispense_delay > 0 else "-")
+        self.row_z_offset.set_value(f"{z_offset:.2f} mm")
+        self.row_settle_time.set_value(f"{settle_time:.1f} s")
+        self.row_leveling.set_value("ON" if initial_leveling else "OFF")
+        self.row_pull_delay.set_value(f"{y_pull_delay:.1f} s")
+        self.row_ret_delay.set_value(f"{y_return_delay:.1f} s")
 
         self.progress_bar.setValue(0)
         self.lbl_percent.setText("0%")
