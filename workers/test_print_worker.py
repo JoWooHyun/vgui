@@ -34,9 +34,11 @@ class PrintJob:
     total_layers: int = 100
     layer_height: float = 0.05
     z_offset: float = 0.0
-    blade_speed: int = 300       # mm/min (구간1: 0→boundary)
-    blade_speed2: int = 1200     # mm/min (구간2: boundary→130)
+    blade_speed: int = 300       # mm/min (구간1: start→boundary)
+    blade_speed2: int = 1200     # mm/min (구간2: boundary→end)
     blade_boundary: float = 60.0 # 구간 경계 위치 (mm)
+    blade_start: float = 0.0    # 블레이드 시작 위치 (mm)
+    blade_end: float = 130.0    # 블레이드 끝 위치 (mm)
     blade_cycles: int = 1
     leveling_cycles: int = 1
     settle_time: float = 0.0         # 초기+첫레이어 토출 후 대기(초)
@@ -107,7 +109,9 @@ class TestPrintWorker(QThread):
                     y_pull_delay: float = 2.0,
                     y_return_distance: float = 0.0,
                     y_return_delay: float = 2.0,
-                    initial_leveling: bool = True):
+                    initial_leveling: bool = True,
+                    blade_start: float = 0.0,
+                    blade_end: float = 130.0):
         if self.isRunning():
             print("[TestPrintWorker] 이미 실행 중")
             return
@@ -119,6 +123,8 @@ class TestPrintWorker(QThread):
             blade_speed=blade_speed,
             blade_speed2=blade_speed2,
             blade_boundary=blade_boundary,
+            blade_start=blade_start,
+            blade_end=blade_end,
             blade_cycles=blade_cycles,
             leveling_cycles=leveling_cycles,
             settle_time=params.get('settleTime', 0.0),
@@ -211,8 +217,9 @@ class TestPrintWorker(QThread):
         self._set_status(PrintStatus.INITIALIZING)
         print(f"[TestPrintWorker] 테스트 프린트 시작")
         print(f"  - 총 레이어: {job.total_layers}")
-        print(f"  - 블레이드 속도1: {job.blade_speed} mm/min (0→{job.blade_boundary}mm)")
-        print(f"  - 블레이드 속도2: {job.blade_speed2} mm/min ({job.blade_boundary}→130mm)")
+        print(f"  - 블레이드 범위: {job.blade_start}~{job.blade_end} mm")
+        print(f"  - 블레이드 속도1: {job.blade_speed} mm/min ({job.blade_start}→{job.blade_boundary}mm)")
+        print(f"  - 블레이드 속도2: {job.blade_speed2} mm/min ({job.blade_boundary}→{job.blade_end}mm)")
         if job.y_pull_distance > 0:
             net = job.y_dispense_distance - job.y_pull_distance + job.y_return_distance
             print(f"  - Push-Pull: push {job.y_dispense_distance}mm, pull {job.y_pull_distance}mm, return {job.y_return_distance}mm (net {net:.2f}mm)")
@@ -222,13 +229,18 @@ class TestPrintWorker(QThread):
                 self.motor.connect()
                 self.motor.klipper_clear_pause()
 
-        # X축 홈
+        # X축 홈 → 시작 위치
         if self._check_stopped():
             return
         if not self._motor_x_home():
             self.error_occurred.emit("X축 홈 이동 실패")
             self._is_stopped = True
             return
+        if job.blade_start > 0:
+            if not self._motor_x_move(job.blade_start, job.blade_speed):
+                self.error_occurred.emit(f"X축 시작위치({job.blade_start}mm) 이동 실패")
+                self._is_stopped = True
+                return
 
         # 초기 평탄화 (ON일 때만 실행)
         if job.initial_leveling:
@@ -264,11 +276,11 @@ class TestPrintWorker(QThread):
                 if not self._wait_interruptible(job.settle_time):
                     return
 
-            # 3. 레진 평탄화 (편도: 0→130)
+            # 3. 레진 평탄화 (편도: start→end)
             self._set_status(PrintStatus.LEVELING)
             if self._check_stopped():
                 return
-            if not self._motor_x_move(130, job.blade_speed):
+            if not self._motor_x_move(job.blade_end, job.blade_speed):
                 self.error_occurred.emit("초기 평탄화 실패")
                 self._is_stopped = True
                 return
@@ -277,7 +289,7 @@ class TestPrintWorker(QThread):
                 self.error_occurred.emit("초기 평탄화 Z 리프트 실패")
                 self._is_stopped = True
                 return
-            if not self._motor_x_move(0, 1800):
+            if not self._motor_x_move(job.blade_start, 1800):
                 self.error_occurred.emit("초기 평탄화 X 복귀 실패")
                 self._is_stopped = True
                 return
@@ -363,7 +375,7 @@ class TestPrintWorker(QThread):
             self.error_occurred.emit(f"레이어 {layer_idx}: X축 평탄화(구간1) 실패")
             self._is_stopped = True
             return False
-        if not self._motor_x_move(130, job.blade_speed2):
+        if not self._motor_x_move(job.blade_end, job.blade_speed2):
             self.error_occurred.emit(f"레이어 {layer_idx}: X축 평탄화(구간2) 실패")
             self._is_stopped = True
             return False
@@ -392,8 +404,8 @@ class TestPrintWorker(QThread):
             self._is_stopped = True
             return False
 
-        # 6. X축 복귀 (130→0, 30mm/s)
-        if not self._motor_x_move(0, 1800):
+        # 6. X축 복귀 (end→start, 30mm/s)
+        if not self._motor_x_move(job.blade_start, 1800):
             self.error_occurred.emit(f"레이어 {layer_idx}: X축 복귀 실패")
             self._is_stopped = True
             return False

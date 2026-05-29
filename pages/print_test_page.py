@@ -518,6 +518,8 @@ class PrintTestPage(BasePage):
             'yReturnDistance': preset.y_return_distance if preset else 0.0,
             'yReturnDelay': preset.y_return_delay if preset else 2.0,
             'initialLeveling': preset.initial_leveling if preset else True,
+            'bladeStart': preset.blade_start if preset else 0.0,
+            'bladeEnd': preset.blade_end if preset else 130.0,
         }
 
         self.start_test.emit(params)

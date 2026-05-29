@@ -411,6 +411,8 @@ class PrintProgressPage(BasePage):
         self.row_leveling = ProgressInfoRow(Icons.LEVEL)              # Leveling ON/OFF
         self.row_pull_delay = ProgressInfoRow(Icons.DELAY)            # Pull Delay
         self.row_ret_delay = ProgressInfoRow(Icons.DELAY)             # Return Delay
+        self.row_blade_start = ProgressInfoRow(Icons.BLADE_SPEED)     # Blade Start
+        self.row_blade_end = ProgressInfoRow(Icons.BLADE_SPEED)       # Blade End
 
         info_grid.addWidget(self.row_layer_height, 0, 0)
         info_grid.addWidget(self.row_bottom_exposure, 0, 1)
@@ -428,6 +430,8 @@ class PrintProgressPage(BasePage):
         info_grid.addWidget(self.row_leveling, 6, 1)
         info_grid.addWidget(self.row_pull_delay, 7, 0)
         info_grid.addWidget(self.row_ret_delay, 7, 1)
+        info_grid.addWidget(self.row_blade_start, 8, 0)
+        info_grid.addWidget(self.row_blade_end, 8, 1)
 
         info_layout.addLayout(info_grid)
         info_layout.addStretch()
@@ -892,7 +896,9 @@ class PrintProgressPage(BasePage):
                        y_pull_distance: float = 0.0,
                        y_pull_delay: float = 2.0,
                        y_return_distance: float = 0.0,
-                       y_return_delay: float = 2.0):
+                       y_return_delay: float = 2.0,
+                       blade_start: float = 0.0,
+                       blade_end: float = 130.0):
         """프린트 정보 설정 (시작 시 호출)"""
         self._file_path = file_path
         self._total_layers = total_layers
@@ -928,6 +934,8 @@ class PrintProgressPage(BasePage):
             y_pull_delay=y_pull_delay,
             y_return_distance=y_return_distance,
             y_return_delay=y_return_delay,
+            blade_start=blade_start,
+            blade_end=blade_end,
         )
         self._total_estimated_time = total_estimated_time
 
@@ -960,6 +968,8 @@ class PrintProgressPage(BasePage):
         self.row_leveling.set_value("ON" if initial_leveling else "OFF")
         self.row_pull_delay.set_value(f"{y_pull_delay:.1f} s")
         self.row_ret_delay.set_value(f"{y_return_delay:.1f} s")
+        self.row_blade_start.set_value(f"{blade_start:.1f} mm")
+        self.row_blade_end.set_value(f"{blade_end:.1f} mm")
 
         self.progress_bar.setValue(0)
         self.lbl_percent.setText("0%")

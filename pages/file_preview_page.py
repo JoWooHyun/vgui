@@ -425,6 +425,8 @@ class FilePreviewPage(BasePage):
             (Icons.DELAY, "y_pull_delay", ("preset", "s")),
             (Icons.CYCLE, "y_return_distance", ("preset", "mm")),
             (Icons.DELAY, "y_return_delay", ("preset", "s")),
+            (Icons.BLADE_SPEED, "blade_start", ("preset", "mm")),
+            (Icons.BLADE_SPEED, "blade_end", ("preset", "mm")),
         ]
 
         for idx, (icon_svg, key, item_type) in enumerate(all_items):
@@ -523,6 +525,8 @@ class FilePreviewPage(BasePage):
             'y_pull_delay': preset.y_pull_delay,
             'y_return_distance': preset.y_return_distance,
             'y_return_delay': preset.y_return_delay,
+            'blade_start': preset.blade_start,
+            'blade_end': preset.blade_end,
         }
         for key, (row, unit) in self.preset_rows.items():
             val = values.get(key, 0)
@@ -684,4 +688,6 @@ class FilePreviewPage(BasePage):
             'yPullDelay': preset.y_pull_delay,
             'yReturnDistance': preset.y_return_distance,
             'yReturnDelay': preset.y_return_delay,
+            'bladeStart': preset.blade_start,
+            'bladeEnd': preset.blade_end,
         }
