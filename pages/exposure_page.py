@@ -149,7 +149,7 @@ class ExposurePage(BasePage):
         super().__init__("Exposure", show_back=True, parent=parent)
 
         self._current_pattern_idx = 1  # 기본: checker
-        self._exposure_time = 5
+        self._exposure_time = 15
         self._is_running = False
         self._custom_image_path = ""  # 사용자 선택 이미지 경로
 

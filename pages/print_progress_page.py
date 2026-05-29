@@ -613,8 +613,8 @@ class PrintProgressPage(BasePage):
         self.btn_prime_minus.hide()
 
         # 이동거리 버튼 (클릭 시 NumericKeypad)
-        self._prime_distance = 1.0
-        self.btn_prime_dist = QPushButton("1 mm")
+        self._prime_distance = 10.0
+        self.btn_prime_dist = QPushButton("10 mm")
         self.btn_prime_dist.setFixedSize(80, 48)
         self.btn_prime_dist.setFont(Fonts.body())
         self.btn_prime_dist.setCursor(Qt.PointingHandCursor)
@@ -952,24 +952,24 @@ class PrintProgressPage(BasePage):
         self.row_resin_level.set_value(f"{resin_pct} %")
 
         # 설정 정보 (2열 그리드)
-        self.row_layer_height.set_value(f"{layer_height:.3f} mm" if layer_height > 0 else "-")
-        self.row_bottom_exposure.set_value(f"{bottom_exposure:.1f} s" if bottom_exposure > 0 else "-")
-        self.row_normal_exposure.set_value(f"{normal_exposure:.1f} s" if normal_exposure > 0 else "-")
+        self.row_layer_height.set_value(f"{layer_height:g} mm" if layer_height > 0 else "-")
+        self.row_bottom_exposure.set_value(f"{bottom_exposure:g} s" if bottom_exposure > 0 else "-")
+        self.row_normal_exposure.set_value(f"{normal_exposure:g} s" if normal_exposure > 0 else "-")
         self.row_led_power.set_value(f"{led_power} %")
-        self.row_blade_speed1.set_value(f"{blade_speed / 60:.0f} mm/s")
-        self.row_blade_speed2.set_value(f"{blade_speed2 / 60:.0f} mm/s")
-        self.row_blade_boundary.set_value(f"{blade_boundary:.0f} mm")
+        self.row_blade_speed1.set_value(f"{blade_speed / 60:g} mm/s")
+        self.row_blade_speed2.set_value(f"{blade_speed2 / 60:g} mm/s")
+        self.row_blade_boundary.set_value(f"{blade_boundary:g} mm")
         self.row_bottom_layers.set_value(f"{bottom_layer_count}")
-        self.row_resin_dist.set_value(f"{y_dispense_distance:.1f} mm" if y_dispense_distance > 0 else "-")
-        self.row_resin_speed.set_value(f"{y_dispense_speed / 60:.0f} mm/s" if y_dispense_speed > 0 else "-")
-        self.row_resin_delay.set_value(f"{y_dispense_delay:.1f} s" if y_dispense_delay > 0 else "-")
-        self.row_z_offset.set_value(f"{z_offset:.2f} mm")
-        self.row_settle_time.set_value(f"{settle_time:.1f} s")
+        self.row_resin_dist.set_value(f"{y_dispense_distance:g} mm" if y_dispense_distance > 0 else "-")
+        self.row_resin_speed.set_value(f"{y_dispense_speed / 60:g} mm/s" if y_dispense_speed > 0 else "-")
+        self.row_resin_delay.set_value(f"{y_dispense_delay:g} s" if y_dispense_delay > 0 else "-")
+        self.row_z_offset.set_value(f"{z_offset:g} mm")
+        self.row_settle_time.set_value(f"{settle_time:g} s")
         self.row_leveling.set_value("ON" if initial_leveling else "OFF")
-        self.row_pull_delay.set_value(f"{y_pull_delay:.1f} s")
-        self.row_ret_delay.set_value(f"{y_return_delay:.1f} s")
-        self.row_blade_start.set_value(f"{blade_start:.1f} mm")
-        self.row_blade_end.set_value(f"{blade_end:.1f} mm")
+        self.row_pull_delay.set_value(f"{y_pull_delay:g} s")
+        self.row_ret_delay.set_value(f"{y_return_delay:g} s")
+        self.row_blade_start.set_value(f"{blade_start:g} mm")
+        self.row_blade_end.set_value(f"{blade_end:g} mm")
 
         self.progress_bar.setValue(0)
         self.lbl_percent.setText("0%")
@@ -1081,8 +1081,8 @@ class PrintProgressPage(BasePage):
             title="이동거리",
             value=self._prime_distance,
             unit="mm",
-            min_val=0.1,
-            max_val=10.0,
+            min_val=0.05,
+            max_val=120.0,
             allow_decimal=True,
             parent=self.window()
         )

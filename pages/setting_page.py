@@ -401,8 +401,8 @@ class YAxisPanel(QFrame):
         layout.addStretch(1)
 
         # 거리 입력 버튼 (클릭하면 NumericKeypad 열림)
-        self._distance = 1.0
-        self.btn_distance = QPushButton("1 mm")
+        self._distance = 10.0
+        self.btn_distance = QPushButton("10 mm")
         self.btn_distance.setFixedHeight(44)
         self.btn_distance.setCursor(Qt.PointingHandCursor)
         self.btn_distance.setStyleSheet(get_distance_button_active_style())
@@ -528,7 +528,7 @@ class YAxisPanel(QFrame):
             value=self._distance,
             unit="mm",
             min_val=0.05,
-            max_val=100.0,
+            max_val=120.0,
             allow_decimal=True,
             parent=self.window()
         )
