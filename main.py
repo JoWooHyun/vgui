@@ -832,6 +832,7 @@ class MainWindow(QMainWindow):
             initial_leveling=params.get('initialLeveling', True),
             blade_start=params.get('bladeStart', 0.0),
             blade_end=params.get('bladeEnd', 130.0),
+            led_delay=params.get('ledDelay', 5.0),
         )
 
     def _on_test_completed(self):

@@ -14,10 +14,6 @@ from PySide6.QtCore import QThread, Signal, QMutex, QWaitCondition
 from controllers.motor_controller import MotorController
 
 
-# LED 대체 대기 시간 (초)
-LED_SUBSTITUTE_DELAY = 5.0
-
-
 class PrintStatus(Enum):
     IDLE = auto()
     INITIALIZING = auto()
@@ -51,6 +47,7 @@ class PrintJob:
     y_pull_delay: float = 2.0
     y_return_distance: float = 0.0
     y_return_delay: float = 2.0
+    led_delay: float = 5.0
 
 
 class TestPrintWorker(QThread):
@@ -111,7 +108,8 @@ class TestPrintWorker(QThread):
                     y_return_delay: float = 2.0,
                     initial_leveling: bool = True,
                     blade_start: float = 0.0,
-                    blade_end: float = 130.0):
+                    blade_end: float = 130.0,
+                    led_delay: float = 5.0):
         if self.isRunning():
             print("[TestPrintWorker] 이미 실행 중")
             return
@@ -137,6 +135,7 @@ class TestPrintWorker(QThread):
             y_pull_delay=y_pull_delay,
             y_return_distance=y_return_distance,
             y_return_delay=y_return_delay,
+            led_delay=led_delay,
         )
 
         self._is_paused = False
@@ -386,9 +385,9 @@ class TestPrintWorker(QThread):
         if self._check_stopped():
             return True
 
-        # 4. LED 대체 → 5초 대기
-        print(f"[TestPrintWorker] Layer {layer_idx}: LED 대기 {LED_SUBSTITUTE_DELAY}초")
-        if not self._wait_interruptible(LED_SUBSTITUTE_DELAY):
+        # 4. LED 대체 → 설정된 시간만큼 대기
+        print(f"[TestPrintWorker] Layer {layer_idx}: LED 대기 {job.led_delay}초")
+        if not self._wait_interruptible(job.led_delay):
             return True
 
         if self._check_stopped():

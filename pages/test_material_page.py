@@ -339,6 +339,7 @@ class TestMaterialPage(BasePage):
         self.row_y_return_delay = MaterialEditRow("Return Delay", 2.0, "s", 0.0, 20.0, allow_decimal=True)
         self.row_blade_start = MaterialEditRow("Blade Start", 0.0, "mm", 0.0, 10.0, allow_decimal=True)
         self.row_blade_end = MaterialEditRow("Blade End", 130.0, "mm", 120.0, 140.0, allow_decimal=True)
+        self.row_led_delay = MaterialEditRow("LED Delay", 5.0, "s", 1.0, 60.0, allow_decimal=True)
 
         # Leveling ON/OFF 토글 버튼
         self._leveling_on = True
@@ -366,6 +367,7 @@ class TestMaterialPage(BasePage):
             MaterialEditPairRow(self.row_y_pull_dist, self.row_y_pull_delay),
             MaterialEditPairRow(self.row_y_return_dist, self.row_y_return_delay),
             MaterialEditPairRow(self.row_blade_start, self.row_blade_end),
+            MaterialEditPairRow(self.row_led_delay),
         ]
 
         for pair in self._pair_rows:
@@ -477,6 +479,7 @@ class TestMaterialPage(BasePage):
         self.row_y_return_delay.set_value(preset.y_return_delay)
         self.row_blade_start.set_value(preset.blade_start)
         self.row_blade_end.set_value(preset.blade_end)
+        self.row_led_delay.set_value(preset.led_delay)
         self._leveling_on = preset.initial_leveling
         self._update_leveling_style()
 
@@ -501,6 +504,7 @@ class TestMaterialPage(BasePage):
             y_return_delay=self.row_y_return_delay.get_value(),
             blade_start=self.row_blade_start.get_value(),
             blade_end=self.row_blade_end.get_value(),
+            led_delay=self.row_led_delay.get_value(),
             initial_leveling=self._leveling_on,
         )
         get_settings().update_test_material(self._current_material_name, preset)

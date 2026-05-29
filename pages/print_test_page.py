@@ -520,6 +520,7 @@ class PrintTestPage(BasePage):
             'initialLeveling': preset.initial_leveling if preset else True,
             'bladeStart': preset.blade_start if preset else 0.0,
             'bladeEnd': preset.blade_end if preset else 130.0,
+            'ledDelay': preset.led_delay if preset else 5.0,
         }
 
         self.start_test.emit(params)

@@ -54,6 +54,7 @@ class TestMaterialPreset:
     y_return_delay: float = 2.0
     blade_start: float = 0.0        # 블레이드 시작 위치 (0~10mm)
     blade_end: float = 130.0        # 블레이드 끝 위치 (120~140mm)
+    led_delay: float = 5.0          # LED 대체 대기 시간 (초, 1~60)
 
 
 # 기본 내장 소재 프리셋
@@ -234,6 +235,7 @@ class SettingsManager:
                         y_return_delay=m.get('y_return_delay', 2.0),
                         blade_start=m.get('blade_start', 0.0),
                         blade_end=m.get('blade_end', 130.0),
+                        led_delay=m.get('led_delay', 5.0),
                     ))
 
             self._settings.selected_test_material = data.get('selected_test_material', '')
