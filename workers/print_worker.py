@@ -520,8 +520,8 @@ class PrintWorker(QThread):
         if self._check_stopped():
             return True
 
-        # 7. Z축 리프트 (+5mm)
-        z_lift_position = z_position + 5.0
+        # 7. Z축 리프트 (+3mm)
+        z_lift_position = z_position + 3.0
         if not self._motor_z_move(z_lift_position):
             self.error_occurred.emit(f"레이어 {layer_idx}: Z축 리프트 실패")
             self._is_stopped = True

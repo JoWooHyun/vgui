@@ -289,7 +289,7 @@ class TestPrintWorker(QThread):
                 self.error_occurred.emit("초기 평탄화 Z 리프트 실패")
                 self._is_stopped = True
                 return
-            if not self._motor_x_move(job.blade_start, 1800):
+            if not self._motor_x_move(job.blade_start, 3000):
                 self.error_occurred.emit("초기 평탄화 X 복귀 실패")
                 self._is_stopped = True
                 return
@@ -404,8 +404,8 @@ class TestPrintWorker(QThread):
             self._is_stopped = True
             return False
 
-        # 6. X축 복귀 (end→start, 30mm/s)
-        if not self._motor_x_move(job.blade_start, 1800):
+        # 6. X축 복귀 (end→start, 50mm/s)
+        if not self._motor_x_move(job.blade_start, 3000):
             self.error_occurred.emit(f"레이어 {layer_idx}: X축 복귀 실패")
             self._is_stopped = True
             return False
