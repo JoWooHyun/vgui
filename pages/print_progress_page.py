@@ -1082,7 +1082,7 @@ class PrintProgressPage(BasePage):
             value=self._prime_distance,
             unit="mm",
             min_val=0.05,
-            max_val=120.0,
+            max_val=125.0,
             allow_decimal=True,
             parent=self.window()
         )
