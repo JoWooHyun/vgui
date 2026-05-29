@@ -787,57 +787,61 @@ class PrintProgressPage(BasePage):
                                y_dispense_distance: float = 0.0,
                                y_dispense_speed: int = 0,
                                y_dispense_delay: float = 0.0,
-                               leveling_cycles: int = 0) -> int:
+                               leveling_cycles: int = 0,
+                               blade_speed2: int = 1200,
+                               blade_boundary: float = 60.0,
+                               blade_start: float = 0.0,
+                               blade_end: float = 130.0,
+                               settle_time: float = 0.0,
+                               initial_leveling: bool = True,
+                               y_pull_distance: float = 0.0,
+                               y_pull_delay: float = 2.0,
+                               y_return_distance: float = 0.0,
+                               y_return_delay: float = 2.0) -> int:
         """총 예상 시간 계산 (실제 프린트 시퀀스 기반)
 
         레이어별 시퀀스:
-        1. Z축 하강 (레이어 높이)
-        2. 레진 토출 + 대기
-        3. X축 10→140 (평탄화)
-        4. 노광
+        1. Z축 레이어 높이로 이동
+        2. Resin 토출 (Push + Pull + Return) + 대기
+        3. X축 평탄화 (2구간: start→boundary@spd1, boundary→end@spd2)
+        4. 이미지 투영 → LED ON → 노광 → LED OFF
         5. Z축 리프트 (+5mm)
-        6. X축 140→10 (복귀)
-
-        Args:
-            total_layers: 총 레이어 수
-            blade_speed: 블레이드 속도 (mm/min)
-            blade_cycles: 블레이드 왕복 횟수
-            bottom_layer_count: 바닥 레이어 수
-            bottom_exposure: 바닥 노광 시간 (초)
-            normal_exposure: 일반 노광 시간 (초)
-            lift_height: 리프트 높이 (mm)
-            lift_speed: 리프트 속도 (mm/min)
-            drop_speed: 하강 속도 (mm/min)
-            y_dispense_distance: 레진 토출 거리 (mm)
-            y_dispense_speed: 레진 토출 속도 (mm/min)
-            y_dispense_delay: 레진 토출 후 대기 (초)
-            leveling_cycles: 초기 평탄화 횟수
+        6. X축 복귀 (end→start @ 3000mm/min)
 
         Returns:
             총 예상 시간 (초)
         """
         # 블레이드 속도 (mm/min → mm/s)
-        blade_speed_mm_s = blade_speed / 60.0
-        if blade_speed_mm_s <= 0:
-            blade_speed_mm_s = 5.0
+        spd1 = blade_speed / 60.0 if blade_speed > 0 else 5.0
+        spd2 = blade_speed2 / 60.0 if blade_speed2 > 0 else 20.0
 
-        # X축 이동 시간: 10→140 (130mm, 설정 속도) + 140→10 (130mm, 고정 50mm/s)
-        x_forward_time = 130.0 / blade_speed_mm_s   # 10→140 (평탄화)
-        x_return_time = 130.0 / 50.0                 # 140→10 (복귀, 고정 50mm/s)
+        # X축 평탄화: 2단 구간 (start→boundary@spd1 + boundary→end@spd2)
+        dist1 = max(0, blade_boundary - blade_start)
+        dist2 = max(0, blade_end - blade_boundary)
+        x_forward_time = (dist1 / spd1) + (dist2 / spd2)
+        # X축 복귀: end→start @ 3000mm/min (50mm/s) 고정
+        x_return_time = (blade_end - blade_start) / 50.0
         x_time = (x_forward_time + x_return_time) * blade_cycles
 
-        # Z축 리프트(+5mm) + 하강 시간
+        # Z축 리프트(+5mm) + 다음 레이어 하강 시간
         lift_speed_mm_s = lift_speed / 60.0 if lift_speed > 0 else 5.0
         drop_speed_mm_s = drop_speed / 60.0 if drop_speed > 0 else 2.5
         z_lift_time = lift_height / lift_speed_mm_s
         z_drop_time = lift_height / drop_speed_mm_s
         z_time = z_lift_time + z_drop_time
 
-        # 레진 토출 시간 + 대기
+        # 레진 토출 시간 (3단계: Push + Pull + Return)
         resin_time = 0.0
         if y_dispense_distance > 0 and y_dispense_speed > 0:
             y_speed_mm_s = y_dispense_speed / 60.0
+            # Push 이동 시간 + 대기
             resin_time = (y_dispense_distance / y_speed_mm_s) + y_dispense_delay
+            # Pull delay (pull_distance > 0일 때)
+            if y_pull_distance > 0:
+                resin_time += y_pull_delay
+            # Return delay (return_distance > 0일 때)
+            if y_return_distance > 0:
+                resin_time += y_return_delay
 
         # 바닥 레이어 시간
         bottom_time_per_layer = resin_time + x_time + bottom_exposure + z_time
@@ -848,12 +852,23 @@ class PrintProgressPage(BasePage):
         normal_time_per_layer = resin_time + x_time + normal_exposure + z_time
         total_normal_time = normal_time_per_layer * normal_layers
 
-        # 초기 평탄화 시간 (0→140→0 왕복 × cycles + Z홈)
-        leveling_time = 0.0
-        if leveling_cycles > 0:
-            leveling_time = (280.0 / blade_speed_mm_s) * leveling_cycles
+        # 첫 레이어 settle time (layer_idx == 0일 때 추가)
+        first_layer_settle = settle_time if total_layers > 0 else 0.0
 
-        return int(leveling_time + total_bottom_time + total_normal_time)
+        # 초기 평탄화 시간 (initial_leveling ON일 때만)
+        leveling_time = 0.0
+        if initial_leveling and leveling_cycles > 0:
+            # 초기 평탄화도 2단 속도 적용
+            lev_forward = (dist1 / spd1) + (dist2 / spd2)
+            lev_return = (blade_end - blade_start) / 50.0
+            leveling_time = (lev_forward + lev_return) * leveling_cycles
+            # 초기 토출 + settle time
+            if y_dispense_distance > 0 and y_dispense_speed > 0:
+                y_speed_mm_s = y_dispense_speed / 60.0
+                leveling_time += (y_dispense_distance / y_speed_mm_s) + y_dispense_delay
+            leveling_time += settle_time
+
+        return int(leveling_time + total_bottom_time + total_normal_time + first_layer_settle)
 
     # === Public API (Worker에서 호출) ===
     
@@ -874,7 +889,9 @@ class PrintProgressPage(BasePage):
                        z_offset: float = 0.0,
                        settle_time: float = 0.0,
                        initial_leveling: bool = True,
+                       y_pull_distance: float = 0.0,
                        y_pull_delay: float = 2.0,
+                       y_return_distance: float = 0.0,
                        y_return_delay: float = 2.0):
         """프린트 정보 설정 (시작 시 호출)"""
         self._file_path = file_path
@@ -902,7 +919,15 @@ class PrintProgressPage(BasePage):
             bottom_layer_count, bottom_exposure, normal_exposure,
             lift_height, lift_speed, drop_speed,
             y_dispense_distance, y_dispense_speed, y_dispense_delay,
-            leveling_cycles
+            leveling_cycles,
+            blade_speed2=blade_speed2,
+            blade_boundary=blade_boundary,
+            settle_time=settle_time,
+            initial_leveling=initial_leveling,
+            y_pull_distance=y_pull_distance,
+            y_pull_delay=y_pull_delay,
+            y_return_distance=y_return_distance,
+            y_return_delay=y_return_delay,
         )
         self._total_estimated_time = total_estimated_time
 

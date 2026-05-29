@@ -622,7 +622,9 @@ class MainWindow(QMainWindow):
             z_offset=z_offset,
             settle_time=settle_time,
             initial_leveling=initial_leveling,
+            y_pull_distance=y_pull_distance,
             y_pull_delay=y_pull_delay,
+            y_return_distance=y_return_distance,
             y_return_delay=y_return_delay,
         )
         self._go_to_page(self.PAGE_PRINT_PROGRESS)
