@@ -659,6 +659,8 @@ class FilePreviewPage(BasePage):
             'yPullDelay': preset.y_pull_delay,
             'yReturnDistance': preset.y_return_distance,
             'yReturnDelay': preset.y_return_delay,
+            'bladeStart': preset.blade_start,
+            'bladeEnd': preset.blade_end,
             'materialName': preset.name,
         }
         self.start_print.emit(self._file_path, full_params)
