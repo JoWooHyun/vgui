@@ -532,10 +532,8 @@ class FilePreviewPage(BasePage):
             val = values.get(key, 0)
             if isinstance(val, bool):
                 row.set_value("ON" if val else "OFF")
-            elif val == int(val):
-                row.set_value(f"{int(val)} {unit}")
             else:
-                row.set_value(f"{val:.1f} {unit}")
+                row.set_value(f"{val:g} {unit}")
 
     def set_file(self, file_path: str):
         """파일 설정 및 정보 표시"""

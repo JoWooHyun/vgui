@@ -153,10 +153,7 @@ class MaterialEditRow(QFrame):
         layout.addWidget(self.lbl_value, 1)
 
     def _update_display(self):
-        if self._value == int(self._value):
-            self.lbl_value.setText(f"{int(self._value)} {self._unit}")
-        else:
-            self.lbl_value.setText(f"{self._value:.1f} {self._unit}")
+        self.lbl_value.setText(f"{self._value:g} {self._unit}")
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:

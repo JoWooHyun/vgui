@@ -24,7 +24,7 @@ class ProgressInfoRow(QFrame):
     def __init__(self, icon_svg: str, value: str = "-", parent=None):
         super().__init__(parent)
 
-        self.setFixedHeight(28)
+        self.setFixedHeight(24)
         self.setStyleSheet(f"""
             QFrame {{
                 background-color: {Colors.BG_SECONDARY};
@@ -34,13 +34,13 @@ class ProgressInfoRow(QFrame):
         """)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(6, 0, 8, 0)
-        layout.setSpacing(4)  # 아이콘-값 간격 좁힘
+        layout.setContentsMargins(4, 0, 6, 0)
+        layout.setSpacing(3)
 
         # 아이콘
         self.lbl_icon = QLabel()
-        self.lbl_icon.setFixedSize(18, 18)
-        self.lbl_icon.setPixmap(Icons.get_pixmap(icon_svg, 16, Colors.CYAN))
+        self.lbl_icon.setFixedSize(16, 16)
+        self.lbl_icon.setPixmap(Icons.get_pixmap(icon_svg, 14, Colors.CYAN))
         self.lbl_icon.setStyleSheet(f"background: {Colors.BG_SECONDARY}; border: none;")
 
         # 값 (왼쪽 정렬로 아이콘 바로 옆에 표시)
@@ -375,25 +375,28 @@ class PrintProgressPage(BasePage):
 
         # 오른쪽: 정보 (2열 그리드 + 실시간 정보)
         info_layout = QVBoxLayout()
-        info_layout.setSpacing(6)
+        info_layout.setSpacing(3)
         info_layout.setAlignment(Qt.AlignTop)
 
-        # 실시간 정보 (레이어, 시간) - 상단
+        # 실시간 정보 (2행 2열) - 상단
         self.row_layer = ProgressInfoRow(Icons.STACK)       # 현재/총 레이어
         self.row_elapsed = ProgressInfoRow(Icons.CLOCK)     # 경과 시간
         self.row_total_time = ProgressInfoRow(Icons.HOURGLASS)  # 총 예상 시간
         self.row_resin_level = ProgressInfoRow(Icons.RESIN_LEVEL)  # Resin 잔량 %
 
-        info_layout.addWidget(self.row_layer)
-        info_layout.addWidget(self.row_elapsed)
-        info_layout.addWidget(self.row_total_time)
-        info_layout.addWidget(self.row_resin_level)
+        live_grid = QGridLayout()
+        live_grid.setSpacing(3)
+        live_grid.addWidget(self.row_layer, 0, 0)
+        live_grid.addWidget(self.row_elapsed, 0, 1)
+        live_grid.addWidget(self.row_total_time, 1, 0)
+        live_grid.addWidget(self.row_resin_level, 1, 1)
+        info_layout.addLayout(live_grid)
 
-        info_layout.addSpacing(4)
+        info_layout.addSpacing(2)
 
         # 설정 정보 (2열 그리드) - 하단
         info_grid = QGridLayout()
-        info_grid.setSpacing(4)
+        info_grid.setSpacing(3)
 
         self.row_layer_height = ProgressInfoRow(Icons.RULER)          # 레이어 높이
         self.row_bottom_exposure = ProgressInfoRow(Icons.EXPOSURE_BOTTOM)  # 바닥 노출
