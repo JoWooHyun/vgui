@@ -258,16 +258,111 @@
 
 ---
 
+## v5.1 - 블레이드 범위 설정 및 리필 개선 (2026-05-26)
+
+### 2026-05-26 | 블레이드 범위, 리필 프라이밍, 블레이드 홈 복귀
+
+- **블레이드 스윕 범위 설정** (`blade_start`, `blade_end`)
+  - Setting 페이지에서 블레이드 시작/끝 위치 설정 가능 (기본 0~130mm)
+  - MaterialPreset에 `blade_start`, `blade_end` 필드 추가
+- **블레이드 홈 복귀**: 스탠바이 10mm 대기 제거 → 홈(0mm)으로 직접 복귀
+- **주사기 리필 프라이밍 UI**: 레진 부족 시 프라이밍 거리 입력 + Y축 이동 기능 추가
+- **주사기 리필 Y좌표 리셋**: 리필 시작 시 `SET_KINEMATIC_POSITION Y=130` → Klipper에 130mm 위치 세팅
+- 전체 문서 v5.0 업데이트 (`0fceed1`)
+
+---
+
+## v5.2 - 테스트 모드 신규 개발 (2026-05-27)
+
+### 2026-05-27 | 테스트 프린트 시스템 구축
+
+- **테스트 모드 추가** (`f800d5a`)
+  - LED/DLP 없이 모터만 동작하는 레진 토출 테스트 전용 모드
+  - `TestPrintWorker` 신규 생성 (LED 대신 5초 대기)
+  - `TestMaterialPreset` 신규 dataclass (프로덕션과 완전 분리)
+  - `TestMaterialPage` 신규 페이지 (테스트 전용 소재 프리셋 관리)
+  - `PrintTestPage` 신규 페이지 (설정 + 진행 통합 UI)
+- **TestProgressPage → PrintTestPage 통합** (`e369702`)
+  - 설정 영역과 진행 영역을 하나의 페이지에서 모드 전환
+- **블레이드 스윕 거리 140→130mm 변경** (`00e2b50`)
+- **Z offset, settle time, one-way leveling 추가** (`bd0d528`)
+  - PrintJob dataclass에 `z_offset`, `settle_time`, `initial_leveling` 필드 추가
+  - Z offset: 초기 Z축 위치 미세 보정
+  - Settle time: 첫 레이어 토출 후 레진 안정 대기 시간
+  - 레벨링 one-way 방식 (0→130mm만, 복귀 X홈)
+- **테스트 모드 기능 → 프로덕션 시스템 이식** (`7a712aa`)
+  - Z offset, settle time, initial leveling, blade_speed2, blade_boundary를
+    PrintWorker/MaterialPreset/FilePreviewPage/PrintProgressPage에 적용
+
+---
+
+## v5.3 - Material 페이지 UI 개편 및 설정 정보 표시 (2026-05-28)
+
+### 2026-05-28 | 소재 페이지 리뉴얼 및 키패드 개선
+
+- **Material 페이지 2열 레이아웃** (`bcce127`)
+  - `MaterialEditPairRow` 컴포넌트 추가: 한 행에 2개 설정값 배치
+  - Z offset=0 동작 수정 (기존: 0일 때 무조건 0.1mm → 수정: 0이면 이동 안 함)
+- **Initial Leveling ON/OFF 토글** (`296c0e4`)
+  - Material/TestMaterial 페이지에 레벨링 토글 버튼 추가
+  - MaterialPreset/TestMaterialPreset에 `initial_leveling: bool` 필드 추가
+- **File Preview 페이지 설정값 전체 표시** (`3c6e95d`)
+  - 소재 프리셋의 모든 값을 ReadOnlyRow로 표시 (기존: 일부만)
+- **NumericKeypad 자동 클리어** (`6e46841`)
+  - 키패드 열릴 때 기존 값 표시, 첫 숫자 입력 시 자동으로 클리어
+
+### 2026-05-29 | 진행 페이지 설정 정보 및 기본값 조정
+
+- **Print Progress 페이지 설정 정보 전체 표시** (`afa3825`)
+  - ProgressInfoRow로 blade_speed2, blade_boundary, z_offset, settle_time,
+    pull_dist, pull_delay, return_dist, return_delay, blade_start, blade_end 추가
+  - 예상 프린트 시간 계산에 모든 파라미터 반영
+- **예상 프린트 시간 정확도 개선** (`c97c885`)
+  - 블레이드 2구간 속도, settle time, pull/return 시간 등 누락 항목 추가
+
+---
+
+## v5.4 - 설정값 조정 및 LED Delay 설정 (2026-05-29)
+
+### 2026-05-29 | 기본값/범위 변경, 프라이밍 거리 수정, LED delay
+
+- **blade_start/blade_end를 Setting 페이지에서 Material 프리셋으로 이동** (`473acee`)
+  - 소재별로 블레이드 시작/끝 위치를 다르게 설정 가능
+  - TestMaterialPreset에도 동일 적용
+  - print_test_page, print_progress_page, main.py 파라미터 전달 업데이트
+- **기본값/범위 일괄 변경** (`7711b2c`)
+  - Setting 페이지 프라이밍 거리: 기본 1mm→10mm, 범위 0.05~125mm
+  - Manual 페이지 모든 축: 기본 이동거리 1mm→10mm
+  - Exposure 페이지: 기본 노출 시간 5초→15초
+  - Print Progress 프라이밍: 기본 10mm, 범위 0.05~125mm
+  - Material/TestMaterial: Resin Dist. max 10, Resin Delay min 0, Pull/Return Dist. max 10
+  - Print Progress 값 표시: `:.Xf` → `:g` 포맷 (정확한 값 표시, 0.13이 0.1로 잘리는 문제 해결)
+- **프라이밍 최대 거리 수정** (`0f7316e`)
+  - 120mm→125mm (Y축 물리적 최대 이동거리 기준)
+  - Setting 페이지 + Print Progress 페이지 프라이밍 모두 적용
+- **test/print worker 동기화** (`b098bad`)
+  - Z-lift +3mm 추가 (기존 대비 높이 증가)
+  - X축 복귀 속도 3000mm/min으로 변경
+- **테스트 모드 LED Delay 설정 추가** (`ed97ddf`)
+  - 하드코딩된 `LED_SUBSTITUTE_DELAY = 5.0` → 사용자 설정값으로 변경
+  - `TestMaterialPreset`에 `led_delay: float = 5.0` 필드 추가
+  - `TestMaterialPage`에 LED Delay 설정 UI 행 추가 (1~60초)
+  - `PrintJob`에 `led_delay` 필드 추가, `start_print()` 파라미터 전달
+  - `_process_layer()`에서 `job.led_delay` 사용
+
+---
+
 ## 개발 통계
 
 | 항목 | 수치 |
 |------|------|
-| 총 커밋 수 | 170개+ |
+| 총 커밋 수 | 190개+ |
 | 개발 기간 | 2025-12-09 ~ 현재 |
-| 주요 페이지 | 15개 |
+| 주요 페이지 | 17개 |
 | 컴포넌트 | 4개 |
 | 컨트롤러 | 5개 |
-| 소재 프리셋 | 3개 기본 (Zirconia, Alumina, Hydroxyapatite) |
+| 워커 | 2개 (PrintWorker, TestPrintWorker) |
+| 소재 프리셋 | 프로덕션 3개 + 테스트 2개 |
 
 ---
 

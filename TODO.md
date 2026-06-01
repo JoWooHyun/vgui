@@ -1,6 +1,6 @@
 # MAZIC CERA GUI - TODO
 
-> 최종 업데이트: 2025-05-26
+> 최종 업데이트: 2026-05-29
 > PENDING_WORK.md의 내용을 이 문서로 통합하였음.
 
 ---
@@ -74,7 +74,7 @@
 
 ### 프린팅 고급 기능
 - [ ] 프린트 재개 (중단된 프린트 특정 레이어부터)
-- [ ] 테스트 프린트 (첫 N개 레이어만)
+- [x] ~~테스트 프린트 (첫 N개 레이어만)~~ → v5.2에서 테스트 모드로 구현
 - [ ] Y축 레진 펌프 → Klipper extruder 이전
 
 ### UI/UX 개선
@@ -117,6 +117,41 @@
 ---
 
 ## 완료된 항목 (Done)
+
+### v5.4 - 설정값 조정 및 LED Delay 설정 (2026-05-29)
+
+- [x] blade_start/blade_end를 Setting 페이지에서 Material 프리셋으로 이동
+- [x] 기본값/범위 일괄 변경 (프라이밍 10mm, Manual 10mm, Exposure 15초 등)
+- [x] Print Progress 값 표시 포맷 수정 (`:g` 포맷으로 정확한 값 표시)
+- [x] 프라이밍 최대 거리 125mm (Y축 물리 한계)
+- [x] test/print worker Z-lift +3mm, X 복귀 속도 3000mm/min 동기화
+- [x] 테스트 모드 LED Delay 설정 추가 (1~60초, TestMaterialPreset)
+
+### v5.3 - Material 페이지 UI 개편 및 설정 정보 표시 (2026-05-28~29)
+
+- [x] Material 페이지 2열 레이아웃 (`MaterialEditPairRow`)
+- [x] Initial Leveling ON/OFF 토글 (Material/TestMaterial)
+- [x] File Preview 페이지 설정값 전체 표시
+- [x] NumericKeypad 자동 클리어 (첫 입력 시)
+- [x] Print Progress 페이지 설정 정보 전체 표시 (14개 항목)
+- [x] 예상 프린트 시간 정확도 개선 (2구간 속도, settle, pull/return 반영)
+
+### v5.2 - 테스트 모드 신규 개발 (2026-05-27)
+
+- [x] TestPrintWorker (LED 없이 모터만 동작하는 테스트 전용 워커)
+- [x] TestMaterialPreset (테스트 전용 소재 프리셋, 프로덕션과 분리)
+- [x] TestMaterialPage (테스트 소재 관리 페이지)
+- [x] PrintTestPage (설정+진행 통합 UI)
+- [x] Z offset, settle time, initial leveling 추가
+- [x] 블레이드 스윕 거리 140→130mm
+- [x] 테스트 모드 기능 → 프로덕션 PrintWorker 이식
+
+### v5.1 - 블레이드 범위 설정 및 리필 개선 (2026-05-26)
+
+- [x] 블레이드 시작/끝 위치 설정 (`blade_start`, `blade_end`)
+- [x] 블레이드 홈 복귀 (스탠바이 10mm 제거)
+- [x] 주사기 리필 프라이밍 UI (거리 입력 + Y축 이동)
+- [x] 주사기 리필 Y좌표 리셋 (`SET_KINEMATIC_POSITION Y=130`)
 
 ### v5.0 - Push-Pull 3단계 토출 및 레진 소모 UI 개선 (2025-05-26)
 
