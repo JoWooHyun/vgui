@@ -337,7 +337,7 @@ class TestMaterialPage(BasePage):
         self.row_y_pull_delay = MaterialEditRow("Pull Delay", 2.0, "s", 0.0, 20.0, allow_decimal=True)
         self.row_y_return_dist = MaterialEditRow("Return Dist.", 0.0, "mm", 0.0, 10.0, allow_decimal=True)
         self.row_y_return_delay = MaterialEditRow("Return Delay", 2.0, "s", 0.0, 20.0, allow_decimal=True)
-        self.row_blade_start = MaterialEditRow("Blade Start", 0.0, "mm", 0.0, 10.0, allow_decimal=True)
+        self.row_blade_start = MaterialEditRow("Blade Start", 0.0, "mm", 0.0, 20.0, allow_decimal=True)
         self.row_blade_end = MaterialEditRow("Blade End", 130.0, "mm", 120.0, 140.0, allow_decimal=True)
         self.row_led_delay = MaterialEditRow("LED Delay", 5.0, "s", 1.0, 60.0, allow_decimal=True)
 

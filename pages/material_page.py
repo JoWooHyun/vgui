@@ -349,7 +349,7 @@ class MaterialPage(BasePage):
         self.row_y_pull_delay = MaterialEditRow("Pull Delay", 2.0, "s", 0.1, 20.0, allow_decimal=True)
         self.row_y_return_dist = MaterialEditRow("Return Dist.", 0.0, "mm", 0.0, 10.0, allow_decimal=True)
         self.row_y_return_delay = MaterialEditRow("Return Delay", 2.0, "s", 0.1, 20.0, allow_decimal=True)
-        self.row_blade_start = MaterialEditRow("Blade Start", 0.0, "mm", 0.0, 10.0, allow_decimal=True)
+        self.row_blade_start = MaterialEditRow("Blade Start", 0.0, "mm", 0.0, 20.0, allow_decimal=True)
         self.row_blade_end = MaterialEditRow("Blade End", 130.0, "mm", 120.0, 140.0, allow_decimal=True)
 
         # Leveling ON/OFF 토글 버튼
