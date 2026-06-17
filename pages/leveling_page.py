@@ -18,19 +18,19 @@ from styles.icons import Icons
 # ==================== 레벨링 단계 정의 ====================
 LEVEL_STEPS = [
     {
-        "icon": Icons.HOME_Z,
-        "desc": "Z축에 Stage를 설치한 후\n고정하지 않고 두고 버튼을 누르세요.",
-    },
-    {
         "icon": Icons.HOME_X,
         "desc": "X축에 블레이드를 설치한 후\n고정 나사를 살짝 풀고 버튼을 누르세요.",
+    },
+    {
+        "icon": Icons.HOME_Z,
+        "desc": "Z축에 Stage를 설치한 후\n고정하지 않고 두고 버튼을 누르세요.",
     },
     {
         "icon": Icons.X_MOVE,
         "desc": "블레이드가 가운데로 이동합니다.\n버튼을 누르세요.",
     },
 ]
-LEVEL_DONE_DESC = "블레이드를 먼저 고정시키고\nZ축 Stage를 고정한 후\nDone을 누르세요."
+LEVEL_DONE_DESC = "Z축 Stage를 먼저 고정시키고\n블레이드를 고정한 후\nDone을 누르세요."
 
 
 class StepPanel(QFrame):
@@ -247,9 +247,9 @@ class LevelingPage(BasePage):
 
         step = self.level_panel.step
         if step == 0:
-            self.z_home.emit()
-        elif step == 1:
             self.x_home.emit()
+        elif step == 1:
+            self.z_home.emit()
         elif step == 2:
             self.x_move.emit(75.0, 600)  # 10mm/s = 600mm/min
 
