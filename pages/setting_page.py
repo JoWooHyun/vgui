@@ -259,7 +259,7 @@ class BladePanel(QFrame):
         speed_container.addStretch()
         layout.addLayout(speed_container)
 
-        layout.addStretch(1)
+        layout.addStretch(3)
 
         # 제어 버튼들 (HOME, MOVE)
         control_layout = QHBoxLayout()
