@@ -16,7 +16,8 @@ from styles.fonts import Fonts
 from styles.icons import Icons
 from styles.stylesheets import (
     get_axis_panel_style, get_axis_title_style,
-    get_distance_button_active_style, AXIS_VALUE_STYLE
+    get_distance_button_active_style, get_button_control_style,
+    AXIS_VALUE_STYLE
 )
 
 
@@ -96,11 +97,21 @@ class AxisControlPanel(QFrame):
 
         # 방향 버튼들
         if self._is_horizontal:
-            self.btn_negative = ControlButton(Icons.CHEVRON_LEFT, 70, 28)
-            self.btn_positive = ControlButton(Icons.CHEVRON_RIGHT, 70, 28)
+            self.btn_negative = QPushButton("뒤")
+            self.btn_negative.setFixedSize(70, 70)
+            self.btn_negative.setCursor(Qt.PointingHandCursor)
+            self.btn_negative.setStyleSheet(get_button_control_style() + f"""
+                QPushButton {{ color: {Colors.NAVY}; font-size: 20px; font-weight: bold; }}
+            """)
+            self.btn_positive = QPushButton("앞")
+            self.btn_positive.setFixedSize(70, 70)
+            self.btn_positive.setCursor(Qt.PointingHandCursor)
+            self.btn_positive.setStyleSheet(get_button_control_style() + f"""
+                QPushButton {{ color: {Colors.NAVY}; font-size: 20px; font-weight: bold; }}
+            """)
         else:
-            self.btn_positive = ControlButton(Icons.CHEVRON_UP, 70, 28)
-            self.btn_negative = ControlButton(Icons.CHEVRON_DOWN, 70, 28)
+            self.btn_positive = ControlButton(Icons.CHEVRON_DOWN, 70, 28)  # 모터 반전: 위로 이동
+            self.btn_negative = ControlButton(Icons.CHEVRON_UP, 70, 28)    # 모터 반전: 아래로 이동
 
         self.btn_positive.clicked.connect(self._on_move_positive)
         self.btn_negative.clicked.connect(self._on_move_negative)
@@ -201,7 +212,7 @@ class ManualPage(BasePage):
         self.z_panel.home_axis.connect(self.z_home.emit)
 
         # X축 패널 (블레이드) - 속도 설정 포함
-        self.x_panel = AxisControlPanel("X Axis (Blade)", is_horizontal=True,
+        self.x_panel = AxisControlPanel("Blade", is_horizontal=True,
                                          show_speed=True, default_speed=10,
                                          min_speed=5, max_distance=140.0)
         self.x_panel.move_positive.connect(
