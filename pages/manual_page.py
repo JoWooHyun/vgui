@@ -73,7 +73,6 @@ class AxisControlPanel(QFrame):
         self.btn_distance.setCursor(Qt.PointingHandCursor)
         self.btn_distance.setStyleSheet(get_distance_button_active_style())
         self.btn_distance.clicked.connect(self._on_distance_click)
-        layout.addWidget(self.btn_distance)
 
         # 속도 입력 버튼 (show_speed=True일 때만)
         if self._show_speed:
@@ -82,7 +81,14 @@ class AxisControlPanel(QFrame):
             self.btn_speed.setCursor(Qt.PointingHandCursor)
             self.btn_speed.setStyleSheet(get_distance_button_active_style())
             self.btn_speed.clicked.connect(self._on_speed_click)
-            layout.addWidget(self.btn_speed)
+            # 거리 + 속도를 가로 한 행에 배치
+            input_row = QHBoxLayout()
+            input_row.setSpacing(8)
+            input_row.addWidget(self.btn_distance)
+            input_row.addWidget(self.btn_speed)
+            layout.addLayout(input_row)
+        else:
+            layout.addWidget(self.btn_distance)
 
         layout.addStretch(1)
 
