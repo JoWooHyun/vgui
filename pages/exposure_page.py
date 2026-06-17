@@ -17,20 +17,14 @@ from styles.icons import Icons
 
 # 패턴 정의
 PATTERNS = [
-    {
-        "key": "custom",
-        "label": "Image",
-        "icon": Icons.IMAGE,
-        "desc": "USB에서 이미지를 선택하세요",
-        "max_time": 120,
-    },
-    {
-        "key": "checker",
-        "label": "Checker",
-        "icon": Icons.PATTERN_CHECKER,
-        "desc": "체크무늬 패턴을 노출합니다",
-        "max_time": 60,
-    },
+    # --- 관리자 모드 전용 (추후 복원) ---
+    # {
+    #     "key": "custom",
+    #     "label": "Image",
+    #     "icon": Icons.IMAGE,
+    #     "desc": "USB에서 이미지를 선택하세요",
+    #     "max_time": 120,
+    # },
     {
         "key": "logo",
         "label": "Logo",
@@ -148,7 +142,7 @@ class ExposurePage(BasePage):
     def __init__(self, parent=None):
         super().__init__("Exposure", show_back=True, parent=parent)
 
-        self._current_pattern_idx = 1  # 기본: checker
+        self._current_pattern_idx = 1  # 기본: 20x20
         self._exposure_time = 15
         self._is_running = False
         self._custom_image_path = ""  # 사용자 선택 이미지 경로
