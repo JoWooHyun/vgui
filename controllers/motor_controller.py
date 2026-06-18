@@ -388,7 +388,7 @@ class MotorController:
     def y_reset_position(self, position: float = 0.0) -> bool:
         """Resin pump 위치를 지정 값으로 리셋"""
         print(f"[Motor] Resin pump position reset (SET_KINEMATIC_POSITION Y={position})")
-        success = self.send_gcode(f"SET_KINEMATIC_POSITION Y={position}", timeout=10)
+        success = self.send_gcode(f"SET_KINEMATIC_POSITION Y={position} SET_HOMED=Y", timeout=10)
         if success:
             self._y_position = position
             print(f"[Motor] Resin pump position reset to {position}mm")
@@ -570,6 +570,32 @@ class MotorController:
         return True
 
     # ==================== 상태 조회 ====================
+
+    def query_y_endstop(self) -> bool:
+        """Y축 엔드스톱(홈 센서) 상태 조회
+
+        Returns:
+            True = 센서 눌림 (홈 도달), False = 안 눌림
+        """
+        try:
+            # QUERY_ENDSTOPS 실행하여 상태 갱신
+            self.send_gcode("QUERY_ENDSTOPS")
+            time.sleep(0.3)
+
+            response = requests.get(
+                f"{self.moonraker_url}/printer/objects/query",
+                params={"query_endstops": "last_query"},
+                timeout=5
+            )
+            if response.status_code == 200:
+                data = response.json()
+                last_query = data.get('result', {}).get('status', {}).get('query_endstops', {}).get('last_query', {})
+                y_triggered = last_query.get('y', 0) == 1
+                print(f"[Motor] Y endstop query: {'TRIGGERED' if y_triggered else 'open'}")
+                return y_triggered
+        except Exception as e:
+            print(f"[Motor] Y endstop query failed: {e}")
+        return False
 
     def get_position(self) -> Tuple[float, float]:
         """

@@ -690,9 +690,44 @@ class PrintWorker(QThread):
         self._y_position += actual
         print(f"[PrintWorker] {label}: Push {actual:.2f}mm (pos: {self._y_position:.1f}mm)")
 
-        # Push 후 소진 체크 — 즉시 사용자 선택 대기 (불완전 레이어 방지)
+        # Push 후 소진 체크 — 홈 센서로 실제 소진 확인
         if self._y_position <= 0:
-            print(f"[PrintWorker] {label}: Resin exhausted after push (pos: {self._y_position:.1f}mm)")
+            # 홈 센서로 물리적 소진 확인
+            endstop_triggered = self.motor.query_y_endstop() if self.motor and not self.simulation else True
+
+            if not endstop_triggered:
+                # 탈조 발생 — 좌표 보정 후 홈 센서까지 재시도
+                print(f"[PrintWorker] {label}: Position ≤ 0 but endstop NOT triggered — stall detected, retrying")
+                retry_distance = 10.0
+                max_retries = 15
+
+                for retry in range(max_retries):
+                    if self._check_stopped():
+                        return False
+                    # 좌표를 retry_distance로 속여서 다시 밀 수 있게 함
+                    if self.motor:
+                        self.motor.y_reset_position(retry_distance)
+                    self._y_position = retry_distance
+
+                    # 다시 토출 시도
+                    success, actual = self._motor_y_move(-retry_distance, push_speed)
+                    if not success:
+                        self.error_occurred.emit(f"{label}: Resin retry push failed")
+                        self._is_stopped = True
+                        return False
+                    self._y_position += actual
+
+                    # 홈 센서 재확인
+                    endstop_triggered = self.motor.query_y_endstop() if self.motor and not self.simulation else True
+                    if endstop_triggered:
+                        print(f"[PrintWorker] {label}: Endstop triggered after {retry + 1} retries — resin truly empty")
+                        break
+                    print(f"[PrintWorker] {label}: Retry {retry + 1}/{max_retries} — endstop still open")
+
+                if not endstop_triggered:
+                    print(f"[PrintWorker] {label}: Max retries reached — treating as empty")
+
+            print(f"[PrintWorker] {label}: Resin exhausted (pos: {self._y_position:.1f}mm, endstop: {'triggered' if endstop_triggered else 'max retries'})")
             self._y_resin_waiting = True
             self.resin_empty.emit()
             self._resin_mutex.lock()
