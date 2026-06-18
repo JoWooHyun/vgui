@@ -726,9 +726,17 @@ class MainWindow(QMainWindow):
         self.print_progress_page.show_resin_empty()
 
     def _on_refill_started(self):
-        """주사기 리필 시작 — Y좌표를 130mm(최대)로 리셋"""
-        print("[Print] Refill started — resetting Y position to 130mm")
-        self.motor.y_reset_position(130.0)
+        """주사기 리필 시작 — Y축 홈잉으로 절대 0점 확보"""
+        print("[Print] Refill started — Y homing for absolute zero")
+        self._start_motor_operation(
+            "y_home",
+            on_finished=self._on_refill_homing_done
+        )
+
+    def _on_refill_homing_done(self):
+        """리필 홈잉 완료 — 프라이밍 UI 활성화"""
+        print("[Print] Refill Y homing complete — ready for priming")
+        self.print_progress_page.on_refill_homing_done()
 
     def _on_refill_move(self, distance: float):
         """리필 프라이밍 중 Y축 이동"""

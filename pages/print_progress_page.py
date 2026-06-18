@@ -1065,18 +1065,30 @@ class PrintProgressPage(BasePage):
         self.btn_manual_feed.show()
 
     def _on_refill_click(self):
-        """주사기 리필 클릭 → Y=130 리셋 후 프라이밍 UI 표시"""
+        """주사기 리필 클릭 → Y홈잉 요청 후 프라이밍 UI 표시 (비활성)"""
         self.btn_refill.hide()
         self.btn_manual_feed.hide()
         self.btn_stop.hide()
-        self._update_title("주사기 교체 후 프라이밍")
-        # 프라이밍 버튼 표시
+        self._update_title("홈잉 중...")
+        # 프라이밍 버튼 표시 (비활성 — 홈잉 완료 후 활성화)
         self.btn_prime_minus.show()
+        self.btn_prime_minus.setEnabled(False)
         self.btn_prime_dist.show()
+        self.btn_prime_dist.setEnabled(False)
         self.btn_prime_plus.show()
+        self.btn_prime_plus.setEnabled(False)
         self.btn_prime_done.show()
-        # main.py에서 SET_KINEMATIC_POSITION Y=130 실행
+        self.btn_prime_done.setEnabled(False)
+        # main.py에서 G28 Y 홈잉 실행
         self.refill_started.emit()
+
+    def on_refill_homing_done(self):
+        """리필 홈잉 완료 → 프라이밍 버튼 활성화"""
+        self._update_title("주사기 교체 후 프라이밍")
+        self.btn_prime_minus.setEnabled(True)
+        self.btn_prime_dist.setEnabled(True)
+        self.btn_prime_plus.setEnabled(True)
+        self.btn_prime_done.setEnabled(True)
 
     def _on_prime_dist_click(self):
         """이동거리 버튼 클릭 → NumericKeypad"""
