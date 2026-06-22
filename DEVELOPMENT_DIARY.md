@@ -352,11 +352,70 @@
 
 ---
 
+## v5.5 - 버그 수정 및 UI 세부 조정 (2026-06-01)
+
+### 2026-06-01 | 블레이드 범위 파라미터 전달 수정, 디스플레이 개선
+
+- **bladeStart/bladeEnd 파라미터 누락 수정** (`474977d`)
+  - `file_preview_page.py`의 `_on_start()`에서 `blade_start`/`blade_end`를 emit params에 누락
+  - 블레이드가 항상 0mm에서 시작하는 버그 수정
+- **blade_start 최대 범위 10→20mm 확장** (`3f2767c`)
+  - Material/TestMaterial 페이지 모두 적용
+- **값 표시 포맷 수정 + PrintProgressPage 레이아웃 압축** (`8c4b862`)
+  - `MaterialEditRow`, `TestMaterialEditRow`, `FilePreviewPage`에서 `.1f` → `:g` 포맷 (정확한 값 표시)
+  - PrintProgressPage: Layer/Elapsed/Total/Resin을 2×2 그리드로 통합
+  - `ProgressInfoRow` 높이 28→24px, 간격 축소 (7인치 LCD 텍스트 겹침 방지)
+
+---
+
+## v5.6 - Manual/Exposure/Leveling/Setting 페이지 개선 (2026-06-17)
+
+### 2026-06-17 | UI 세부 수정 다수
+
+- **Manual 페이지 Z축 아이콘 반전** (`22ba875`)
+  - Z축 모터가 반전 장착 → 위/아래 아이콘(CHEVRON_UP/DOWN) 교체
+  - "X Axis (Blade)" → "Blade"로 이름 변경
+  - X축(블레이드) 방향 버튼: 아이콘 → "앞"/"뒤" 텍스트 버튼으로 교체
+- **Manual 페이지 블레이드 패널 레이아웃** (`4447e51`)
+  - 거리/속도 입력 버튼을 세로 → 가로 배치 (3패널 정렬 통일)
+- **Exposure 페이지 버튼 정리** (`c364420`)
+  - Image 버튼: 주석 처리 (추후 관리자 모드 전용)
+  - Checker 버튼: 완전 제거
+  - 기본 선택: Logo → 20x20으로 변경
+- **Leveling 페이지 단계 순서 변경** (`2e1d50b`)
+  - Step 0: X축 홈 (블레이드) → Step 1: Z축 홈 (스테이지) 순서로 변경 (기존 반대)
+  - 완료 안내 문구 수정: 스테이지 먼저 고정 → 블레이드 고정 순서로
+- **Setting 페이지 LED/Blade 패널 정렬** (`71a1765`)
+  - BladePanel stretch(1) → stretch(3)으로 수정, LED 패널과 레이아웃 일치
+
+---
+
+## v5.7 - 레진 소진 감지 개선 및 리필 버그 수정 (2026-06-22)
+
+### 2026-06-22 | 엔드스톱 기반 소진 감지 + 리필 프라이밍 플로우 수정
+
+- **엔드스톱 기반 레진 소진 감지** (`b7e5f6d`)
+  - 기존: 소프트웨어 position ≤ 0이면 즉시 소진 판정 → 브라켓 휨/모터 탈조 시 최대 5cc 낭비
+  - **개선**: position ≤ 0 도달 시 `QUERY_ENDSTOPS`로 Y축 홈 센서를 물리적으로 확인
+    - 센서 눌림 → 진짜 소진
+    - 센서 안 눌림 → 탈조 감지 → 좌표 보정(10mm) 후 재시도 (최대 15회, 150mm)
+  - `motor_controller.py`에 `query_y_endstop()` 메서드 추가 (Moonraker REST API 사용)
+  - `y_reset_position()`에 `SET_HOMED=Y` 추가 (기존 미지정 시 XYZ 전체 homed 처리 부작용 수정)
+  - `print_worker.py` `_dispense_3step()`에 재시도 루프 적용
+- **리필 프라이밍 버그 2종 수정** (`2f46646`)
+  - **버그 1**: 리필 시작 시 `y_reset_position(130)` → Y=130(최대)으로 설정 → `+` 버튼이 클램핑으로 인해 작동 안 함
+  - **버그 2**: 완료 후 Klipper가 Y=120 등 가짜 좌표 기반으로 토출 재개 → 홈 센서를 지나쳐 전진
+  - **수정**: `SET_KINEMATIC_POSITION Y=130` → `G28 Y` (물리적 홈잉)으로 교체
+  - 홈잉 완료 전 프라이밍 버튼 비활성화 ("홈잉 중...") → 완료 후 활성화
+  - `_on_refill_homing_done()` 콜백 및 `on_refill_homing_done()` UI 메서드 추가
+
+---
+
 ## 개발 통계
 
 | 항목 | 수치 |
 |------|------|
-| 총 커밋 수 | 190개+ |
+| 총 커밋 수 | 200개+ |
 | 개발 기간 | 2025-12-09 ~ 현재 |
 | 주요 페이지 | 17개 |
 | 컴포넌트 | 4개 |
@@ -396,10 +455,11 @@
 - **문제**: 소재마다 다른 프린트 파라미터를 매번 수동 설정
 - **해결**: MaterialPreset 시스템으로 소재별 프리셋 저장/로드
 
-### 8. Y축 프라이밍 위치 파악 (미해결)
+### 8. Y축 프라이밍 위치 파악 (해결)
 - **문제**: 홈잉 없이 홈센서 기준 절대 위치를 알 수 없음
 - **제약**: G28 Y는 토출 방향이라 레진 낭비, Klipper는 G1 중 엔드스톱 무시
-- **검토 중**: gcode_button (별도 핀), 소프트웨어 폴링, 토출 방향 반전 등
+- **해결**: `QUERY_ENDSTOPS` + Moonraker REST API로 홈 센서 상태를 소프트웨어 폴링
+  - position ≤ 0 도달 시 엔드스톱 확인 → 탈조 감지 → 좌표 보정 후 재시도
 
 ### 9. 정지 시 LED 안전 (해결)
 - **문제**: 노출 중 정지 요청 시 LED가 꺼지지 않고 대기 시간이 끝날 때까지 유지
