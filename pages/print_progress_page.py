@@ -812,7 +812,7 @@ class PrintProgressPage(BasePage):
         2. Resin 토출 (Push + Pull + Return) + 대기
         3. X축 평탄화 (2구간: start→boundary@spd1, boundary→end@spd2)
         4. 이미지 투영 → LED ON → 노광 → LED OFF
-        5. Z축 리프트 (+5mm)
+        5. Z축 리프트 (+3mm)
         6. X축 복귀 (end→start @ 3000mm/min)
 
         Returns:
@@ -828,13 +828,14 @@ class PrintProgressPage(BasePage):
         x_forward_time = (dist1 / spd1) + (dist2 / spd2)
         # X축 복귀: end→start @ 3000mm/min (50mm/s) 고정
         x_return_time = (blade_end - blade_start) / 50.0
-        x_time = (x_forward_time + x_return_time) * blade_cycles
+        x_time = x_forward_time + x_return_time
 
-        # Z축 리프트(+5mm) + 다음 레이어 하강 시간
-        lift_speed_mm_s = lift_speed / 60.0 if lift_speed > 0 else 5.0
-        drop_speed_mm_s = drop_speed / 60.0 if drop_speed > 0 else 2.5
-        z_lift_time = lift_height / lift_speed_mm_s
-        z_drop_time = lift_height / drop_speed_mm_s
+        # Z축 리프트(+3mm) + 드롭(~3mm) @ 300mm/min 고정
+        # 실제 코드: print_worker.py z_position + 3.0, motor_controller z_speed=300
+        Z_LIFT = 3.0
+        Z_SPEED = 300.0 / 60.0  # 5 mm/s
+        z_lift_time = Z_LIFT / Z_SPEED
+        z_drop_time = Z_LIFT / Z_SPEED
         z_time = z_lift_time + z_drop_time
 
         # 레진 토출 시간 (3단계: Push + Pull + Return)
@@ -864,15 +865,16 @@ class PrintProgressPage(BasePage):
 
         # 초기 평탄화 시간 (initial_leveling ON일 때만)
         leveling_time = 0.0
-        if initial_leveling and leveling_cycles > 0:
-            # 초기 평탄화도 2단 속도 적용
-            lev_forward = (dist1 / spd1) + (dist2 / spd2)
+        if initial_leveling:
+            # 실제 코드: 단일 blade_speed로 1회 편도 sweep + Z리프트 + X복귀
+            lev_sweep = (blade_end - blade_start) / spd1
+            lev_z_lift = Z_LIFT / Z_SPEED
             lev_return = (blade_end - blade_start) / 50.0
-            leveling_time = (lev_forward + lev_return) * leveling_cycles
-            # 초기 토출 + settle time
-            if y_dispense_distance > 0 and y_dispense_speed > 0:
-                y_speed_mm_s = y_dispense_speed / 60.0
-                leveling_time += (y_dispense_distance / y_speed_mm_s) + y_dispense_delay
+            leveling_time = lev_sweep + lev_z_lift + lev_return
+            # 초기 토출: 180mm/min 고정 속도 (print_worker INITIAL_DISPENSE_SPEED=180)
+            if y_dispense_distance > 0:
+                init_push_speed = 180.0 / 60.0  # 3mm/s
+                leveling_time += (y_dispense_distance / init_push_speed) + y_dispense_delay
             leveling_time += settle_time
 
         return int(leveling_time + total_bottom_time + total_normal_time + first_layer_settle)
