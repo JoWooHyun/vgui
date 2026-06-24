@@ -34,11 +34,13 @@ class AxisControlPanel(QFrame):
                  min_distance: float = 0.05, max_distance: float = 100.0,
                  show_speed: bool = False, default_speed: int = 10,
                  min_speed: int = 5, max_speed: int = 9999,
+                 invert_icons: bool = False,
                  parent=None):
         super().__init__(parent)
 
         self._axis_name = axis_name
         self._is_horizontal = is_horizontal
+        self._invert_icons = invert_icons
         self._distance = default_distance
         self._min_distance = min_distance
         self._max_distance = max_distance
@@ -116,8 +118,14 @@ class AxisControlPanel(QFrame):
                 QPushButton {{ color: {Colors.NAVY}; font-size: 20px; font-weight: bold; }}
             """)
         else:
-            self.btn_positive = ControlButton(Icons.CHEVRON_DOWN, 70, 28)  # 모터 반전: 위로 이동
-            self.btn_negative = ControlButton(Icons.CHEVRON_UP, 70, 28)    # 모터 반전: 아래로 이동
+            if self._invert_icons:
+                # Z축: 모터 반전 — DOWN=positive, UP=negative
+                self.btn_positive = ControlButton(Icons.CHEVRON_DOWN, 70, 28)
+                self.btn_negative = ControlButton(Icons.CHEVRON_UP, 70, 28)
+            else:
+                # Y축: 정상 — UP=positive, DOWN=negative
+                self.btn_positive = ControlButton(Icons.CHEVRON_UP, 70, 28)
+                self.btn_negative = ControlButton(Icons.CHEVRON_DOWN, 70, 28)
 
         self.btn_positive.clicked.connect(self._on_move_positive)
         self.btn_negative.clicked.connect(self._on_move_negative)
@@ -212,7 +220,7 @@ class ManualPage(BasePage):
         panels_layout.setSpacing(20)
 
         # Z축 패널
-        self.z_panel = AxisControlPanel("Z Axis", is_horizontal=False)
+        self.z_panel = AxisControlPanel("Z Axis", is_horizontal=False, invert_icons=True)
         self.z_panel.move_positive.connect(lambda d: self.z_move.emit(d))
         self.z_panel.move_negative.connect(lambda d: self.z_move.emit(-d))
         self.z_panel.home_axis.connect(self.z_home.emit)
